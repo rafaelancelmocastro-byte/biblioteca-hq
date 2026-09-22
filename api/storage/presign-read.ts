@@ -1,8 +1,8 @@
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { requireOwner } from "../_lib/auth";
-import { createR2Client, getR2Config } from "../_lib/r2";
+import { requireOwner } from "../_lib/auth.js";
+import { createR2Client, getR2Config } from "../_lib/r2.js";
 
 function isAllowedKey(value: unknown): value is string {
   return typeof value === "string" && /^(comics|covers)\/[a-f0-9-]+\.(pdf|jpeg|jpg|png|webp)$/i.test(value);

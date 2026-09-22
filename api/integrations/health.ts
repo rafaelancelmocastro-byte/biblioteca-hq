@@ -1,7 +1,7 @@
 import { HeadBucketCommand } from "@aws-sdk/client-s3";
 import { createClient } from "@supabase/supabase-js";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { createR2Client, getR2Config } from "../_lib/r2";
+import { createR2Client, getR2Config } from "../_lib/r2.js";
 
 type IntegrationStatus = "ok" | "unavailable";
 
