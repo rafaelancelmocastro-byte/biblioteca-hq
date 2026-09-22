@@ -12,10 +12,9 @@ export async function requireOwner(req: VercelRequest, res: VercelResponse): Pro
   res.setHeader("Cache-Control", "private, no-store");
   const supabaseUrl = process.env.VITE_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const ownerEmail = process.env.APP_OWNER_EMAIL?.toLowerCase();
   const accessToken = getBearerToken(req);
 
-  if (!supabaseUrl || !serviceRoleKey || !ownerEmail) {
+  if (!supabaseUrl || !serviceRoleKey) {
     res.status(503).json({ error: "Serviço de armazenamento indisponível." });
     return false;
   }
@@ -31,7 +30,8 @@ export async function requireOwner(req: VercelRequest, res: VercelResponse): Pro
   });
   const { data, error } = await adminClient.auth.getUser(accessToken);
 
-  if (error || !data.user || data.user.email?.toLowerCase() !== ownerEmail) {
+  const profile = data.user ? await adminClient.from("profiles").select("role,is_active").eq("id", data.user.id).maybeSingle() : null;
+  if (error || !data.user || profile?.data?.role !== "master" || !profile.data.is_active) {
     console.warn("Tentativa de acesso administrativo não autorizado", { path: req.url, userId: data.user?.id });
     res.status(403).json({ error: "Acesso restrito ao proprietário." });
     return false;

@@ -34,6 +34,8 @@ export interface Series {
   totalIssuesExpected?: number;
   description: string;
   bannerTone?: string;
+  coverKey?: string;
+  coverUrl?: string;
 }
 
 export interface ComicCoverPalette {

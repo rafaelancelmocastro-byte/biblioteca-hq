@@ -4,9 +4,12 @@
   "description": "O multiverso dos quadrinhos em um só lugar.",
   "start_url": "/biblioteca",
   "display": "standalone",
-  "background_color": "#080706",
-  "theme_color": "#d71920",
+  "background_color": "#0f0f11",
+  "theme_color": "#0f0f11",
+  "orientation": "any",
   "icons": [
-    { "src": "/brand-mark.png", "sizes": "1536x1536", "type": "image/png", "purpose": "any maskable" }
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

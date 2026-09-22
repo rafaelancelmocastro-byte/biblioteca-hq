@@ -3,9 +3,11 @@ import { Comic } from "../../types/comic";
 import { getSupabaseComicById } from "../../services/supabaseCatalogRepository";
 import { getComicReadUrl } from "../../services/comicRead";
 import { ComicReader } from "../../components/reader/ComicReader";
-import { saveSupabaseProgress } from "../../services/supabaseLibrarySync";
+import { getQueuedProgress, saveReadingProgress } from "../../services/offlineProgress";
 import { Button } from "../../components/ui/Button";
 import { ArrowLeft, BookX } from "lucide-react";
+import { readOffline } from "../../services/offlineLibrary";
+import { supabase } from "../../services/supabaseClient";
 
 interface ReaderPageProps {
   comicId: string;
@@ -15,20 +17,22 @@ interface ReaderPageProps {
 export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack }) => {
   const [comic, setComic] = useState<Comic | null>(null);
   const [pdfUrl, setPdfUrl] = useState("");
+  const [pdfData, setPdfData] = useState<Uint8Array | undefined>();
+  const [userId, setUserId] = useState("");
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
     let isMounted = true;
     setIsLoading(true);
 
-    getSupabaseComicById(comicId)
-      .then(async (data) => {
-        if (isMounted) {
-          setComic(data);
-          if (data) setPdfUrl(await getComicReadUrl(data.id));
-          setIsLoading(false);
-        }
-      })
+    (async () => {
+      const { data: auth } = await supabase!.auth.getSession();
+      if (isMounted) setUserId(auth.session?.user.id || "");
+      const offline = auth.session ? await readOffline(auth.session.user.id, comicId) : null;
+      if (offline) { if (isMounted) { const queued = getQueuedProgress(auth.session!.user.id, comicId); setComic(queued ? { ...offline.comic, progress: { comicId, currentPage: queued.page, totalPages: queued.total, percentage: Math.round(queued.page / queued.total * 100), status: queued.page >= queued.total ? "completed" : "reading", lastReadAt: queued.updatedAt, updatedAt: queued.updatedAt } } : offline.comic); setPdfData(offline.data); setIsLoading(false); } return; }
+      const data = await getSupabaseComicById(comicId);
+      if (isMounted) { setComic(data); if (data) setPdfUrl(await getComicReadUrl(data.id)); setIsLoading(false); }
+    })()
       .catch(() => {
         if (isMounted) setIsLoading(false);
       });
@@ -47,7 +51,7 @@ export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack }) => {
     );
   }
 
-  if (!comic || !pdfUrl) {
+  if (!comic || (!pdfUrl && !pdfData)) {
     return (
       <div className="fixed inset-0 bg-[#080a0f] flex flex-col items-center justify-center p-6 text-center z-50">
         <BookX className="w-12 h-12 text-slate-600 mb-3" />
@@ -67,8 +71,9 @@ export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack }) => {
     <ComicReader
       comic={comic}
       pdfUrl={pdfUrl}
+      pdfData={pdfData}
       onBack={onBack}
-      onUpdateProgress={(id, page, total) => { void saveSupabaseProgress(id, page, total); }}
+      onUpdateProgress={(id, page, total) => { void saveReadingProgress(userId, id, page, total); }}
     />
   );
 };

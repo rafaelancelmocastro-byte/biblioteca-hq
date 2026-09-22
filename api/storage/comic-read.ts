@@ -8,6 +8,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") { res.setHeader("Allow", "POST"); return res.status(405).json({ error: "Method Not Allowed" }); }
   const auth = await requireUser(req, res);
   if (!auth) return;
+  const profile = await auth.admin.from("profiles").select("role,is_active,access_status").eq("id", auth.user.id).maybeSingle();
+  if (profile.error || !profile.data || !profile.data.is_active || (profile.data.role !== "master" && profile.data.access_status !== "lifetime")) {
+    return res.status(403).json({ error: "Acesso à leitura pendente de liberação." });
+  }
   const comicId = req.body?.comicId;
   if (typeof comicId !== "string" || !/^[a-f0-9-]{36}$/i.test(comicId)) return res.status(400).json({ error: "Edição inválida." });
   const config = getR2Config();

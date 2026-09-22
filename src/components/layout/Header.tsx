@@ -12,6 +12,7 @@ interface HeaderProps {
   currentPath: string;
   onLogout?: () => void | Promise<void>;
   isOwner?: boolean;
+  userName?: string;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -23,6 +24,7 @@ export const Header: React.FC<HeaderProps> = ({
   currentPath,
   onLogout,
   isOwner = false,
+  userName = "Leitor",
 }) => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -62,7 +64,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         <div className="hidden sm:flex flex-col">
           <span className="text-xs text-[#c2bbb4] font-medium">
-            {getGreeting()}, <strong className="text-[#f5eee9] font-semibold">{APP_CONFIG.ownerName}</strong>
+            {getGreeting()}, <strong className="text-[#f5eee9] font-semibold">{userName}</strong>
           </span>
           <span className="text-[10px] text-slate-500 font-mono">
             {APP_CONFIG.tagline}

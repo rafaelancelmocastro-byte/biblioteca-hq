@@ -1,191 +1,65 @@
 import React, { useState } from "react";
-import { Lock, ArrowRight, ShieldCheck } from "lucide-react";
-import { APP_CONFIG } from "../../config/app";
+import { ArrowRight, Lock, ShieldCheck } from "lucide-react";
 import { Button } from "../../components/ui/Button";
-import { isSupabaseConfigured, supabase } from "../../services/supabaseClient";
 import { BrandLogo } from "../../components/ui/BrandLogo";
+import { isSupabaseConfigured, supabase } from "../../services/supabaseClient";
 
-interface LoginPageProps {
-  onSuccess: () => void;
-}
-
-export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
-  const [isInviteFlow] = useState(() =>
-    window.location.hash.includes("type=invite") || window.location.hash.includes("type=recovery")
-  );
+export const LoginPage: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
+  const [mode, setMode] = useState<"login" | "signup" | "recovery">("login");
+  const [isRecoveryLink] = useState(() => /type=(invite|recovery)/.test(window.location.hash));
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [passwordConfirmation, setPasswordConfirmation] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-
-    if (!isSupabaseConfigured || !supabase) {
-      // Mantém o protótipo utilizável antes da configuração do ambiente local.
-      onSuccess();
-      return;
-    }
-
-    if (!password || password.length < 8) {
-      setError("A senha deve ter pelo menos 8 caracteres.");
-      return;
-    }
-
-    if (isInviteFlow && password !== passwordConfirmation) {
-      setError("A confirmação da senha não corresponde.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    if (isInviteFlow) {
-      const { error: updateError } = await supabase.auth.updateUser({ password });
-      setIsSubmitting(false);
-      if (updateError) {
-        setError("Não foi possível definir sua senha. Abra novamente o link do convite.");
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault(); setError(""); setNotice("");
+    if (!supabase || !isSupabaseConfigured) { setError("Autenticação indisponível."); return; }
+    if (!isRecoveryLink && !email.trim()) { setError("Informe seu e-mail."); return; }
+    if (mode !== "recovery" && password.length < 8) { setError("A senha deve ter ao menos 8 caracteres."); return; }
+    if ((mode === "signup" || isRecoveryLink) && password !== confirmation) { setError("As senhas não conferem."); return; }
+    setBusy(true);
+    try {
+      if (isRecoveryLink) {
+        const { error: failure } = await supabase.auth.updateUser({ password });
+        if (failure) throw failure;
+        window.history.replaceState({}, "", "/login"); onSuccess(); return;
+      }
+      if (mode === "recovery") {
+        const { error: failure } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: `${window.location.origin}/login` });
+        if (failure) throw failure;
+        setNotice("Enviamos um link para redefinir sua senha."); return;
+      }
+      if (mode === "signup") {
+        const { data, error: failure } = await supabase.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: `${window.location.origin}/login` } });
+        if (failure) throw failure;
+        if (data.session) onSuccess();
+        else setNotice("Cadastro recebido. Confirme seu e-mail para entrar. O acesso à leitura será liberado após o PIX.");
         return;
       }
-      window.history.replaceState({}, "", "/login");
+      const { error: failure } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      if (failure) throw failure;
       onSuccess();
-      return;
-    }
-
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: APP_CONFIG.ownerEmail,
-      password,
-    });
-    setIsSubmitting(false);
-
-    if (signInError) {
-      setError("Não foi possível autenticar. Confira seu e-mail e sua senha.");
-      return;
-    }
-
-    onSuccess();
+    } catch (failure) { setError(failure instanceof Error ? failure.message : "Não foi possível concluir. Tente novamente."); }
+    finally { setBusy(false); }
   };
 
-  const handlePasswordRecovery = async () => {
-    if (!supabase) return;
-    setError("");
-    setNotice("");
-    const { error: recoveryError } = await supabase.auth.resetPasswordForEmail(APP_CONFIG.ownerEmail, {
-      redirectTo: `${window.location.origin}/login`,
-    });
-    if (recoveryError) {
-      setError("Não foi possível enviar o link agora. Tente novamente em alguns minutos.");
-      return;
-    }
-    setNotice("Enviamos um link seguro para você criar ou redefinir sua senha.");
-  };
-
-  return (
-    <div className="login-screen min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-      <div className="login-orbit login-orbit-one" />
-      <div className="login-orbit login-orbit-two" />
-      <div className="login-card relative w-full max-w-md rounded-[2rem] p-6 sm:p-8">
-        {/* Logo & Marca */}
-        <div className="text-center mb-6">
-          <BrandLogo showTagline className="login-brand" />
-          <p className="login-kicker">Streaming privado de quadrinhos</p>
-        </div>
-
-        {/* Mensagem de Segurança */}
-        <div className="mb-6 p-3 rounded-xl bg-white/[.035] border border-white/10 flex items-start gap-2.5 text-xs text-[#c8c0b9]">
-          <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-          <p className="leading-relaxed">
-            Acesso restrito ao proprietário da biblioteca (<strong className="text-amber-400 font-semibold">{APP_CONFIG.ownerEmail}</strong>). Cadastro público desabilitado por diretiva de privacidade.
-          </p>
-        </div>
-
-        {/* Formulário */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label
-              htmlFor="login-owner-email"
-              className="text-xs font-semibold text-slate-300 block mb-1"
-            >
-              Identificação do Dono
-            </label>
-            <input
-              id="login-owner-email"
-              type="text"
-              readOnly
-              value={APP_CONFIG.ownerEmail}
-              className="w-full h-10 px-3 bg-[#0d1017] text-xs text-slate-400 border border-slate-800 rounded-lg cursor-not-allowed select-none"
-            />
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label
-                htmlFor="login-password-input"
-                className="text-xs font-semibold text-slate-300"
-              >
-                {isInviteFlow ? "Crie sua senha" : "Senha"}
-              </label>
-              <span className="text-[10px] text-amber-400/80 font-mono">
-                {isSupabaseConfigured ? "Supabase Ativo" : "Modo Protótipo"}
-              </span>
-            </div>
-            <div className="relative flex items-center">
-              <input
-                id="login-password-input"
-                type="password"
-                placeholder={isInviteFlow ? "Mínimo de 8 caracteres" : "Insira sua senha"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full h-10 pl-3 pr-9 bg-[#0d1017] text-xs sm:text-sm text-slate-200 border border-slate-700 rounded-lg focus:border-amber-500 focus:outline-none"
-              />
-              <Lock className="w-4 h-4 text-slate-500 absolute right-3 pointer-events-none" />
-            </div>
-          </div>
-
-          {isInviteFlow && (
-            <div>
-              <label htmlFor="login-password-confirmation" className="text-xs font-semibold text-slate-300 block mb-1">
-                Confirme sua senha
-              </label>
-              <input
-                id="login-password-confirmation"
-                type="password"
-                value={passwordConfirmation}
-                onChange={(e) => setPasswordConfirmation(e.target.value)}
-                className="w-full h-10 px-3 bg-[#0d1017] text-xs sm:text-sm text-slate-200 border border-slate-700 rounded-lg focus:border-amber-500 focus:outline-none"
-              />
-            </div>
-          )}
-
-          {error && <p className="text-xs text-rose-400">{error}</p>}
-          {notice && <p className="text-xs text-emerald-400">{notice}</p>}
-
-          <Button
-            type="submit"
-            variant="primary"
-            size="lg"
-            className="w-full font-bold shadow-lg shadow-amber-500/20 mt-2"
-            disabled={isSubmitting}
-          >
-            <span>{isSubmitting ? "Processando..." : isInviteFlow ? "Definir senha e entrar" : "Acessar Meu Acervo"}</span>
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
-
-          {!isInviteFlow && isSupabaseConfigured && (
-            <button
-              type="button"
-              onClick={handlePasswordRecovery}
-              className="w-full text-xs text-slate-400 hover:text-amber-300 transition-colors cursor-pointer"
-            >
-              Criar ou redefinir minha senha por e-mail
-            </button>
-          )}
-        </form>
-
-        <div className="mt-6 pt-4 border-t border-slate-800/80 text-center text-[10px] text-slate-500 font-mono">
-          Biblioteca HQ • Versão {APP_CONFIG.version}
-        </div>
-      </div>
+  return <div className="login-screen min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="login-orbit login-orbit-one" /><div className="login-orbit login-orbit-two" />
+    <div className="login-card relative w-full max-w-md rounded-[2rem] p-6 sm:p-8">
+      <div className="text-center mb-6"><BrandLogo showTagline className="login-brand" /><p className="login-kicker">Seu universo de leitura</p></div>
+      <div className="mb-5 p-3 rounded-xl bg-white/[.035] border border-white/10 flex items-start gap-2.5 text-xs text-[#c8c0b9]"><ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" /><span>Explore o acervo. Após o cadastro, libere a leitura com acesso vitalício.</span></div>
+      <form onSubmit={submit} className="space-y-4">
+        {!isRecoveryLink && <label className="block text-xs font-semibold text-slate-300">E-mail<input className="admin-field mt-1" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>}
+        {mode !== "recovery" && <label className="block text-xs font-semibold text-slate-300">{isRecoveryLink ? "Nova senha" : "Senha"}<div className="relative mt-1"><input className="admin-field pr-10" type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} value={password} onChange={(e) => setPassword(e.target.value)} required /><Lock className="absolute right-3 top-3 w-4 h-4 text-slate-500" /></div></label>}
+        {(mode === "signup" || isRecoveryLink) && <label className="block text-xs font-semibold text-slate-300">Confirmar senha<input className="admin-field mt-1" type="password" autoComplete="new-password" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} required /></label>}
+        {error && <p role="alert" className="text-xs text-rose-400">{error}</p>}
+        {notice && <p role="status" className="text-xs text-emerald-400">{notice}</p>}
+        <Button type="submit" variant="primary" size="lg" className="w-full font-bold" disabled={busy}>{busy ? "Aguarde..." : isRecoveryLink ? "Definir nova senha" : mode === "signup" ? "Criar conta" : mode === "recovery" ? "Enviar link" : "Entrar"}<ArrowRight className="w-4 h-4 ml-2" /></Button>
+      </form>
+      {!isRecoveryLink && <div className="flex flex-wrap gap-3 justify-center mt-5 text-xs text-amber-300"><button onClick={() => { setMode(mode === "signup" ? "login" : "signup"); setError(""); }}>{mode === "signup" ? "Já tenho conta" : "Criar conta"}</button><button onClick={() => { setMode(mode === "recovery" ? "login" : "recovery"); setError(""); }}>{mode === "recovery" ? "Voltar ao login" : "Esqueci minha senha"}</button></div>}
     </div>
-  );
+  </div>;
 };

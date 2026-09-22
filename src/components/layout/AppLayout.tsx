@@ -15,6 +15,7 @@ interface AppLayoutProps {
   hideHeaderAndNav?: boolean; // Para modo de leitura imersivo ou login
   onLogout?: () => void | Promise<void>;
   isOwner?: boolean;
+  userName?: string;
 }
 
 export const AppLayout: React.FC<AppLayoutProps> = ({
@@ -29,6 +30,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   hideHeaderAndNav = false,
   onLogout,
   isOwner = false,
+  userName = "Leitor",
 }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -46,6 +48,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         totalComicsCount={totalComicsCount}
         isOwner={isOwner}
+        userName={userName}
       />
 
       {/* Conteúdo Principal com Header e Scroll independente */}
@@ -59,6 +62,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
           currentPath={currentPath}
           onLogout={onLogout}
           isOwner={isOwner}
+          userName={userName}
         />
 
         <main className="cinematic-main flex-1 px-4 sm:px-6 lg:px-9 py-5 sm:py-7 max-w-[1680px] w-full mx-auto">

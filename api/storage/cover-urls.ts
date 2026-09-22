@@ -9,6 +9,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const auth = await requireUser(req, res);
   if (!auth) return;
   const ids = req.body?.comicIds;
+  const assetKeys = req.body?.assetKeys;
+  if (assetKeys !== undefined) {
+    if (!Array.isArray(assetKeys) || assetKeys.length > 100 || assetKeys.some((key) => typeof key !== "string" || !/^covers\/[a-f0-9-]+\.(jpe?g|png|webp)$/i.test(key))) return res.status(400).json({ error: "Assets inválidos." });
+    const config = getR2Config(); if (!config) return res.status(503).json({ error: "Armazenamento indisponível." });
+    const [series, publishers] = await Promise.all([auth.admin.from("series").select("cover_key").in("cover_key", assetKeys), auth.admin.from("publisher_assets").select("logo_key").in("logo_key", assetKeys)]);
+    if (series.error || publishers.error) return res.status(503).json({ error: "Assets indisponíveis." });
+    const allowed = new Set([...(series.data || []).map((row) => row.cover_key), ...(publishers.data || []).map((row) => row.logo_key)]);
+    const client = createR2Client(config);
+    const urls = Object.fromEntries(await Promise.all(assetKeys.filter((key) => allowed.has(key)).map(async (key) => [key, await getSignedUrl(client, new GetObjectCommand({ Bucket: config.bucketName, Key: key }), { expiresIn: 900 })])));
+    res.setHeader("Cache-Control", "private, no-store");
+    return res.status(200).json({ urls });
+  }
   if (!Array.isArray(ids) || ids.length > 100 || ids.some((id) => typeof id !== "string" || !/^[a-f0-9-]{36}$/i.test(id))) {
     return res.status(400).json({ error: "Identificadores inválidos." });
   }

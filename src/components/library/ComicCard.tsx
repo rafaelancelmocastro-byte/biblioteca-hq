@@ -7,11 +7,14 @@ import {
   RotateCcw,
   Sliders,
   Info,
+  HardDriveDownload,
 } from "lucide-react";
 import { Comic } from "../../types/comic";
 import { CoverPlaceholder } from "../ui/CoverPlaceholder";
 import { ProgressBar } from "../ui/ProgressBar";
 import { formatPercentage, getStatusLabel } from "../../lib/formatters";
+import { getOfflineIds } from "../../services/offlineLibrary";
+import { supabase } from "../../services/supabaseClient";
 
 interface ComicCardProps {
   comic: Comic;
@@ -35,12 +38,14 @@ export const ComicCard: React.FC<ComicCardProps> = ({
   density = "comfortable",
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const percentage = comic.progress?.percentage || 0;
   const status = comic.progress?.status || "not_started";
   const isCompleted = status === "completed";
   const isReading = status === "reading";
+  useEffect(() => { let active = true; const check = async () => { const { data } = await supabase!.auth.getSession(); if (data.session) { const ids = await getOfflineIds(data.session.user.id); if (active) setIsOffline(ids.has(comic.id)); } }; if (supabase) void check(); window.addEventListener("biblioteca-offline-changed", check); return () => { active = false; window.removeEventListener("biblioteca-offline-changed", check); }; }, [comic.id]);
 
   // Fecha menu de contexto ao clicar fora
   useEffect(() => {
@@ -74,6 +79,8 @@ export const ComicCard: React.FC<ComicCardProps> = ({
             coverStyle={comic.coverStyle}
           />
         )}
+
+        {isOffline && <span className="absolute bottom-2 left-2 z-20 inline-flex items-center gap-1 rounded-full bg-emerald-900/90 px-2 py-1 text-[10px] font-bold text-emerald-100"><HardDriveDownload className="w-3 h-3" /> Offline</span>}
 
         {/* Botão de Favorito Sobreposto (Canto Superior Direito) */}
         <button

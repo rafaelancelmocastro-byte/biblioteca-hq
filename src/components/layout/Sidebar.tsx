@@ -9,6 +9,8 @@ import {
   ChevronRight,
   Sparkles,
   Compass,
+  Star,
+  HardDriveDownload,
 } from "lucide-react";
 import { APP_CONFIG } from "../../config/app";
 import { BrandLogo } from "../ui/BrandLogo";
@@ -20,6 +22,7 @@ interface SidebarProps {
   onToggleCollapse: () => void;
   totalComicsCount?: number;
   isOwner?: boolean;
+  userName?: string;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -29,6 +32,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onToggleCollapse,
   totalComicsCount = 0,
   isOwner = false,
+  userName = "Leitor",
 }) => {
   const navItems = [
     {
@@ -42,6 +46,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       path: "/continuar",
       icon: Clock,
     },
+    { label: "Lançamentos 2026", path: "/lancamentos", icon: Star },
+    { label: "Salvos offline", path: "/offline", icon: HardDriveDownload },
     {
       label: "Coleções",
       path: "/series",
@@ -165,9 +171,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {!isCollapsed && (
           <div className="flex flex-col px-1">
             <span className="text-[11px] font-medium text-slate-300 truncate">
-              {APP_CONFIG.ownerName}
+              {userName}
             </span>
-            <span className="text-[10px] text-slate-500 font-mono">Dono & Curador</span>
+            <span className="text-[10px] text-slate-500 font-mono">{isOwner ? "Master & Curador" : "Leitor"}</span>
           </div>
         )}
         <button

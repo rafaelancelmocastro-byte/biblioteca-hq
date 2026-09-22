@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Layers } from "lucide-react";
 import { useLibrary } from "../../hooks/useLibrary";
 import type { Comic } from "../../types/comic";
@@ -6,36 +6,42 @@ import { CoverFlow } from "../../components/library/CoverFlow";
 import { ComicCard } from "../../components/library/ComicCard";
 import { ComicDetailModal } from "../../components/library/ComicDetailModal";
 import { ProgressUpdateModal } from "../../components/library/ProgressUpdateModal";
+import { supabase } from "../../services/supabaseClient";
+import { getAssetUrls } from "../../services/assetUrls";
+
+const slug = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+const publisherArt = (name: string) => /dc comics|^dc$/i.test(name) ? "/publisher-art/dc.png" : /marvel/i.test(name) ? "/publisher-art/marvel.png" : /jbc/i.test(name) ? "/publisher-art/jbc.png" : /new.?pop/i.test(name) ? "/publisher-art/newpop.png" : undefined;
+const sagaArt = (name: string) => { const value = slug(name); return value.includes("batman") ? "/saga-art/batman.png" : value.includes("superman") ? "/saga-art/superman.png" : value.includes("x-men") ? "/saga-art/x-men.png" : value.includes("lanterna verde") || value.includes("green lantern") ? "/saga-art/green-lantern.png" : undefined; };
 
 export const SeriesPage: React.FC<{ onOpenReader: (id: string) => void }> = ({ onOpenReader }) => {
   const { allComics, seriesList, toggleFavorite, updateProgress, setStatus, isLoading } = useLibrary();
-  const [kind, setKind] = useState<"collection" | "saga">("collection");
-  const [active, setActive] = useState(0);
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [publisher, setPublisher] = useState<string | null>(null);
+  const [seriesId, setSeriesId] = useState<string | null>(null);
+  const [kind, setKind] = useState<"all" | "collection" | "saga">("all");
+  const [activePublisher, setActivePublisher] = useState(0);
+  const [activeSeries, setActiveSeries] = useState(0);
+  const [assetUrls, setAssetUrls] = useState<Record<string, string>>({});
+  const [publisherKeys, setPublisherKeys] = useState<Record<string, string>>({});
   const [detail, setDetail] = useState<Comic | null>(null);
   const [progress, setProgress] = useState<Comic | null>(null);
-  const groups = useMemo(() => seriesList.filter((series) => (series.bannerTone === "saga" ? "saga" : "collection") === kind), [kind, seriesList]);
-  const selected = groups[Math.min(active, groups.length - 1)];
-  const openGroup = groups.find((group) => group.id === openId);
-  const issues = useMemo(() => allComics.filter((comic) => comic.seriesId === openId).sort((a, b) => (a.volume || 0) - (b.volume || 0) || a.issueNumber - b.issueNumber || a.year - b.year), [allComics, openId]);
-  const items = useMemo(() => groups.map((group) => {
-    const comics = allComics.filter((comic) => comic.seriesId === group.id);
-    return { id: group.id, title: group.title, subtitle: `${comics.length} ${comics.length === 1 ? "edição" : "edições"} · ${group.publisher}`, image: comics.find((comic) => comic.coverUrl)?.coverUrl };
-  }), [allComics, groups]);
+  const publishers = useMemo(() => [...new Set(seriesList.map((series) => series.publisher))].sort((a, b) => a.localeCompare(b, "pt-BR")), [seriesList]);
+  const groups = useMemo(() => seriesList.filter((series) => series.publisher === publisher && (kind === "all" || (series.bannerTone === "saga" ? "saga" : "collection") === kind)), [seriesList, publisher, kind]);
+  const activeGroup = groups[Math.min(activeSeries, groups.length - 1)];
+  const selectedSeries = seriesList.find((series) => series.id === seriesId);
+  const issues = useMemo(() => allComics.filter((comic) => comic.seriesId === seriesId).sort((a, b) => (a.volume || 0) - (b.volume || 0) || a.issueNumber - b.issueNumber || a.year - b.year), [allComics, seriesId]);
+  useEffect(() => { if (!supabase) return; let alive = true; void supabase.from("publisher_assets").select("publisher,logo_key").then(async ({ data }) => { const keys = Object.fromEntries((data || []).map((row) => [row.publisher, row.logo_key])); if (alive) setPublisherKeys(keys); }); return () => { alive = false; }; }, []);
+  useEffect(() => { const keys = [...seriesList.map((item) => item.coverKey), ...Object.values(publisherKeys)].filter((key): key is string => !!key); if (keys.length) void getAssetUrls(keys).then(setAssetUrls); }, [seriesList, publisherKeys]);
+  const publisherItems = publishers.map((name) => ({ id: name, title: name, subtitle: `${allComics.filter((comic) => comic.publisher === name).length} edições`, image: assetUrls[publisherKeys[name]] || publisherArt(name) || allComics.find((comic) => comic.publisher === name)?.coverUrl }));
+  const seriesItems = groups.map((group) => ({ id: group.id, title: group.title, subtitle: `${allComics.filter((comic) => comic.seriesId === group.id).length} edições · ${group.bannerTone === "saga" ? "Saga" : "Coleção"}`, image: assetUrls[group.coverKey || ""] || sagaArt(group.title) || allComics.find((comic) => comic.seriesId === group.id)?.coverUrl }));
+  const goPublishers = () => { setPublisher(null); setSeriesId(null); setActiveSeries(0); };
   return <div className="streaming-page series-page space-y-8">
-    <div className="page-spotlight"><span className="page-kicker"><Layers /> Universos do acervo</span><h1>Coleções e sagas</h1><p>Descubra uma coleção e explore as edições na ordem de leitura.</p></div>
-    <div className="collection-kind-tabs" role="tablist" aria-label="Tipo de agrupamento">
-      {(["collection", "saga"] as const).map((option) => <button key={option} role="tab" aria-selected={kind === option} className={kind === option ? "active" : ""} onClick={() => { setKind(option); setActive(0); setOpenId(null); }}>{option === "collection" ? "Coleções" : "Sagas"}<span>{seriesList.filter((series) => (series.bannerTone === "saga" ? "saga" : "collection") === option).length}</span></button>)}
-    </div>
-    {isLoading ? <div className="empty-collection-kind">Carregando coleções...</div> : openGroup ? <section className="collection-open" key={openGroup.id}>
-      <button className="collection-back" onClick={() => setOpenId(null)}><ArrowLeft /> Voltar aos hubs</button>
-      <div className="collection-open-heading"><div><span>{openGroup.publisher} · {openGroup.startYear}</span><h2>{openGroup.title}</h2><p>{openGroup.description}</p></div><strong>{issues.length} edições</strong></div>
+    <header className="page-spotlight"><span className="page-kicker"><Layers /> Universos do acervo</span><h1>Coleções e sagas</h1><p>Escolha uma editora, encontre uma franquia ou saga e explore suas edições em ordem.</p></header>
+    <nav aria-label="Caminho da coleção" className="flex flex-wrap items-center gap-2 text-xs text-slate-400"><button className="text-amber-300" onClick={goPublishers}>Editoras</button>{publisher && <><span>/</span><button className={seriesId ? "text-amber-300" : "text-white"} onClick={() => setSeriesId(null)}>{publisher}</button></>}{selectedSeries && <><span>/</span><span className="text-white">{selectedSeries.title}</span></>}</nav>
+    {isLoading ? <div className="empty-collection-kind">Carregando coleções...</div> : selectedSeries ? <section className="collection-open" key={selectedSeries.id}>
+      <button className="collection-back" onClick={() => setSeriesId(null)}><ArrowLeft /> Voltar às franquias</button><div className="collection-open-heading"><div><span>{selectedSeries.publisher} · {selectedSeries.startYear}</span><h2>{selectedSeries.title}</h2><p>{selectedSeries.description}</p></div><strong>{issues.length} edições</strong></div>
       {issues.length ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">{issues.map((comic) => <ComicCard key={comic.id} comic={comic} density="compact" onOpenReader={onOpenReader} onToggleFavorite={toggleFavorite} onOpenDetails={setDetail} onOpenProgressModal={setProgress} onMarkCompleted={(id, total) => setStatus(id, "completed", total)} onResetProgress={(id) => setStatus(id, "not_started", 10)} />)}</div> : <p className="empty-collection-kind">Ainda não há edições nesta coleção.</p>}
-    </section> : groups.length ? <section className="collection-hub" aria-label="Explorar coleções e sagas">
-      <CoverFlow items={items} activeIndex={active} onChange={setActive} onActivate={(item) => setOpenId(item.id)} label="Capas de coleções e sagas" />
-      {selected && <div className="collection-hub-info"><div><span>{selected.publisher} · {selected.startYear}</span><h2>{selected.title}</h2><p>{selected.description || "Conheça todas as edições deste universo."}</p><small>{items[active]?.subtitle}</small></div><button className="catalog-primary-action" onClick={() => setOpenId(selected.id)}>Explorar edições</button></div>}
-    </section> : <div className="empty-collection-kind"><Layers /><h2>Nenhuma {kind === "saga" ? "saga" : "coleção"} cadastrada</h2><p>O proprietário pode criar uma em Configurações.</p></div>}
-    <ComicDetailModal comic={detail} isOpen={!!detail} onClose={() => setDetail(null)} onOpenReader={onOpenReader} onToggleFavorite={toggleFavorite} onOpenProgressModal={(comic) => { setDetail(null); setProgress(comic); }} onMarkCompleted={(id, total) => { setStatus(id, "completed", total); setDetail(null); }} onResetProgress={(id) => { setStatus(id, "not_started", 10); setDetail(null); }} />
+    </section> : publisher ? <><div className="collection-kind-tabs" role="tablist" aria-label="Tipo de agrupamento">{(["all", "collection", "saga"] as const).map((option) => <button key={option} role="tab" aria-selected={kind === option} className={kind === option ? "active" : ""} onClick={() => { setKind(option); setActiveSeries(0); }}>{option === "all" ? "Todos" : option === "collection" ? "Coleções" : "Sagas"}<span>{seriesList.filter((series) => series.publisher === publisher && (option === "all" || (series.bannerTone === "saga" ? "saga" : "collection") === option)).length}</span></button>)}</div>{groups.length ? <section className="collection-hub" aria-label={`Franquias de ${publisher}`}><CoverFlow items={seriesItems} activeIndex={activeSeries} onChange={setActiveSeries} onActivate={(item) => setSeriesId(item.id)} label={`Coleções de ${publisher}`} />{activeGroup && <div className="collection-hub-info"><div><span>{publisher} · {activeGroup.startYear}</span><h2>{activeGroup.title}</h2><p>{activeGroup.description || "Conheça as edições deste universo."}</p><small>{seriesItems[activeSeries]?.subtitle}</small></div><button className="catalog-primary-action" onClick={() => setSeriesId(activeGroup.id)}>Explorar edições</button></div>}</section> : <div className="empty-collection-kind">Nenhuma coleção deste tipo encontrada.</div>}</> : publishers.length ? <section className="collection-hub publisher-flow" aria-label="Editoras e selos"><CoverFlow items={publisherItems} activeIndex={activePublisher} onChange={setActivePublisher} onActivate={(item) => setPublisher(item.id)} label="Editoras do acervo" /><div className="collection-hub-info"><div><span>Nível 1 · Editora ou selo</span><h2>{publishers[activePublisher]}</h2><p>{publisherItems[activePublisher]?.subtitle} no acervo</p></div><button className="catalog-primary-action" onClick={() => setPublisher(publishers[activePublisher])}>Explorar coleções</button></div></section> : <div className="empty-collection-kind">Nenhuma coleção cadastrada.</div>}
+    <ComicDetailModal comic={detail} isOpen={!!detail} onClose={() => setDetail(null)} onOpenReader={onOpenReader} onToggleFavorite={toggleFavorite} onOpenProgressModal={setProgress} onMarkCompleted={(id, total) => setStatus(id, "completed", total)} onResetProgress={(id) => setStatus(id, "not_started", 10)} />
     <ProgressUpdateModal comic={progress} isOpen={!!progress} onClose={() => setProgress(null)} onSaveProgress={updateProgress} />
   </div>;
 };

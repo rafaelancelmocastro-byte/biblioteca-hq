@@ -575,3 +575,24 @@ textarea.admin-field { resize: vertical; }
   .collection-hub .cover-flow-stage { height: 23rem; }
   .collection-hub .cover-flow-card { width: min(60%,14rem); }
 }
+html, body { overscroll-behavior-y: contain; }
+body { padding-top: env(safe-area-inset-top); }
+
+/* Níveis editoriais: todos os assets mantêm uma moldura de pôster 2:3. */
+.publisher-flow .cover-flow-card img,
+.series-page .collection-hub:not(.publisher-flow) .cover-flow-card img {
+  object-fit: contain;
+  padding: .75rem;
+  background: radial-gradient(circle at 50% 35%, #28201d, #0c0b0b 72%);
+}
+.cover-flow-card { background-image: linear-gradient(110deg, #211b18 25%, #342821 45%, #211b18 65%); background-size: 220% 100%; }
+.cover-flow-card:not(:has(img)) { animation: flow-placeholder 1.8s linear infinite; }
+@keyframes flow-placeholder { to { background-position-x: -220%; } }
+.comic-detail-actions { flex-wrap: wrap; gap: .75rem; }
+.comic-detail-actions button { position: relative; z-index: 1; }
+@media (max-width: 640px) {
+  .studio-tabs { width: 100%; overflow-x: auto; border-radius: 1rem; }
+  .studio-tabs button { flex: 0 0 auto; white-space: nowrap; }
+  .comic-detail-actions { flex-direction: column; }
+  .comic-detail-actions button { width: 100%; }
+}

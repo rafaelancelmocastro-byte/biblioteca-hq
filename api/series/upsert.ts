@@ -16,6 +16,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     end_year: body.endYear ? Number(body.endYear) : null,
     total_issues_expected: body.totalIssuesExpected ? Number(body.totalIssuesExpected) : null,
     description: body.description?.trim() ?? "", banner_tone: body.bannerTone ?? null,
+    ...(body.coverKey !== undefined ? { cover_key: body.coverKey || null } : {}),
   };
   const normalize = (value: string) => value.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLocaleLowerCase("pt-BR").replace(/[^a-z0-9]+/g, " ").trim();
   const { data: existingSeries } = await admin.from("series").select("id,title,publisher").is("deleted_at", null);

@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Sliders,
   RotateCcw,
+  HardDriveDownload,
 } from "lucide-react";
 import { Comic } from "../../types/comic";
 import { Modal } from "../ui/Modal";
@@ -17,6 +18,8 @@ import { ProgressBar } from "../ui/ProgressBar";
 import { Button } from "../ui/Button";
 import { Badge } from "../ui/Badge";
 import { formatFileSize, formatPercentage, getStatusLabel } from "../../lib/formatters";
+import { hasOffline, saveOffline } from "../../services/offlineLibrary";
+import { supabase } from "../../services/supabaseClient";
 
 interface ComicDetailModalProps {
   comic: Comic | null;
@@ -40,7 +43,18 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
   onResetProgress,
 }) => {
   const [isFavorite, setIsFavorite] = useState(Boolean(comic?.isFavorite));
+  const [savedOffline, setSavedOffline] = useState(false);
+  const [offlineBusy, setOfflineBusy] = useState(false);
+  const [offlineMessage, setOfflineMessage] = useState("");
   useEffect(() => setIsFavorite(Boolean(comic?.isFavorite)), [comic?.id, comic?.isFavorite]);
+  useEffect(() => { if (!comic || !supabase) return; void supabase.auth.getSession().then(async ({ data }) => { if (data.session) setSavedOffline(await hasOffline(data.session.user.id, comic.id)); }); }, [comic?.id]);
+  const saveForOffline = async () => {
+    if (!comic || !supabase) return;
+    setOfflineBusy(true); setOfflineMessage("Preparando edição para leitura offline...");
+    try { const { data } = await supabase.auth.getSession(); if (!data.session) throw new Error("Entre na sua conta."); await saveOffline(data.session.user.id, comic, (bytes) => setOfflineMessage(`Salvando... ${(bytes / 1048576).toFixed(1)} MB`)); setSavedOffline(true); setOfflineMessage("Disponível offline neste dispositivo."); }
+    catch (error) { setOfflineMessage(error instanceof Error ? error.message : "Não foi possível salvar."); }
+    finally { setOfflineBusy(false); }
+  };
 
   if (!comic) return null;
 
@@ -81,6 +95,9 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
               <BookOpen className="w-4 h-4 mr-2" />
               {percentage > 0 ? "Continuar Leitura" : "Iniciar Leitura"}
             </Button>
+
+            <Button variant="secondary" size="sm" onClick={() => void saveForOffline()} disabled={offlineBusy || savedOffline} className="w-full min-w-0 text-xs"><HardDriveDownload className="w-4 h-4 mr-2" />{savedOffline ? "Disponível offline" : offlineBusy ? "Salvando..." : "Disponibilizar Offline no App"}</Button>
+            {offlineMessage && <p role="status" className="text-[11px] text-amber-200 break-words">{offlineMessage}</p>}
 
             <div className="comic-detail-actions flex flex-col gap-2">
               <Button

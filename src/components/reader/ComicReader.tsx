@@ -14,16 +14,20 @@ import {
   GalleryHorizontal,
   Settings2,
   SunMedium,
+  Trash2,
 } from "lucide-react";
 import { GlobalWorkerOptions, getDocument, type PDFDocumentProxy, type RenderTask } from "pdfjs-dist";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import type { Comic } from "../../types/comic";
+import { clearOffline, listOffline } from "../../services/offlineLibrary";
+import { supabase } from "../../services/supabaseClient";
 
 GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 interface ComicReaderProps {
   comic: Comic;
-  pdfUrl: string;
+  pdfUrl?: string;
+  pdfData?: Uint8Array;
   onBack: () => void;
   onUpdateProgress: (comicId: string, page: number, totalPages: number) => void;
 }
@@ -87,7 +91,7 @@ const ContinuousPdfPage: React.FC<{
   );
 };
 
-export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, onBack, onUpdateProgress }) => {
+export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, pdfData, onBack, onUpdateProgress }) => {
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [currentPage, setCurrentPage] = useState(() => Math.max(1, comic.progress?.currentPage || 1));
   const [zoom, setZoom] = useState(1);
@@ -97,6 +101,7 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, onBack,
   const [texture, setTexture] = useState<Texture>("clean");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [offlineStorage, setOfflineStorage] = useState<{ userId: string; megabytes: number } | null>(null);
   const [isRendering, setIsRendering] = useState(true);
   const [error, setError] = useState("");
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -117,10 +122,11 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, onBack,
   const zoomValueRef = useRef(zoom);
   const changeZoomRef = useRef<(next: number, x?: number, y?: number) => void>(() => {});
   const [turnDirection, setTurnDirection] = useState<"next" | "previous">("next");
+  useEffect(() => { if (!isSettingsOpen || !supabase) return; void supabase.auth.getSession().then(async ({ data }) => { if (!data.session) return; const items = await listOffline(data.session.user.id); setOfflineStorage({ userId: data.session.user.id, megabytes: items.reduce((sum, item) => sum + item.size, 0) / 1048576 }); }); }, [isSettingsOpen]);
 
   useEffect(() => {
     let active = true;
-    const task = getDocument({ url: pdfUrl, withCredentials: false });
+    const task = pdfData ? getDocument({ data: pdfData }) : getDocument({ url: pdfUrl, withCredentials: false });
     task.promise
       .then((document) => {
         if (!active) return;
@@ -132,7 +138,7 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, onBack,
       active = false;
       task.destroy();
     };
-  }, [pdfUrl]);
+  }, [pdfUrl, pdfData]);
 
   const renderPage = useCallback(async () => {
     if (readerMode === "continuous" || !pdf || !canvasRef.current || !stageRef.current) return;
@@ -434,6 +440,7 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, onBack,
             </div>
           </div>
           <div className="reader-setting-row reader-mode-row"><span>Leitura</span><div className="reader-mode-options direction-options"><button className={readingDirection === "ltr" ? "active" : ""} onClick={() => setReadingDirection("ltr")}>Ocidental →</button><button className={readingDirection === "rtl" ? "active" : ""} onClick={() => setReadingDirection("rtl")}>← Mangá</button></div></div>
+          {offlineStorage && <div className="reader-setting-row reader-mode-row"><span>Offline</span><div className="flex flex-wrap items-center gap-2 text-xs"><span>{offlineStorage.megabytes.toFixed(1)} MB usados</span><button onClick={async () => { if (!window.confirm("Remover todas as edições offline deste dispositivo?")) return; await clearOffline(offlineStorage.userId); setOfflineStorage({ ...offlineStorage, megabytes: 0 }); }}><Trash2 className="w-4 h-4 inline mr-1" /> Liberar espaço offline</button></div></div>}
         </aside>
       )}
 
