@@ -11,12 +11,18 @@ type CreateComicBody = {
   fileSizeMb?: number;
   pdfKey?: string;
   coverKey?: string;
+  coverThumbKey?: string;
+  fileSha256?: string;
+  volume?: number;
+  allowDuplicate?: boolean;
   synopsis?: string;
   writers?: string[];
   pencillers?: string[];
   colorists?: string[];
   tags?: string[];
+  characters?: string[];
   series?: {
+    id?: string;
     title?: string;
     publisher?: string;
     startYear?: number;
@@ -38,8 +44,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     !body.title?.trim() ||
     !body.fileName?.trim() ||
     !body.pdfKey?.startsWith("comics/") ||
-    !body.series?.title?.trim() ||
-    !body.series.publisher?.trim() ||
+    !body.series?.id && !body.series?.title?.trim() ||
+    !body.series?.publisher?.trim() ||
     !Number.isInteger(body.issueNumber) ||
     !Number.isInteger(body.year) ||
     !Number.isInteger(body.totalPages) ||
@@ -57,19 +63,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   const startYear = body.series.startYear ?? body.year!;
-  let { data: series } = await admin
-    .from("series")
-    .select("id")
-    .eq("title", body.series.title.trim())
-    .eq("publisher", body.series.publisher.trim())
-    .eq("start_year", startYear)
-    .maybeSingle();
+  let series: { id: string } | null = null;
+  if (body.series.id) {
+    const found = await admin.from("series").select("id").eq("id", body.series.id).is("deleted_at", null).maybeSingle();
+    series = found.data;
+    if (!series) return res.status(400).json({ error: "Coleção ou saga não encontrada." });
+  } else {
+    const found = await admin.from("series").select("id").eq("title", body.series.title!.trim()).eq("publisher", body.series.publisher.trim()).eq("start_year", startYear).maybeSingle();
+    series = found.data;
+  }
 
   if (!series) {
     const created = await admin
       .from("series")
       .insert({
-        title: body.series.title.trim(),
+        title: body.series.title!.trim(),
         publisher: body.series.publisher.trim(),
         start_year: startYear,
         total_issues_expected: body.series.totalIssuesExpected ?? null,
@@ -78,9 +86,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
       .select("id")
       .single();
-    if (created.error) return res.status(409).json({ error: "Não foi possível cadastrar a série." });
+    if (created.error) return res.status(400).json({ error: `Não foi possível cadastrar a coleção: ${created.error.message}` });
     series = created.data;
   }
+
+  if (!series) return res.status(500).json({ error: "Coleção indisponível." });
+  if (body.fileSha256 && /^[a-f0-9]{64}$/i.test(body.fileSha256)) {
+    const hashMatch = await admin.from("comics").select("id,title").eq("file_sha256", body.fileSha256).is("deleted_at", null).limit(1).maybeSingle();
+    if (hashMatch.data && !body.allowDuplicate) return res.status(409).json({ code: "SAME_FILE", existing: hashMatch.data, error: "Este mesmo arquivo já está cadastrado." });
+  }
+  const identityMatch = await admin.from("comics").select("id,title,publication_year,publisher,volume").eq("series_id", series.id).eq("issue_number", body.issueNumber!).eq("publication_year", body.year!).is("deleted_at", null);
+  const sameIdentity = (identityMatch.data ?? []).find((item) =>
+    (item.volume ?? null) === (body.volume ?? null) && item.publisher.toLocaleLowerCase("pt-BR") === body.series!.publisher!.toLocaleLowerCase("pt-BR") && item.title.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLocaleLowerCase("pt-BR").trim() === body.title!.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLocaleLowerCase("pt-BR").trim()
+  );
+  if (sameIdentity && !body.allowDuplicate) return res.status(409).json({ code: "POSSIBLE_DUPLICATE", existing: sameIdentity, error: "Já existe uma edição com esta combinação de título, coleção, volume, número, ano e editora." });
 
   const createdComic = await admin
     .from("comics")
@@ -88,6 +107,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       series_id: series.id,
       title: body.title.trim(),
       issue_number: body.issueNumber,
+      volume: body.volume ?? null,
       publication_year: body.year,
       publisher: body.series.publisher.trim(),
       total_pages: body.totalPages,
@@ -95,6 +115,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       file_name: body.fileName.trim(),
       pdf_key: body.pdfKey,
       cover_key: body.coverKey ?? null,
+      cover_thumb_key: body.coverThumbKey ?? null,
+      file_sha256: body.fileSha256 ?? null,
       synopsis: body.synopsis?.trim() ?? "",
       writers: body.writers ?? [],
       pencillers: body.pencillers ?? [],
@@ -105,7 +127,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .single();
 
   if (createdComic.error) {
-    return res.status(409).json({ error: "A edição já existe ou os metadados são inválidos." });
+    const duplicate = createdComic.error.code === "23505";
+    return res.status(duplicate ? 409 : 400).json({ code: duplicate ? "DUPLICATE_KEY" : "INVALID_METADATA", error: duplicate ? "Este mesmo arquivo já está cadastrado." : `Não foi possível cadastrar a HQ: ${createdComic.error.message}` });
+  }
+
+  for (const name of [...new Set((body.characters ?? []).map((item) => item.trim()).filter(Boolean))]) {
+    const existing = await admin.from("characters").select("id").eq("name", name).eq("publisher", body.series.publisher.trim()).maybeSingle();
+    const character = existing.data ?? (await admin.from("characters").insert({ name, publisher: body.series.publisher.trim() }).select("id").single()).data;
+    if (character) await admin.from("comic_characters").insert({ comic_id: createdComic.data.id, character_id: character.id });
   }
 
   return res.status(201).json({ id: createdComic.data.id });

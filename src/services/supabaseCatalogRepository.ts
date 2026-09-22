@@ -1,6 +1,5 @@
 import type { Character, Comic, ComicCoverPalette, Series } from "../types/comic";
 import { supabase } from "./supabaseClient";
-import { storageProvider } from "./storageProvider";
 
 const DEFAULT_COVER: ComicCoverPalette = {
   primary: "#0f172a",
@@ -26,8 +25,6 @@ type CatalogRow = {
   tags: string[];
   file_size_mb: number | string | null;
   file_name: string;
-  pdf_key: string | null;
-  cover_key: string | null;
   cover_palette: ComicCoverPalette | null;
   added_at: string;
   series: {
@@ -39,7 +36,7 @@ type CatalogRow = {
     total_issues_expected: number | null;
     description: string;
     banner_tone: string | null;
-  };
+  } | null;
   comic_characters?: Array<{ characters: { id: string; name: string; alias: string | null; publisher: string } }>;
 };
 
@@ -51,7 +48,7 @@ export type SupabaseCatalog = {
   years: number[];
 };
 
-function mapSeries(row: CatalogRow["series"]): Series {
+function mapSeries(row: NonNullable<CatalogRow["series"]>): Series {
   return {
     id: row.id,
     title: row.title,
@@ -64,22 +61,13 @@ function mapSeries(row: CatalogRow["series"]): Series {
   };
 }
 
-async function mapComic(row: CatalogRow): Promise<Comic> {
-  let coverUrl: string | undefined;
-  if (row.cover_key) {
-    try {
-      coverUrl = await storageProvider.getFileUrl(row.cover_key);
-    } catch {
-      coverUrl = undefined;
-    }
-  }
-
+function mapComic(row: CatalogRow): Comic {
   return {
     id: row.id,
     title: row.title,
     issueNumber: row.issue_number,
-    seriesId: row.series.id,
-    seriesTitle: row.series.title,
+    seriesId: row.series?.id ?? "",
+    seriesTitle: row.series?.title ?? "",
     volume: row.volume ?? undefined,
     year: row.publication_year,
     publisher: row.publisher,
@@ -91,9 +79,7 @@ async function mapComic(row: CatalogRow): Promise<Comic> {
     colorists: row.colorists ?? [],
     fileSizeMb: Number(row.file_size_mb ?? 0),
     fileName: row.file_name,
-    pdfPath: row.pdf_key ?? undefined,
-    coverPath: row.cover_key ?? undefined,
-    coverUrl,
+    coverUrl: coverCache.get(row.id)?.url,
     addedAt: row.added_at,
     tags: row.tags ?? [],
     coverStyle: row.cover_palette ?? DEFAULT_COVER,
@@ -110,22 +96,66 @@ async function mapComic(row: CatalogRow): Promise<Comic> {
   };
 }
 
+const coverCache = new Map<string, { url: string; expiresAt: number }>();
+let catalogCache: { value: SupabaseCatalog; expiresAt: number } | null = null;
+let pendingCatalog: Promise<SupabaseCatalog> | null = null;
+let pendingCovers: Promise<Record<string, string>> | null = null;
+
+export function invalidateCatalogCache() { catalogCache = null; }
+
+export async function getCoverUrls(comics: Comic[]): Promise<Record<string, string>> {
+  if (!supabase) return {};
+  const now = Date.now();
+  const missing = comics.filter((comic) => !coverCache.has(comic.id) || coverCache.get(comic.id)!.expiresAt < now);
+  if (missing.length && !pendingCovers) {
+    pendingCovers = (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) return {};
+      const urls: Record<string, string> = {};
+      for (let offset = 0; offset < missing.length; offset += 100) {
+        const response = await fetch("/api/storage/cover-urls", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session.access_token}` },
+          body: JSON.stringify({ comicIds: missing.slice(offset, offset + 100).map((comic) => comic.id) }),
+        });
+        if (!response.ok) continue;
+        const payload = await response.json();
+        for (const [id, url] of Object.entries(payload.urls || {})) {
+          if (typeof url === "string") { coverCache.set(id, { url, expiresAt: Date.now() + 13 * 60_000 }); urls[id] = url; }
+        }
+      }
+      return urls;
+    })().finally(() => { pendingCovers = null; });
+  }
+  if (pendingCovers) await pendingCovers;
+  return Object.fromEntries(comics.map((comic) => [comic.id, coverCache.get(comic.id)?.url]).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
+}
+
 export async function getSupabaseCatalog(): Promise<SupabaseCatalog> {
+  if (!supabase) return { comics: [], series: [], characters: [], publishers: [], years: [] };
+  if (catalogCache && catalogCache.expiresAt > Date.now()) return catalogCache.value;
+  if (pendingCatalog) return pendingCatalog;
+
+  pendingCatalog = loadCatalog().finally(() => { pendingCatalog = null; });
+  return pendingCatalog;
+}
+
+async function loadCatalog(): Promise<SupabaseCatalog> {
   if (!supabase) return { comics: [], series: [], characters: [], publishers: [], years: [] };
 
   const [comicsResult, seriesResult] = await Promise.all([
-    supabase.from("comics").select("*, series(*), comic_characters(characters(id,name,alias,publisher))").order("added_at", { ascending: false }),
-    supabase.from("series").select("*").order("title", { ascending: true }),
+    supabase.from("comics").select("id,title,issue_number,volume,publication_year,publisher,total_pages,synopsis,writers,pencillers,colorists,tags,file_size_mb,file_name,cover_palette,added_at,series(id,title,publisher,start_year,end_year,total_issues_expected,description,banner_tone),comic_characters(characters(id,name,alias,publisher))").order("added_at", { ascending: false }),
+    supabase.from("series").select("id,title,publisher,start_year,end_year,total_issues_expected,description,banner_tone").order("title", { ascending: true }),
   ]);
 
   if (comicsResult.error) throw new Error(`Não foi possível carregar o catálogo: ${comicsResult.error.message}`);
   const rows = (comicsResult.data ?? []) as unknown as CatalogRow[];
-  const comics = await Promise.all(rows.map(mapComic));
+  const comics = rows.map(mapComic);
   const seriesById = new Map<string, Series>();
   const charactersById = new Map<string, Character>();
 
   for (const row of rows) {
-    seriesById.set(row.series.id, mapSeries(row.series));
+    if (row.series) seriesById.set(row.series.id, mapSeries(row.series));
     for (const relation of row.comic_characters ?? []) {
       const character = relation.characters;
       charactersById.set(character.id, {
@@ -139,20 +169,32 @@ export async function getSupabaseCatalog(): Promise<SupabaseCatalog> {
 
   if (!seriesResult.error) {
     for (const row of seriesResult.data ?? []) {
-      seriesById.set(row.id, mapSeries(row as CatalogRow["series"]));
+      seriesById.set(row.id, mapSeries(row as NonNullable<CatalogRow["series"]>));
     }
   }
 
-  return {
+  const value = {
     comics,
     series: [...seriesById.values()].sort((a, b) => a.title.localeCompare(b.title, "pt-BR")),
     characters: [...charactersById.values()].sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
     publishers: [...new Set(comics.map((comic) => comic.publisher))].sort(),
     years: [...new Set(comics.map((comic) => comic.year))].sort((a, b) => b - a),
   };
+  catalogCache = { value, expiresAt: Date.now() + 60_000 };
+  return value;
 }
 
 export async function getSupabaseComicById(id: string): Promise<Comic | null> {
-  const catalog = await getSupabaseCatalog();
-  return catalog.comics.find((comic) => comic.id === id) ?? null;
+  if (!supabase) return null;
+  const { data, error } = await supabase.from("comics")
+    .select("id,title,issue_number,volume,publication_year,publisher,total_pages,synopsis,writers,pencillers,colorists,tags,file_size_mb,file_name,cover_palette,added_at,series(id,title,publisher,start_year,end_year,total_issues_expected,description,banner_tone),comic_characters(characters(id,name,alias,publisher))")
+    .eq("id", id).maybeSingle();
+  if (error || !data) return null;
+  const comic = mapComic(data as unknown as CatalogRow);
+  const progress = await supabase.from("reading_progress").select("current_page,total_pages,status,last_read_at,updated_at").eq("comic_id", id).maybeSingle();
+  if (progress.data) {
+    const row = progress.data;
+    comic.progress = { comicId: id, currentPage: row.current_page, totalPages: row.total_pages, percentage: row.total_pages > 0 ? Math.round(row.current_page / row.total_pages * 100) : 0, status: row.status, lastReadAt: row.last_read_at || "", updatedAt: row.updated_at || "" };
+  }
+  return comic;
 }

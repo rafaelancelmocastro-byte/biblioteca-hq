@@ -106,7 +106,11 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, onBack,
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
   const panRef = useRef<{ x: number; y: number; scrollLeft: number; scrollTop: number } | null>(null);
   const zoomAnchorRef = useRef<{ contentX: number; contentY: number; focusX: number; focusY: number } | null>(null);
-  const [stageWidth, setStageWidth] = useState(0);
+  const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
+  const touchPinchRef = useRef<{ distance: number; zoom: number } | null>(null);
+  const touchPanRef = useRef<{ x: number; y: number; scrollLeft: number; scrollTop: number } | null>(null);
+  const zoomValueRef = useRef(zoom);
+  const changeZoomRef = useRef<(next: number, x?: number, y?: number) => void>(() => {});
   const [turnDirection, setTurnDirection] = useState<"next" | "previous">("next");
 
   useEffect(() => {
@@ -132,8 +136,11 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, onBack,
     try {
       const page = await pdf.getPage(currentPage);
       const baseViewport = page.getViewport({ scale: 1 });
-      const availableWidth = Math.max(280, stageRef.current.clientWidth - 32);
-      const fitScale = Math.min(2.2, availableWidth / baseViewport.width);
+      const stage = stageRef.current;
+      const style = window.getComputedStyle(stage);
+      const availableWidth = Math.max(1, stage.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight));
+      const availableHeight = Math.max(1, stage.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom));
+      const fitScale = Math.min(availableWidth / baseViewport.width, availableHeight / baseViewport.height);
       const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
       const viewport = page.getViewport({ scale: fitScale * zoom * pixelRatio });
       const canvas = canvasRef.current;
@@ -154,7 +161,7 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, onBack,
     } finally {
       setIsRendering(false);
     }
-  }, [currentPage, pdf, readerMode, zoom]);
+  }, [currentPage, pdf, readerMode, zoom, stageSize]);
 
   useEffect(() => {
     renderPage();
@@ -166,7 +173,13 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, onBack,
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage) return;
-    const update = () => setStageWidth(stage.clientWidth);
+    const update = () => {
+      const style = getComputedStyle(stage);
+      setStageSize({
+        width: Math.max(1, stage.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)),
+        height: Math.max(1, stage.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom)),
+      });
+    };
     update();
     const observer = new ResizeObserver(update);
     observer.observe(stage);
@@ -228,6 +241,42 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, onBack,
     }
     setZoom(value);
   }, [zoom]);
+  zoomValueRef.current = zoom;
+  changeZoomRef.current = changeZoom;
+
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage || readerMode !== "continuous") return;
+    const distance = (touches: TouchList) => Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+    const start = (event: TouchEvent) => {
+      if (event.touches.length === 2) { touchPinchRef.current = { distance: distance(event.touches), zoom: zoomValueRef.current }; touchPanRef.current = null; }
+      else if (event.touches.length === 1 && zoomValueRef.current > 1.05) touchPanRef.current = { x: event.touches[0].clientX, y: event.touches[0].clientY, scrollLeft: stage.scrollLeft, scrollTop: stage.scrollTop };
+    };
+    const move = (event: TouchEvent) => {
+      if (event.touches.length === 1 && touchPanRef.current && zoomValueRef.current > 1.05) {
+        event.preventDefault();
+        stage.scrollLeft = touchPanRef.current.scrollLeft - (event.touches[0].clientX - touchPanRef.current.x);
+        stage.scrollTop = touchPanRef.current.scrollTop - (event.touches[0].clientY - touchPanRef.current.y);
+        return;
+      }
+      if (event.touches.length !== 2 || !touchPinchRef.current) return;
+      event.preventDefault();
+      const focusX = (event.touches[0].clientX + event.touches[1].clientX) / 2;
+      const focusY = (event.touches[0].clientY + event.touches[1].clientY) / 2;
+      changeZoomRef.current(touchPinchRef.current.zoom * distance(event.touches) / Math.max(1, touchPinchRef.current.distance), focusX, focusY);
+    };
+    const end = (event: TouchEvent) => { if (event.touches.length < 2) touchPinchRef.current = null; if (event.touches.length === 0) touchPanRef.current = null; };
+    stage.addEventListener("touchstart", start, { passive: true });
+    stage.addEventListener("touchmove", move, { passive: false });
+    stage.addEventListener("touchend", end);
+    stage.addEventListener("touchcancel", end);
+    return () => {
+      stage.removeEventListener("touchstart", start);
+      stage.removeEventListener("touchmove", move);
+      stage.removeEventListener("touchend", end);
+      stage.removeEventListener("touchcancel", end);
+    };
+  }, [readerMode]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -255,7 +304,7 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, onBack,
 
   const handlePointerDown = (event: React.PointerEvent) => {
     // Preserve native one-finger scrolling in continuous mode at the default zoom.
-    if (readerMode === "continuous" && zoom <= 1.05) return;
+    if (readerMode === "continuous" && event.pointerType === "touch") return;
     event.currentTarget.setPointerCapture(event.pointerId);
     pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     if (pointersRef.current.size === 1) {
@@ -377,7 +426,7 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, onBack,
                 key={index + 1}
                 pdf={pdf}
                 pageNumber={index + 1}
-                width={Math.max(280, Math.min(920, stageWidth - 28)) * zoom}
+                width={Math.max(1, Math.min(920, stageSize.width - 12)) * zoom}
                 brightness={brightness}
                 onVisible={setCurrentPage}
               />

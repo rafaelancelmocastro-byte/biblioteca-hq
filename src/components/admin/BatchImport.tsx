@@ -1,0 +1,166 @@
+import React, { useEffect, useMemo, useState } from "react";
+import type { Comic, Series } from "../../types/comic";
+import { inspectPdf, makeImageThumbnail, type PdfInspection } from "../../services/pdfImport";
+import { checkComicDuplicate, createComicRecord, saveSeriesRecord, updateComicRecord, type ComicRegistration } from "../../services/comicAdminService";
+import { storageProvider } from "../../services/storageProvider";
+
+type Draft = {
+  file: File;
+  meta: PdfInspection | null;
+  seriesId: string;
+  status: "analyzing" | "ready" | "uploading" | "published" | "incomplete" | "duplicate" | "error" | "cancelled";
+  message: string;
+  coverOverride?: File;
+  existingId?: string;
+};
+
+const CoverPreview: React.FC<{ file: File; alt: string }> = ({ file, alt }) => {
+  const [url, setUrl] = useState("");
+  useEffect(() => {
+    const next = URL.createObjectURL(file);
+    setUrl(next);
+    return () => URL.revokeObjectURL(next);
+  }, [file]);
+  return url ? <img className="batch-cover-preview" src={url} alt={alt} /> : null;
+};
+
+const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+const split = (value: string) => value.split(",").map((item) => item.trim()).filter(Boolean);
+
+interface Props {
+  files: File[];
+  covers: File[];
+  series: Series[];
+  existingComics: Comic[];
+  onComplete: () => Promise<unknown>;
+  onClear: () => void;
+}
+
+export const BatchImport: React.FC<Props> = ({ files, covers, series, existingComics, onComplete, onClear }) => {
+  const [drafts, setDrafts] = useState<Draft[]>([]);
+  const [publishing, setPublishing] = useState(false);
+  const [groupPublisher, setGroupPublisher] = useState("");
+  const [groupYear, setGroupYear] = useState("");
+  const [groupKind, setGroupKind] = useState("collection");
+  const [groupError, setGroupError] = useState("");
+  const proposedGroup = useMemo(() => {
+    const counts = new Map<string, { title: string; count: number }>();
+    for (const file of files) {
+      const title = file.name.replace(/\.pdf$/i, "").replace(/(?:\s*[#№]\s*\d+|\s+(?:edi[çc][ãa]o|issue)\s*\d+|\s+\d{1,4})(?:\s+(?:18|19|20)\d{2})?$/i, "").trim();
+      const key = normalize(title);
+      if (key.length < 6 || ["superman", "batman", "vingadores", "xmen", "homemaranha", "ligadajustica"].includes(key)) continue;
+      const entry = counts.get(key);
+      counts.set(key, { title, count: (entry?.count || 0) + 1 });
+    }
+    return [...counts.values()].find((entry) => entry.count >= 2 && !series.some((item) => normalize(item.title) === normalize(entry.title)));
+  }, [files, series]);
+
+  const createSuggestedGroup = async () => {
+    if (!proposedGroup || !groupPublisher.trim() || !/^\d{4}$/.test(groupYear)) { setGroupError("Confirme editora e ano inicial para criar o agrupamento."); return; }
+    setPublishing(true); setGroupError("");
+    try {
+      const id = await saveSeriesRecord({ title: proposedGroup.title, publisher: groupPublisher.trim(), startYear: Number(groupYear), description: "", bannerTone: groupKind });
+      setDrafts((current) => current.map((draft) => normalize(draft.file.name).startsWith(normalize(proposedGroup.title)) ? { ...draft, seriesId: id } : draft));
+      await onComplete();
+    } catch (error) { setGroupError(error instanceof Error ? error.message : "Não foi possível criar o agrupamento."); }
+    finally { setPublishing(false); }
+  };
+
+  useEffect(() => {
+    let active = true;
+    setDrafts(files.map((file) => ({ file, meta: null, seriesId: "", status: "analyzing", message: "Analisando o PDF..." })));
+    const inspect = async () => {
+      for (const [index, file] of files.entries()) {
+        try {
+          const meta = await inspectPdf(file);
+          if (!active) return;
+          const exact = series.find((item) => normalize(file.name).includes(normalize(item.title)) && normalize(item.title).length > 3);
+          const matchedCover = covers.find((item) => normalize(item.name) === normalize(file.name));
+          setDrafts((current) => current.map((draft, position) => position === index ? { ...draft, meta, seriesId: exact?.id || "", coverOverride: matchedCover, status: "ready", message: meta.warning || (exact ? `Coleção “${exact.title}” sugerida pelo nome do arquivo; confirme antes de publicar.` : "Selecione a coleção; campos sem evidência permanecem vazios.") } : draft));
+        } catch (error) {
+          if (!active) return;
+          setDrafts((current) => current.map((draft, position) => position === index ? { ...draft, status: "error", message: error instanceof Error ? error.message : "Falha ao analisar o PDF." } : draft));
+        }
+      }
+    };
+    void inspect();
+    return () => { active = false; };
+  }, [files]);
+
+  const update = (index: number, patch: Partial<Draft>) => setDrafts((current) => current.map((draft, position) => position === index ? { ...draft, ...patch } : draft));
+  const updateMeta = (index: number, key: keyof PdfInspection, value: string) => setDrafts((current) => current.map((draft, position) => position === index && draft.meta ? { ...draft, meta: { ...draft.meta, [key]: value }, status: "ready" } : draft));
+
+  const publish = async (forceIndex?: number, replaceExisting = false, metadataOnly = false) => {
+    setPublishing(true);
+    let published = 0;
+    for (const [index, draft] of drafts.entries()) {
+      if (forceIndex !== undefined && index !== forceIndex) continue;
+      if (forceIndex === undefined && !["ready", "incomplete", "error"].includes(draft.status)) continue;
+      const meta = draft.meta;
+      const chosen = series.find((item) => item.id === draft.seriesId);
+      if (!meta || !chosen || !meta.title.trim() || !Number(meta.issueNumber) || !Number(meta.year) || !Number(meta.totalPages)) {
+        update(index, { status: "incomplete", message: "Complete título, edição, ano, páginas e coleção antes de publicar." });
+        continue;
+      }
+      const duplicate = existingComics.find((comic) => comic.seriesId === chosen.id && comic.issueNumber === Number(meta.issueNumber) && comic.year === Number(meta.year) && normalize(comic.title) === normalize(meta.title));
+      if (duplicate && forceIndex !== index) {
+        update(index, { status: "duplicate", message: `Possível duplicidade de “${duplicate.title}”. Revise antes de decidir.`, existingId: duplicate.id });
+        continue;
+      }
+      try {
+        if (forceIndex !== index && !replaceExisting && !metadataOnly) {
+          const check = await checkComicDuplicate({ title: meta.title.trim(), issueNumber: Number(meta.issueNumber), year: Number(meta.year), fileSha256: meta.fileSha256, series: chosen });
+          if (check.code !== "UNIQUE") { update(index, { status: "duplicate", message: check.message || "Possível duplicidade.", existingId: check.existing?.id }); continue; }
+        }
+        update(index, { status: "uploading", message: "Enviando PDF e capa ao R2..." });
+        const pdfUpload = metadataOnly ? null : await storageProvider.uploadFile(draft.file, "comics", (percent) => update(index, { message: `Enviando PDF ao R2: ${percent}%` }));
+        const coverFile = draft.coverOverride || meta.cover;
+        const coverUpload = !metadataOnly && coverFile ? await storageProvider.uploadFile(coverFile, "covers") : null;
+        const thumbnail = draft.coverOverride ? await makeImageThumbnail(draft.coverOverride) : meta.thumbnail;
+        const thumbUpload = !metadataOnly && thumbnail ? await storageProvider.uploadFile(thumbnail, "covers") : null;
+        const payload: ComicRegistration = {
+          title: meta.title.trim(), issueNumber: Number(meta.issueNumber), year: Number(meta.year), totalPages: Number(meta.totalPages),
+          fileName: draft.file.name, fileSizeMb: pdfUpload?.fileSizeMb ?? 0, pdfKey: pdfUpload?.fileKey ?? "",
+          coverKey: coverUpload?.fileKey, coverThumbKey: thumbUpload?.fileKey, fileSha256: meta.fileSha256,
+          synopsis: meta.synopsis, writers: split(meta.writers), pencillers: split(meta.pencillers), colorists: split(meta.colorists), tags: split(meta.tags), characters: split(meta.characters), series: chosen,
+          allowDuplicate: forceIndex === index && !replaceExisting,
+        };
+        if ((replaceExisting || metadataOnly) && draft.existingId) await updateComicRecord(draft.existingId, metadataOnly ? { ...payload, fileName: "", fileSizeMb: 0, fileSha256: undefined } : payload);
+        else await createComicRecord(payload);
+        published++;
+        update(index, { status: "published", message: metadataOnly ? "Metadados atualizados; PDF existente preservado." : replaceExisting ? "Arquivo e ficha da edição existente atualizados." : "Publicado com ficha e arquivo individuais." });
+      } catch (error) {
+        const typed = error as Error & { code?: string; existing?: { id: string } };
+        update(index, { status: typed.code === "SAME_FILE" || typed.code === "POSSIBLE_DUPLICATE" ? "duplicate" : "error", message: typed.message, existingId: typed.existing?.id });
+      }
+    }
+    if (published) await onComplete();
+    setPublishing(false);
+  };
+
+  return <section className="batch-review" aria-label="Revisão da importação em lote">
+    <div className="batch-review-header"><div><strong>Revisar lote</strong><span>Cada PDF mantém sua própria ficha. Campos sem evidência ficam vazios.</span></div><button type="button" onClick={onClear} disabled={publishing}>Fechar fila</button></div>
+    {proposedGroup && <div className="batch-group-suggestion"><strong>{proposedGroup.count} arquivos sugerem a coleção “{proposedGroup.title}”</strong><span>Confirme os dados editoriais antes de criar; o personagem sozinho não define uma coleção.</span><div><label>Editora<input value={groupPublisher} onChange={(event) => setGroupPublisher(event.target.value)} /></label><label>Ano inicial<input type="number" min="1800" max="2200" value={groupYear} onChange={(event) => setGroupYear(event.target.value)} /></label><label>Tipo<select value={groupKind} onChange={(event) => setGroupKind(event.target.value)}><option value="collection">Coleção</option><option value="saga">Saga</option></select></label><button type="button" onClick={() => void createSuggestedGroup()} disabled={publishing}>Criar agrupamento e associar</button></div>{groupError && <p role="alert">{groupError}</p>}</div>}
+    {drafts.map((draft, index) => <details key={`${draft.file.name}-${draft.file.lastModified}`} className="batch-review-item" open={index === 0}>
+      <summary><strong>{draft.file.name}</strong><span className={`batch-status ${draft.status}`}>{draft.status === "analyzing" ? "Analisando" : draft.status === "ready" ? "Revisar" : draft.status === "uploading" ? "Enviando" : draft.status === "published" ? "Publicado" : draft.status === "incomplete" ? "Incompleto" : draft.status === "duplicate" ? "Possível duplicado" : draft.status === "cancelled" ? "Cancelado" : "Erro"}</span></summary>
+      <p role="status">{draft.message}</p>
+      {draft.meta && <div className="batch-review-fields">
+        <label>Título<input value={draft.meta.title} onChange={(event) => updateMeta(index, "title", event.target.value)} /></label>
+        <label>Edição<input type="number" min="1" value={draft.meta.issueNumber} onChange={(event) => updateMeta(index, "issueNumber", event.target.value)} /></label>
+        <label>Ano<input type="number" min="1800" max="2200" value={draft.meta.year} onChange={(event) => updateMeta(index, "year", event.target.value)} /></label>
+        <label>Páginas<input type="number" min="1" value={draft.meta.totalPages} onChange={(event) => updateMeta(index, "totalPages", event.target.value)} /></label>
+        <label>Coleção / saga<select value={draft.seriesId} onChange={(event) => update(index, { seriesId: event.target.value })}><option value="">Selecione uma coleção confirmada</option>{series.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label>
+        <label>Personagem / grupo<input value={draft.meta.characters} onChange={(event) => updateMeta(index, "characters", event.target.value)} /></label>
+        <label>Roteiro<input value={draft.meta.writers} onChange={(event) => updateMeta(index, "writers", event.target.value)} /></label>
+        <label>Arte e desenho<input value={draft.meta.pencillers} onChange={(event) => updateMeta(index, "pencillers", event.target.value)} /></label>
+        <label>Cores<input value={draft.meta.colorists} onChange={(event) => updateMeta(index, "colorists", event.target.value)} /></label>
+        <label>Tags<input value={draft.meta.tags} onChange={(event) => updateMeta(index, "tags", event.target.value)} /></label>
+        <label className="span-2">Sinopse<textarea rows={2} value={draft.meta.synopsis} onChange={(event) => updateMeta(index, "synopsis", event.target.value)} /></label>
+        <label className="span-2">Substituir capa automática<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => update(index, { coverOverride: event.target.files?.[0] })} /></label>
+        {draft.meta.cover && !draft.coverOverride && <CoverPreview file={draft.meta.cover} alt={`Capa extraída de ${draft.file.name}`} />}
+      </div>}
+      {draft.status === "duplicate" && <div className="batch-duplicate-actions"><button type="button" onClick={() => void publish(index)} disabled={publishing}>Manter ambos</button>{draft.existingId && <><button type="button" onClick={() => void publish(index, true)} disabled={publishing}>Substituir PDF existente</button><button type="button" onClick={() => void publish(index, false, true)} disabled={publishing}>Atualizar só metadados</button></>}<button type="button" onClick={() => update(index, { status: "cancelled", message: "Importação cancelada pelo proprietário." })}>Cancelar este arquivo</button></div>}
+    </details>)}
+    <button type="button" className="studio-primary" disabled={publishing || drafts.some((draft) => draft.status === "analyzing")} onClick={() => void publish()}>{publishing ? "Processando fila..." : "Publicar arquivos revisados"}</button>
+  </section>;
+};

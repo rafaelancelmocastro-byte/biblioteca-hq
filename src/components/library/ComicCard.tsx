@@ -195,7 +195,7 @@ export const ComicCard: React.FC<ComicCardProps> = ({
           <div className="absolute bottom-0 left-0 right-0 z-15 bg-black/80 backdrop-blur-xs px-2.5 py-1.5 border-t border-white/10">
             <div className="flex items-center justify-between text-[10px] font-mono text-slate-300 mb-1">
               <span className="truncate">
-                Pág. {comic.progress?.currentPage || 0}/{comic.totalPages}
+                Pág. {comic.progress?.currentPage || 0}/{Math.max(comic.totalPages, comic.progress?.totalPages || 0, comic.progress?.currentPage || 0)}
               </span>
               <span className={isCompleted ? "text-emerald-400 font-bold" : "text-amber-400 font-semibold"}>
                 {formatPercentage(percentage)}

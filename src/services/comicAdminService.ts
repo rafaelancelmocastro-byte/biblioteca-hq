@@ -10,11 +10,16 @@ export type ComicRegistration = {
   fileSizeMb: number;
   pdfKey: string;
   coverKey?: string;
+  coverThumbKey?: string;
+  fileSha256?: string;
+  volume?: number;
+  allowDuplicate?: boolean;
   synopsis: string;
   writers: string[];
   pencillers: string[];
   colorists: string[];
   tags: string[];
+  characters?: string[];
   series: Series;
 };
 
@@ -28,13 +33,22 @@ async function ownerRequest(path: string, body: unknown, method = "POST") {
     body: JSON.stringify(body),
   });
   const payload = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(payload?.error || "Não foi possível concluir a operação.");
+  if (!response.ok) {
+    const error = new Error(payload?.error || "Não foi possível concluir a operação.") as Error & { code?: string; existing?: { id: string; title: string } };
+    error.code = payload?.code;
+    error.existing = payload?.existing;
+    throw error;
+  }
   return payload;
 }
 
 export async function createComicRecord(input: ComicRegistration): Promise<string> {
   const payload = await ownerRequest("/api/comics/create", input);
   return payload.id;
+}
+
+export async function checkComicDuplicate(input: Pick<ComicRegistration, "title" | "issueNumber" | "year" | "volume" | "fileSha256" | "series">): Promise<{ code: string; existing?: { id: string; title: string }; message?: string }> {
+  return ownerRequest("/api/comics/check", { title: input.title, issueNumber: input.issueNumber, year: input.year, volume: input.volume, fileSha256: input.fileSha256, seriesId: input.series.id, publisher: input.series.publisher });
 }
 
 export async function updateComicRecord(comicId: string, input: Partial<ComicRegistration>): Promise<void> {
@@ -54,6 +68,15 @@ export async function saveSeriesRecord(series: Omit<Series, "id"> & { id?: strin
   return payload.id;
 }
 
+export async function deleteComicRecords(ids: string[]): Promise<number> {
+  const payload = await ownerRequest("/api/comics/delete", { ids });
+  return Number(payload.deleted || 0);
+}
+
+export async function deleteSeriesRecord(id: string, deleteContents: boolean): Promise<void> {
+  await ownerRequest("/api/series/delete", { id, deleteContents });
+}
+
 export function comicToRegistration(comic: Comic, series: Series): ComicRegistration {
   return {
     title: comic.title,
@@ -64,11 +87,13 @@ export function comicToRegistration(comic: Comic, series: Series): ComicRegistra
     fileSizeMb: comic.fileSizeMb,
     pdfKey: comic.pdfPath || "",
     coverKey: comic.coverPath,
+    volume: comic.volume,
     synopsis: comic.synopsis,
     writers: comic.writers,
     pencillers: comic.pencillers,
     colorists: comic.colorists || [],
     tags: comic.tags,
+    characters: comic.characters,
     series,
   };
 }

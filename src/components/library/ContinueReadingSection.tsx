@@ -1,5 +1,5 @@
-import React from "react";
-import { Play, Clock, Sparkles } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { Play, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import { Comic } from "../../types/comic";
 import { CoverPlaceholder } from "../ui/CoverPlaceholder";
 import { ProgressBar } from "../ui/ProgressBar";
@@ -17,11 +17,22 @@ export const ContinueReadingSection: React.FC<ContinueReadingSectionProps> = ({
   onOpenReader,
   onOpenDetails,
 }) => {
+  const railRef = useRef<HTMLDivElement>(null);
+  const [canScroll, setCanScroll] = useState(false);
+  useEffect(() => {
+    const rail = railRef.current;
+    if (!rail) return;
+    const update = () => setCanScroll(rail.scrollWidth > rail.clientWidth + 4);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(rail);
+    return () => observer.disconnect();
+  }, [comics.length]);
   if (comics.length === 0) return null;
 
   return (
     <section className="mb-10" aria-labelledby="section-continue-reading">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 gap-3">
         <div className="flex items-center gap-2">
           <Clock className="w-5 h-5 text-amber-400" />
           <h2 id="section-continue-reading" className="text-lg font-bold text-white tracking-tight">
@@ -31,19 +42,23 @@ export const ContinueReadingSection: React.FC<ContinueReadingSectionProps> = ({
             {comics.length} em andamento
           </span>
         </div>
+        {canScroll && <div className="hidden md:flex gap-2">
+          <button type="button" className="reading-rail-arrow" aria-label="Ver leituras anteriores" onClick={() => railRef.current?.scrollBy({ left: -380, behavior: "smooth" })}><ChevronLeft /></button>
+          <button type="button" className="reading-rail-arrow" aria-label="Ver próximas leituras" onClick={() => railRef.current?.scrollBy({ left: 380, behavior: "smooth" })}><ChevronRight /></button>
+        </div>}
       </div>
 
       {/* Grid de Cards Horizontais Estilo Streaming */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div ref={railRef} className="reading-rail" tabIndex={0} aria-label="Leituras em andamento; use as setas para navegar" onKeyDown={(event) => { if (event.key === "ArrowRight") railRef.current?.scrollBy({ left: 380, behavior: "smooth" }); if (event.key === "ArrowLeft") railRef.current?.scrollBy({ left: -380, behavior: "smooth" }); }}>
         {comics.map((comic) => {
           const currentPage = comic.progress?.currentPage || 1;
-          const totalPages = comic.totalPages;
+          const totalPages = Math.max(comic.totalPages, comic.progress?.totalPages || 0, currentPage);
           const percentage = comic.progress?.percentage || Math.round((currentPage / totalPages) * 100);
 
           return (
             <div
               key={comic.id}
-              className="group relative flex bg-[#131722] hover:bg-[#181e2b] border border-[#1e2535] hover:border-slate-700/80 rounded-xl p-3 transition-all duration-200 shadow-md hover:shadow-xl hover:shadow-black/40 overflow-hidden"
+              className="reading-rail-card group relative flex bg-[#131722] hover:bg-[#181e2b] border border-[#1e2535] hover:border-slate-700/80 rounded-xl p-3 transition-all duration-200 shadow-md hover:shadow-xl hover:shadow-black/40 overflow-hidden"
             >
               {/* Capa Compacta à Esquerda */}
               <div

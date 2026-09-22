@@ -9,7 +9,6 @@ import { LibraryPage } from "./app/pages/LibraryPage";
 import { ContinuePage } from "./app/pages/ContinuePage";
 import { SeriesPage } from "./app/pages/SeriesPage";
 import { FavoritesPage } from "./app/pages/FavoritesPage";
-import { AdminPage } from "./app/pages/AdminPage";
 import { LoginPage } from "./app/pages/LoginPage";
 import { useNavigation } from "./hooks/useNavigation";
 import { useAuth } from "./hooks/useAuth";
@@ -18,6 +17,7 @@ import { APP_CONFIG } from "./config/app";
 const ReaderPage = React.lazy(() =>
   import("./app/pages/ReaderPage").then((module) => ({ default: module.ReaderPage }))
 );
+const AdminPage = React.lazy(() => import("./app/pages/AdminPage").then((module) => ({ default: module.AdminPage })));
 
 export default function App() {
   const { pathname, activeRoute, comicId, navigate, openReader } = useNavigation();
@@ -100,7 +100,7 @@ export default function App() {
         />
       )}
 
-      {(activeRoute === "/admin" || activeRoute === "/configuracoes") && (isOwner || !isSupabaseConfigured) && <AdminPage />}
+      {(activeRoute === "/admin" || activeRoute === "/configuracoes") && (isOwner || !isSupabaseConfigured) && <React.Suspense fallback={<div className="studio-panel">Preparando o estúdio do acervo...</div>}><AdminPage /></React.Suspense>}
     </AppLayout>
   );
 }

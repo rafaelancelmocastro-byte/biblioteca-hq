@@ -57,7 +57,7 @@ export interface StorageProvider {
   /**
    * Upload direto ou simulação de envio
    */
-  uploadFile(file: File, path: string): Promise<StorageUploadResult>;
+  uploadFile(file: File, path: string, onProgress?: (percent: number) => void): Promise<StorageUploadResult>;
   
   /**
    * Verifica se o armazenamento na nuvem está ativo e acessível

@@ -17,6 +17,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     total_issues_expected: body.totalIssuesExpected ? Number(body.totalIssuesExpected) : null,
     description: body.description?.trim() ?? "", banner_tone: body.bannerTone ?? null,
   };
+  const normalize = (value: string) => value.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLocaleLowerCase("pt-BR").replace(/[^a-z0-9]+/g, " ").trim();
+  const { data: existingSeries } = await admin.from("series").select("id,title,publisher").is("deleted_at", null);
+  const duplicate = (existingSeries ?? []).find((item) => item.id !== body.id && normalize(item.title) === normalize(record.title) && normalize(item.publisher) === normalize(record.publisher));
+  if (duplicate) return res.status(409).json({ error: `A coleção “${duplicate.title}” já existe para esta editora.`, existing: duplicate });
   if (body.id) {
     const result = await admin.from("series").update(record).eq("id", body.id).select("id").single();
     if (result.error) return res.status(409).json({ error: result.error.message });

@@ -15,6 +15,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     series_id: body.series.id,
     title: body.title.trim(),
     issue_number: Number(body.issueNumber),
+    volume: body.volume ? Number(body.volume) : null,
     publication_year: Number(body.year),
     publisher: body.series.publisher,
     total_pages: Number(body.totalPages),
@@ -23,12 +24,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     pencillers: Array.isArray(body.pencillers) ? body.pencillers : [],
     colorists: Array.isArray(body.colorists) ? body.colorists : [],
     tags: Array.isArray(body.tags) ? body.tags : [],
-    file_name: body.fileName,
-    file_size_mb: Number(body.fileSizeMb || 0),
-    pdf_key: body.pdfKey,
-    cover_key: body.coverKey || null,
+    ...(body.fileName ? { file_name: body.fileName } : {}),
+    ...(body.fileSizeMb ? { file_size_mb: Number(body.fileSizeMb) } : {}),
+    ...(body.pdfKey ? { pdf_key: body.pdfKey } : {}),
+    ...(body.coverKey ? { cover_key: body.coverKey } : {}),
+    ...(body.coverThumbKey !== undefined ? { cover_thumb_key: body.coverThumbKey || null } : {}),
+    ...(body.fileSha256 !== undefined ? { file_sha256: body.fileSha256 || null } : {}),
   };
   const result = await admin.from("comics").update(update).eq("id", body.id);
   if (result.error) return res.status(409).json({ error: `Não foi possível salvar: ${result.error.message}` });
+  if (Array.isArray(body.characters)) {
+    await admin.from("comic_characters").delete().eq("comic_id", body.id);
+    for (const name of [...new Set(body.characters.map((item: string) => item.trim()).filter(Boolean))] as string[]) {
+      const existing = await admin.from("characters").select("id").eq("name", name).eq("publisher", body.series.publisher).maybeSingle();
+      const character = existing.data ?? (await admin.from("characters").insert({ name, publisher: body.series.publisher }).select("id").single()).data;
+      if (character) await admin.from("comic_characters").insert({ comic_id: body.id, character_id: character.id });
+    }
+  }
   return res.status(200).json({ id: body.id });
 }

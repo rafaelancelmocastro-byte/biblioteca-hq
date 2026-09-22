@@ -40,14 +40,19 @@ export class R2StorageProvider implements StorageProvider {
     return { uploadUrl: payload.uploadUrl, fileKey: payload.key };
   }
 
-  async uploadFile(file: File, path: string): Promise<StorageUploadResult> {
-    const { uploadUrl, fileKey } = await this.createPresignedUploadUrl(file.name, file.type);
-    const response = await fetch(uploadUrl, {
-      method: "PUT",
-      headers: { "Content-Type": file.type },
-      body: file,
+  async uploadFile(file: File, path: string, onProgress?: (percent: number) => void): Promise<StorageUploadResult> {
+    const contentType = file.type || (path === "comics" ? "application/pdf" : /\.png$/i.test(file.name) ? "image/png" : /\.jpe?g$/i.test(file.name) ? "image/jpeg" : "image/webp");
+    const { uploadUrl, fileKey } = await this.createPresignedUploadUrl(file.name, contentType);
+    await new Promise<void>((resolve, reject) => {
+      const request = new XMLHttpRequest();
+      request.open("PUT", uploadUrl);
+      request.setRequestHeader("Content-Type", contentType);
+      request.upload.onprogress = (event) => { if (event.lengthComputable) onProgress?.(Math.round(event.loaded / event.total * 100)); };
+      request.onload = () => request.status >= 200 && request.status < 300 ? resolve() : reject(new Error("O R2 recusou o upload do arquivo."));
+      request.onerror = () => reject(new Error("Falha de rede durante o envio ao R2."));
+      request.send(file);
     });
-    if (!response.ok) throw new Error("O R2 recusou o upload do arquivo.");
+    onProgress?.(100);
 
     return {
       fileKey,
@@ -101,9 +106,10 @@ export class LocalStorageProvider implements StorageProvider {
     };
   }
 
-  async uploadFile(file: File, path: string): Promise<StorageUploadResult> {
+  async uploadFile(file: File, path: string, onProgress?: (percent: number) => void): Promise<StorageUploadResult> {
     // Simulação assíncrona com delay realista de rede
     await new Promise((resolve) => setTimeout(resolve, 800));
+    onProgress?.(100);
 
     const fileSizeMb = Number((file.size / (1024 * 1024)).toFixed(2));
     const fileKey = `${path}/${file.name}`;

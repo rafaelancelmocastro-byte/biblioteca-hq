@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { Comic } from "../../types/comic";
 import { getSupabaseComicById } from "../../services/supabaseCatalogRepository";
-import { storageProvider } from "../../services/storageProvider";
+import { getComicReadUrl } from "../../services/comicRead";
 import { ComicReader } from "../../components/reader/ComicReader";
-import { useLibrary } from "../../hooks/useLibrary";
+import { saveSupabaseProgress } from "../../services/supabaseLibrarySync";
 import { Button } from "../../components/ui/Button";
 import { ArrowLeft, BookX } from "lucide-react";
 
@@ -16,7 +16,6 @@ export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack }) => {
   const [comic, setComic] = useState<Comic | null>(null);
   const [pdfUrl, setPdfUrl] = useState("");
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const { updateProgress } = useLibrary();
 
   useEffect(() => {
     let isMounted = true;
@@ -26,7 +25,7 @@ export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack }) => {
       .then(async (data) => {
         if (isMounted) {
           setComic(data);
-          if (data?.pdfPath) setPdfUrl(await storageProvider.getFileUrl(data.pdfPath));
+          if (data) setPdfUrl(await getComicReadUrl(data.id));
           setIsLoading(false);
         }
       })
@@ -69,7 +68,7 @@ export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack }) => {
       comic={comic}
       pdfUrl={pdfUrl}
       onBack={onBack}
-      onUpdateProgress={updateProgress}
+      onUpdateProgress={(id, page, total) => { void saveSupabaseProgress(id, page, total); }}
     />
   );
 };

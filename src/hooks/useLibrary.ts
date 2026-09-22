@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { Comic, ComicStatus, LibraryFilters, Series, Character } from "../types/comic";
 import { localFavoriteRepository } from "../services/localFavoriteRepository";
 import { localProgressRepository } from "../services/localProgressRepository";
-import { getSupabaseCatalog } from "../services/supabaseCatalogRepository";
+import { getCoverUrls, getSupabaseCatalog, invalidateCatalogCache } from "../services/supabaseCatalogRepository";
 import { getLocalStorageItem, setLocalStorageItem } from "../lib/utils";
 import {
   applySupabaseLibraryState,
@@ -40,16 +40,21 @@ export function useLibrary() {
 
   const [version, setVersion] = useState<number>(0);
 
-  const reloadData = useCallback(async () => {
+  const reloadData = useCallback(async (fresh = false) => {
+    if (fresh) invalidateCatalogCache();
     setIsLoading(true);
     try {
       const { comics, series, characters, publishers: pubs, years: yrs } = await getSupabaseCatalog();
       const remoteState = await getSupabaseLibraryState();
-      setAllComics(remoteState ? applySupabaseLibraryState(comics, remoteState) : comics);
+      const hydrated = remoteState ? applySupabaseLibraryState(comics, remoteState) : comics;
+      setAllComics(hydrated);
       setSeriesList(series);
       setCharactersList(characters);
       setPublishers(pubs);
       setYears(yrs);
+      void getCoverUrls(hydrated).then((urls) => {
+        setAllComics((current) => current.map((comic) => urls[comic.id] ? { ...comic, coverUrl: urls[comic.id] } : comic));
+      });
     } finally {
       setIsLoading(false);
     }
@@ -110,8 +115,7 @@ export function useLibrary() {
         const dateA = a.progress?.lastReadAt ? new Date(a.progress.lastReadAt).getTime() : 0;
         const dateB = b.progress?.lastReadAt ? new Date(b.progress.lastReadAt).getTime() : 0;
         return dateB - dateA;
-      })
-      .slice(0, 6);
+      });
   }, [allComics]);
 
   // HQs para "Adicionadas Recentemente"

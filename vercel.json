@@ -3,6 +3,10 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
+      "source": "/api/health",
+      "destination": "/api/integrations/health"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
