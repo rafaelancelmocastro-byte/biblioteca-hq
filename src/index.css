@@ -334,6 +334,14 @@ button, input, select { font: inherit; }
 .page-kicker svg { width: 1rem; }
 .series-showcase { overflow: hidden; border: 1px solid var(--line); background: linear-gradient(135deg,rgba(31,24,21,.94),rgba(12,10,9,.92)); box-shadow: 0 25px 65px rgba(0,0,0,.25); }
 .series-showcase:nth-child(even) { background: linear-gradient(135deg,rgba(28,18,18,.94),rgba(10,9,8,.94)); }
+.collection-kind-tabs { display: inline-flex; gap: .35rem; padding: .35rem; border: 1px solid var(--line); border-radius: 999px; background: rgba(255,255,255,.035); }
+.collection-kind-tabs button { display: flex; align-items: center; gap: .45rem; min-height: 2.5rem; padding: 0 1rem; border-radius: 999px; color: #aaa099; font-size: .72rem; font-weight: 800; cursor: pointer; }
+.collection-kind-tabs button.active { color: #16100a; background: #ffd521; }
+.collection-kind-tabs span { display: grid; place-items: center; min-width: 1.2rem; height: 1.2rem; padding: 0 .25rem; border-radius: 999px; background: rgba(0,0,0,.14); font-size: .6rem; }
+.empty-collection-kind { display: grid; place-items: center; min-height: 15rem; padding: 2rem; text-align: center; border: 1px dashed rgba(255,255,255,.12); border-radius: 1.4rem; color: #8f8680; }
+.empty-collection-kind svg { width: 2rem; color: #ffd521; }
+.empty-collection-kind h2 { margin-top: .6rem; color: #fff; font-size: 1rem; font-weight: 800; }
+.empty-collection-kind p { margin-top: .25rem; font-size: .72rem; }
 
 .streaming-modal { border: 1px solid rgba(255,255,255,.12); border-radius: 1.5rem; background: linear-gradient(140deg,rgba(30,24,21,.98),rgba(10,9,8,.99)); box-shadow: 0 35px 120px rgba(0,0,0,.8); }
 .comic-detail-streaming h2 { font-family: Georgia,"Times New Roman",serif; font-size: clamp(1.7rem,3vw,2.5rem); letter-spacing: -.035em; }

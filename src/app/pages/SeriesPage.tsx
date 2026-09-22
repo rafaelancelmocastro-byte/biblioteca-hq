@@ -17,6 +17,8 @@ export const SeriesPage: React.FC<SeriesPageProps> = ({ onOpenReader }) => {
   const { allComics, seriesList, toggleFavorite, updateProgress, setStatus } = useLibrary();
   const [selectedComic, setSelectedComic] = useState<Comic | null>(null);
   const [comicForProgress, setComicForProgress] = useState<Comic | null>(null);
+  const [kind, setKind] = useState<"collection" | "saga">("collection");
+  const visibleSeries = seriesList.filter((series) => (series.bannerTone === "saga" ? "saga" : "collection") === kind);
 
   // Calcula estatísticas para cada série
   const getSeriesStats = (seriesId: string) => {
@@ -53,9 +55,15 @@ export const SeriesPage: React.FC<SeriesPageProps> = ({ onOpenReader }) => {
         </p>
       </div>
 
+      <div className="collection-kind-tabs" role="tablist" aria-label="Tipo de agrupamento">
+        <button className={kind === "collection" ? "active" : ""} onClick={() => setKind("collection")}>Coleções <span>{seriesList.filter((series) => series.bannerTone !== "saga").length}</span></button>
+        <button className={kind === "saga" ? "active" : ""} onClick={() => setKind("saga")}>Sagas <span>{seriesList.filter((series) => series.bannerTone === "saga").length}</span></button>
+      </div>
+
       {/* Lista de Séries */}
       <div className="space-y-12">
-        {seriesList.map((series) => {
+        {visibleSeries.length === 0 && <div className="empty-collection-kind"><Layers /><h2>Nenhuma saga cadastrada</h2><p>O proprietário pode classificar uma coleção como saga em Configurações → Coleções.</p></div>}
+        {visibleSeries.map((series) => {
           const stats = getSeriesStats(series.id);
 
           return (
