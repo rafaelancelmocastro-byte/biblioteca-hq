@@ -8,7 +8,7 @@ import { ComicDetailModal } from "../../components/library/ComicDetailModal";
 import { ProgressUpdateModal } from "../../components/library/ProgressUpdateModal";
 
 export const SeriesPage: React.FC<{ onOpenReader: (id: string) => void }> = ({ onOpenReader }) => {
-  const { allComics, seriesList, toggleFavorite, updateProgress, setStatus } = useLibrary();
+  const { allComics, seriesList, toggleFavorite, updateProgress, setStatus, isLoading } = useLibrary();
   const [kind, setKind] = useState<"collection" | "saga">("collection");
   const [active, setActive] = useState(0);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -27,7 +27,7 @@ export const SeriesPage: React.FC<{ onOpenReader: (id: string) => void }> = ({ o
     <div className="collection-kind-tabs" role="tablist" aria-label="Tipo de agrupamento">
       {(["collection", "saga"] as const).map((option) => <button key={option} role="tab" aria-selected={kind === option} className={kind === option ? "active" : ""} onClick={() => { setKind(option); setActive(0); setOpenId(null); }}>{option === "collection" ? "Coleções" : "Sagas"}<span>{seriesList.filter((series) => (series.bannerTone === "saga" ? "saga" : "collection") === option).length}</span></button>)}
     </div>
-    {openGroup ? <section className="collection-open" key={openGroup.id}>
+    {isLoading ? <div className="empty-collection-kind">Carregando coleções...</div> : openGroup ? <section className="collection-open" key={openGroup.id}>
       <button className="collection-back" onClick={() => setOpenId(null)}><ArrowLeft /> Voltar aos hubs</button>
       <div className="collection-open-heading"><div><span>{openGroup.publisher} · {openGroup.startYear}</span><h2>{openGroup.title}</h2><p>{openGroup.description}</p></div><strong>{issues.length} edições</strong></div>
       {issues.length ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">{issues.map((comic) => <ComicCard key={comic.id} comic={comic} density="compact" onOpenReader={onOpenReader} onToggleFavorite={toggleFavorite} onOpenDetails={setDetail} onOpenProgressModal={setProgress} onMarkCompleted={(id, total) => setStatus(id, "completed", total)} onResetProgress={(id) => setStatus(id, "not_started", 10)} />)}</div> : <p className="empty-collection-kind">Ainda não há edições nesta coleção.</p>}

@@ -569,7 +569,7 @@ textarea.admin-field { resize: vertical; }
   .reader-settings { max-height: calc(100dvh - 8rem); overflow-y: auto; }
   .reader-mode-options { grid-template-columns: repeat(2,1fr); }
   .catalog-hero-flow { min-height: 43rem; }
-  .catalog-hero-flow .catalog-hero-content { min-height: 43rem; padding-top: 24rem; }
+  .catalog-hero-flow .catalog-hero-content { min-height: 45rem; padding-top: 27rem; }
   .catalog-hero-flow-slot .cover-flow-stage { height: min(95vw,23rem); }
   .catalog-hero-flow-slot .cover-flow-card { width: min(60%,13rem); }
   .collection-hub .cover-flow-stage { height: 23rem; }
