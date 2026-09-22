@@ -130,7 +130,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
                 htmlFor="login-password-input"
                 className="text-xs font-semibold text-slate-300"
               >
-                {isInviteFlow ? "Crie sua senha" : "Chave de Acesso Pessoal"}
+                {isInviteFlow ? "Crie sua senha" : "Senha"}
               </label>
               <span className="text-[10px] text-amber-400/80 font-mono">
                 {isSupabaseConfigured ? "Supabase Ativo" : "Modo Protótipo"}
