@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { BookCopy, CheckCircle2, Cloud, Database, Edit3, FileImage, FileUp, LibraryBig, Plus, Save, Shield, UploadCloud, X } from "lucide-react";
 import { useLibrary } from "../../hooks/useLibrary";
 import { storageProvider } from "../../services/storageProvider";
-import { createComicRecord, saveSeriesRecord, updateComicRecord } from "../../services/comicAdminService";
+import { createComicRecord, saveSeriesRecord, updateCollectionComics, updateComicRecord } from "../../services/comicAdminService";
 import type { Comic, Series } from "../../types/comic";
 import { formatFileSize } from "../../lib/formatters";
 
@@ -18,6 +18,7 @@ export const AdminPage: React.FC = () => {
   const [cover, setCover] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const [applyToCollection, setApplyToCollection] = useState(false);
   const [form, setForm] = useState({ title: "", seriesId: "", issue: "1", year: String(new Date().getFullYear()), pages: "1", synopsis: "", writers: "", pencillers: "", colorists: "", tags: "" });
   const [seriesForm, setSeriesForm] = useState({ id: "", title: "", publisher: "Marvel", startYear: String(new Date().getFullYear()), endYear: "", expected: "", description: "" });
 
@@ -28,11 +29,11 @@ export const AdminPage: React.FC = () => {
   const totalMb = useMemo(() => allComics.reduce((sum, item) => sum + item.fileSizeMb, 0), [allComics]);
   const totalPages = useMemo(() => allComics.reduce((sum, item) => sum + item.totalPages, 0), [allComics]);
   const resetComicForm = () => {
-    setEditing(null); setPdf(null); setCover(null); setNotice("");
+    setEditing(null); setPdf(null); setCover(null); setNotice(""); setApplyToCollection(false);
     setForm({ title: "", seriesId: seriesList[0]?.id || "", issue: "1", year: String(new Date().getFullYear()), pages: "1", synopsis: "", writers: "", pencillers: "", colorists: "", tags: "" });
   };
   const startEditing = (comic: Comic) => {
-    setEditing(comic); setPdf(null); setCover(null); setNotice("");
+    setEditing(comic); setPdf(null); setCover(null); setNotice(""); setApplyToCollection(false);
     setForm({ title: comic.title, seriesId: comic.seriesId, issue: String(comic.issueNumber), year: String(comic.year), pages: String(comic.totalPages), synopsis: comic.synopsis, writers: comic.writers.join(", "), pencillers: comic.pencillers.join(", "), colorists: (comic.colorists || []).join(", "), tags: comic.tags.join(", ") });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -48,9 +49,22 @@ export const AdminPage: React.FC = () => {
       const uploadedCover = cover ? await storageProvider.uploadFile(cover, "covers") : null;
       const payload = { title: form.title.trim(), issueNumber: Number(form.issue), year: Number(form.year), totalPages: Number(form.pages), fileName: pdf?.name || editing?.fileName || "", fileSizeMb: uploadedPdf?.fileSizeMb ?? editing?.fileSizeMb ?? 0, pdfKey: uploadedPdf?.fileKey || editing?.pdfPath || "", coverKey: uploadedCover?.fileKey || editing?.coverPath, synopsis: form.synopsis.trim(), writers: splitList(form.writers), pencillers: splitList(form.pencillers), colorists: splitList(form.colorists), tags: splitList(form.tags), series };
       setNotice("Salvando catálogo e ficha criativa no Supabase...");
-      if (editing) await updateComicRecord(editing.id, payload); else await createComicRecord(payload);
+      let updatedCollectionCount = 0;
+      if (editing) {
+        await updateComicRecord(editing.id, payload);
+        if (applyToCollection) {
+          setNotice("Aplicando a ficha editorial a toda a coleção...");
+          updatedCollectionCount = await updateCollectionComics(series.id, {
+            synopsis: payload.synopsis,
+            writers: payload.writers,
+            pencillers: payload.pencillers,
+            colorists: payload.colorists,
+            tags: payload.tags,
+          });
+        }
+      } else await createComicRecord(payload);
       await reloadData();
-      setNotice(editing ? "Alterações publicadas com sucesso." : "HQ cadastrada e publicada com sucesso.");
+      setNotice(editing ? (updatedCollectionCount > 0 ? `Alterações publicadas em ${updatedCollectionCount} edições da coleção.` : "Alterações publicadas com sucesso.") : "HQ cadastrada e publicada com sucesso.");
       setPdf(null); setCover(null);
       if (!editing) setForm((current) => ({ ...current, title: "", issue: "1", pages: "1", synopsis: "", writers: "", pencillers: "", colorists: "", tags: "" }));
     } catch (error) { setNotice(error instanceof Error ? error.message : "Não foi possível salvar."); }
@@ -85,6 +99,7 @@ export const AdminPage: React.FC = () => {
           <label>Cores<input className={fieldClass} placeholder="Nomes separados por vírgula" value={form.colorists} onChange={(e) => setForm({ ...form, colorists: e.target.value })} /></label>
           <label>Categorias / tags<input className={fieldClass} placeholder="X-Men, mutantes, aventura" value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} /></label>
         </div>
+        {editing && <label className="bulk-edit-toggle"><input type="checkbox" checked={applyToCollection} onChange={(e) => setApplyToCollection(e.target.checked)} /><div><strong>Aplicar ficha editorial a toda a coleção</strong><span>Atualiza sinopse, roteiro, arte, cores e categorias nas {allComics.filter((comic) => comic.seriesId === form.seriesId).length} edições de “{seriesList.find((series) => series.id === form.seriesId)?.title || "esta coleção"}”. Título, número, ano, páginas, PDF e capa continuam individuais.</span></div></label>}
         <div className="upload-grid"><label className="upload-tile"><FileUp /><strong>{pdf?.name || (editing ? "Substituir PDF" : "Selecionar PDF")}</strong><small>{pdf ? formatFileSize(pdf.size / 1024 / 1024) : editing?.fileName || "Até 250 MB"}</small><input type="file" accept="application/pdf,.pdf" onChange={(e) => setPdf(e.target.files?.[0] || null)} /></label><label className="upload-tile"><FileImage /><strong>{cover?.name || (editing ? "Substituir capa" : "Adicionar capa")}</strong><small>JPG, PNG ou WebP</small><input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => setCover(e.target.files?.[0] || null)} /></label></div>
         <button className="studio-primary" disabled={busy}><UploadCloud /> {busy ? "Publicando..." : editing ? "Salvar alterações" : "Cadastrar e publicar"}</button>
       </form>

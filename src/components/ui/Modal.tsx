@@ -68,11 +68,20 @@ export const Modal: React.FC<ModalProps> = ({
 
       <div
         ref={modalRef}
-        className={`streaming-modal relative w-full ${maxWidthClass} z-10 overflow-hidden my-auto transform transition-transform`}
+        className={`streaming-modal relative w-full ${maxWidthClass} z-10 max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-3rem)] overflow-y-auto my-auto transform transition-transform`}
       >
+        <button
+          onClick={onClose}
+          className="modal-close-button sticky top-3 z-30 ml-auto mr-3 -mb-10 grid h-9 w-9 place-items-center rounded-full border border-white/15 bg-black/75 text-white shadow-xl backdrop-blur-md transition-colors hover:bg-slate-800 cursor-pointer"
+          aria-label="Fechar detalhes"
+          title="Fechar"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
         {/* Cabeçalho do modal */}
         {(title || description) && (
-          <div className="flex items-start justify-between p-4 sm:p-5 border-b border-slate-800/80">
+          <div className="flex items-start justify-between p-4 pr-14 sm:p-5 sm:pr-16 border-b border-slate-800/80">
             <div>
               {title && (
                 <h2
@@ -86,13 +95,6 @@ export const Modal: React.FC<ModalProps> = ({
                 <p className="text-xs sm:text-sm text-slate-400 mt-1">{description}</p>
               )}
             </div>
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
-              aria-label="Fechar modal"
-            >
-              <X className="w-5 h-5" />
-            </button>
           </div>
         )}
 

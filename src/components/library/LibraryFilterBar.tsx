@@ -193,7 +193,7 @@ export const LibraryFilterBar: React.FC<LibraryFilterBarProps> = ({
   );
 
   return (
-    <div className="mb-6 space-y-3">
+    <div id="library-filter-panel" className="mb-6 space-y-3 scroll-mt-24">
       {/* Barra de Ações Superior: Contagem, Ordenação e Densidade */}
       <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-[#131722] border border-[#1e2535] rounded-xl shadow-sm">
         {/* Contagem e Toggle de Filtros Avançados */}
@@ -270,8 +270,14 @@ export const LibraryFilterBar: React.FC<LibraryFilterBarProps> = ({
       </div>
 
       {/* Painel Expansível de Filtros para Desktop */}
-      {showAdvancedFilters && (
+      {(showAdvancedFilters || isFilterDrawerOpen) && (
         <div className="hidden md:block p-4 bg-[#131722] border border-[#1e2535] rounded-xl animate-in fade-in duration-150">
+          {isFilterDrawerOpen && (
+            <div className="mb-3 flex items-center justify-between border-b border-slate-800 pb-3">
+              <span className="flex items-center gap-2 text-sm font-bold text-white"><SlidersHorizontal className="h-4 w-4 text-amber-400" /> Filtros do catálogo</span>
+              <button onClick={onCloseFilterDrawer} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white" aria-label="Fechar filtros"><X className="h-4 w-4" /></button>
+            </div>
+          )}
           {filterControls}
         </div>
       )}

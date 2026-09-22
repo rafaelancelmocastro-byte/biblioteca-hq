@@ -52,6 +52,13 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
     }));
   }, [searchQuery, setFilters]);
 
+  React.useEffect(() => {
+    if (!isFilterDrawerOpen || window.innerWidth < 768) return;
+    window.requestAnimationFrame(() => {
+      document.getElementById("library-filter-panel")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }, [isFilterDrawerOpen]);
+
   const [selectedComic, setSelectedComic] = useState<Comic | null>(null);
   const [comicForProgress, setComicForProgress] = useState<Comic | null>(null);
   const featuredComic = continueReadingComics[0] ?? recentlyAddedComics[0] ?? allComics[0];

@@ -254,6 +254,8 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, onBack,
   };
 
   const handlePointerDown = (event: React.PointerEvent) => {
+    // Preserve native one-finger scrolling in continuous mode at the default zoom.
+    if (readerMode === "continuous" && zoom <= 1.05) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     if (pointersRef.current.size === 1) {

@@ -41,6 +41,14 @@ export async function updateComicRecord(comicId: string, input: Partial<ComicReg
   await ownerRequest("/api/comics/update", { id: comicId, ...input }, "PATCH");
 }
 
+export async function updateCollectionComics(
+  seriesId: string,
+  input: Pick<ComicRegistration, "synopsis" | "writers" | "pencillers" | "colorists" | "tags">,
+): Promise<number> {
+  const payload = await ownerRequest("/api/comics/bulk-update", { seriesId, ...input }, "PATCH");
+  return Number(payload.updated || 0);
+}
+
 export async function saveSeriesRecord(series: Omit<Series, "id"> & { id?: string }): Promise<string> {
   const payload = await ownerRequest("/api/series/upsert", series);
   return payload.id;

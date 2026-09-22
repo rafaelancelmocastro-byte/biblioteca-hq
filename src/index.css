@@ -213,6 +213,8 @@ button, input, select { font: inherit; }
 .reader-stage.texture-warm { background: radial-gradient(circle at 50% 20%, #35251c, #100b08 75%); }
 .reader-stage.reader-stage-zoomed { justify-content: flex-start; cursor: grab; }
 .reader-stage.reader-stage-zoomed:active { cursor: grabbing; }
+.reader-stage.mode-continuous { touch-action: pan-y; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
+.reader-stage.mode-continuous.reader-stage-zoomed { touch-action: none; }
 .reader-page { position: relative; flex: 0 0 auto; overflow: hidden; border-radius: .45rem; background: white; box-shadow: 0 30px 80px rgba(0,0,0,.65); transition: filter .2s ease; }
 .mode-page .reader-page { transform-origin: center bottom; animation: page-lift .32s cubic-bezier(.2,.75,.25,1); }
 .mode-horizontal .reader-page.turn-next { transform-origin: left center; animation: page-turn-next .38s cubic-bezier(.2,.75,.25,1); }
@@ -308,6 +310,16 @@ button, input, select { font: inherit; }
 
 .streaming-modal { border: 1px solid rgba(255,255,255,.12); border-radius: 1.5rem; background: linear-gradient(140deg,rgba(30,24,21,.98),rgba(10,9,8,.99)); box-shadow: 0 35px 120px rgba(0,0,0,.8); }
 .comic-detail-streaming h2 { font-family: Georgia,"Times New Roman",serif; font-size: clamp(1.7rem,3vw,2.5rem); letter-spacing: -.035em; }
+.bulk-edit-toggle { display: flex; align-items: flex-start; gap: .75rem; margin: 1rem 0; padding: .9rem 1rem; border: 1px solid rgba(255,213,33,.2); border-radius: 1rem; background: rgba(255,213,33,.055); cursor: pointer; }
+.bulk-edit-toggle input { width: 1.05rem; height: 1.05rem; margin-top: .15rem; flex: 0 0 auto; accent-color: var(--brand-yellow); }
+.bulk-edit-toggle div { display: flex; flex-direction: column; gap: .2rem; }
+.bulk-edit-toggle strong { color: #f8f2ed; font-size: .78rem; }
+.bulk-edit-toggle span { color: #a9a09a; font-size: .68rem; line-height: 1.45; }
+
+@media (max-width: 640px) {
+  .comic-detail-streaming { gap: 1rem; }
+  .comic-detail-streaming > div:first-child { width: 100%; }
+}
 
 .login-screen { background: radial-gradient(circle at 15% 18%,rgba(215,25,32,.2),transparent 25rem), radial-gradient(circle at 90% 88%,rgba(255,213,33,.08),transparent 28rem), #080706; }
 .login-card { border: 1px solid rgba(255,255,255,.11); background: rgba(18,14,12,.82); box-shadow: 0 40px 120px rgba(0,0,0,.7); backdrop-filter: blur(28px) saturate(120%); }
