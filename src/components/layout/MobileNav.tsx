@@ -20,7 +20,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ currentPath, onNavigate, i
       icon: Clock,
     },
     {
-      label: "Séries",
+      label: "Coleções",
       path: "/series",
       icon: Layers,
     },

@@ -81,7 +81,7 @@ export const ComicCard: React.FC<ComicCardProps> = ({
             e.stopPropagation();
             onToggleFavorite(comic.id);
           }}
-          className={`absolute top-2 right-2 z-20 w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-md transition-all cursor-pointer ${
+          className={`absolute top-2 right-2 z-20 min-w-8 h-8 px-2 rounded-full flex items-center justify-center gap-1.5 backdrop-blur-md transition-all cursor-pointer ${
             comic.isFavorite
               ? "bg-rose-500/90 text-white shadow-md shadow-rose-500/30 scale-105"
               : "bg-black/50 text-white/70 hover:text-white hover:bg-black/80 hover:scale-105"
@@ -92,6 +92,7 @@ export const ComicCard: React.FC<ComicCardProps> = ({
           <Heart
             className={`w-4 h-4 ${comic.isFavorite ? "fill-current" : ""}`}
           />
+          {comic.isFavorite && <span className="text-[10px] font-extrabold">Favorito</span>}
         </button>
 
         {/* Botão de Menu Contextual (Canto Superior Esquerdo) */}

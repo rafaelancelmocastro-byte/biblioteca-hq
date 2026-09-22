@@ -72,7 +72,7 @@ export const Modal: React.FC<ModalProps> = ({
       >
         <button
           onClick={onClose}
-          className="modal-close-button sticky top-3 z-30 ml-auto mr-3 -mb-10 grid h-9 w-9 place-items-center rounded-full border border-white/15 bg-black/75 text-white shadow-xl backdrop-blur-md transition-colors hover:bg-slate-800 cursor-pointer"
+          className="modal-close-button fixed top-[max(.75rem,env(safe-area-inset-top))] right-[max(.75rem,env(safe-area-inset-right))] z-[60] grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-black/90 text-white shadow-2xl backdrop-blur-md transition-colors hover:bg-slate-800 cursor-pointer"
           aria-label="Fechar detalhes"
           title="Fechar"
         >
@@ -99,7 +99,7 @@ export const Modal: React.FC<ModalProps> = ({
         )}
 
         {/* Conteúdo */}
-        <div className="p-4 sm:p-6">{children}</div>
+        <div className="modal-content p-4 pt-14 sm:p-6 sm:pt-14">{children}</div>
       </div>
     </div>
   );

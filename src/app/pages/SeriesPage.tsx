@@ -47,7 +47,7 @@ export const SeriesPage: React.FC<SeriesPageProps> = ({ onOpenReader }) => {
           <Layers className="w-5 h-5" />
           <span className="text-xs font-bold uppercase tracking-wider">Coleções Completas</span>
         </div>
-        <h1 className="text-2xl font-black text-white tracking-tight">Séries e Arcos</h1>
+        <h1 className="text-2xl font-black text-white tracking-tight">Coleções e sagas</h1>
         <p className="text-xs sm:text-sm text-slate-400 mt-1">
           Acompanhe suas sagas agrupadas com progresso cumulativo de cada coleção
         </p>

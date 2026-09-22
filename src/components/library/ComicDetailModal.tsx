@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   BookOpen,
   Heart,
@@ -23,7 +23,7 @@ interface ComicDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   onOpenReader: (comicId: string) => void;
-  onToggleFavorite: (comicId: string) => void;
+  onToggleFavorite: (comicId: string) => void | Promise<boolean>;
   onOpenProgressModal: (comic: Comic) => void;
   onMarkCompleted: (comicId: string, totalPages: number) => void;
   onResetProgress: (comicId: string) => void;
@@ -39,6 +39,9 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
   onMarkCompleted,
   onResetProgress,
 }) => {
+  const [isFavorite, setIsFavorite] = useState(Boolean(comic?.isFavorite));
+  useEffect(() => setIsFavorite(Boolean(comic?.isFavorite)), [comic?.id, comic?.isFavorite]);
+
   if (!comic) return null;
 
   const percentage = comic.progress?.percentage || 0;
@@ -81,13 +84,14 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
 
             <div className="flex gap-2">
               <Button
-                variant={comic.isFavorite ? "danger" : "secondary"}
+                variant={isFavorite ? "danger" : "secondary"}
                 size="sm"
-                onClick={() => onToggleFavorite(comic.id)}
+                onClick={() => { setIsFavorite((value) => !value); void onToggleFavorite(comic.id); }}
                 className="flex-1 text-xs"
+                aria-pressed={isFavorite}
               >
-                <Heart className={`w-3.5 h-3.5 mr-1.5 ${comic.isFavorite ? "fill-current" : ""}`} />
-                {comic.isFavorite ? "Favorito" : "Favoritar"}
+                <Heart className={`w-3.5 h-3.5 mr-1.5 ${isFavorite ? "fill-current" : ""}`} />
+                {isFavorite ? "Favoritado" : "Favoritar"}
               </Button>
 
               <Button

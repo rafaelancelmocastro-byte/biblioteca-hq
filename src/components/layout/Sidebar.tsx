@@ -42,7 +42,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: Clock,
     },
     {
-      label: "Séries",
+      label: "Coleções",
       path: "/series",
       icon: Layers,
     },

@@ -66,9 +66,17 @@ export function useLibrary() {
 
   const toggleFavorite = useCallback(async (comicId: string) => {
     const isFavorite = allComics.find((comic) => comic.id === comicId)?.isFavorite ?? false;
-    const savedRemotely = await toggleSupabaseFavorite(comicId, isFavorite);
-    if (!savedRemotely) await localFavoriteRepository.toggleFavorite(comicId);
-    setVersion((v) => v + 1);
+    const nextFavorite = !isFavorite;
+    setAllComics((current) => current.map((comic) => comic.id === comicId ? { ...comic, isFavorite: nextFavorite } : comic));
+    try {
+      const savedRemotely = await toggleSupabaseFavorite(comicId, isFavorite);
+      if (!savedRemotely) await localFavoriteRepository.toggleFavorite(comicId);
+      setVersion((v) => v + 1);
+      return nextFavorite;
+    } catch (error) {
+      setAllComics((current) => current.map((comic) => comic.id === comicId ? { ...comic, isFavorite } : comic));
+      throw error;
+    }
   }, [allComics]);
 
   const updateProgress = useCallback(

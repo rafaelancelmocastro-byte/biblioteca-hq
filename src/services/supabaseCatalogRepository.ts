@@ -113,13 +113,13 @@ async function mapComic(row: CatalogRow): Promise<Comic> {
 export async function getSupabaseCatalog(): Promise<SupabaseCatalog> {
   if (!supabase) return { comics: [], series: [], characters: [], publishers: [], years: [] };
 
-  const { data, error } = await supabase
-    .from("comics")
-    .select("*, series(*), comic_characters(characters(id,name,alias,publisher))")
-    .order("added_at", { ascending: false });
+  const [comicsResult, seriesResult] = await Promise.all([
+    supabase.from("comics").select("*, series(*), comic_characters(characters(id,name,alias,publisher))").order("added_at", { ascending: false }),
+    supabase.from("series").select("*").order("title", { ascending: true }),
+  ]);
 
-  if (error) throw new Error(`Não foi possível carregar o catálogo: ${error.message}`);
-  const rows = (data ?? []) as unknown as CatalogRow[];
+  if (comicsResult.error) throw new Error(`Não foi possível carregar o catálogo: ${comicsResult.error.message}`);
+  const rows = (comicsResult.data ?? []) as unknown as CatalogRow[];
   const comics = await Promise.all(rows.map(mapComic));
   const seriesById = new Map<string, Series>();
   const charactersById = new Map<string, Character>();
@@ -134,6 +134,12 @@ export async function getSupabaseCatalog(): Promise<SupabaseCatalog> {
         alias: character.alias ?? undefined,
         publisher: character.publisher,
       });
+    }
+  }
+
+  if (!seriesResult.error) {
+    for (const row of seriesResult.data ?? []) {
+      seriesById.set(row.id, mapSeries(row as CatalogRow["series"]));
     }
   }
 

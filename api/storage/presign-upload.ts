@@ -45,7 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     ContentType: contentType,
     Metadata: { original_filename: fileName.replace(/[^a-zA-Z0-9._ -]/g, "_") },
   });
-  const uploadUrl = await getSignedUrl(createR2Client(config), command, { expiresIn: 600 });
+  const uploadUrl = await getSignedUrl(createR2Client(config), command, { expiresIn: 3600 });
 
-  return res.status(200).json({ key, uploadUrl, expiresInSeconds: 600 });
+  return res.status(200).json({ key, uploadUrl, expiresInSeconds: 3600, maxBytes: 5 * 1024 * 1024 * 1024 });
 }

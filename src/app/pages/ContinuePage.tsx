@@ -98,14 +98,14 @@ export const ContinuePage: React.FC<ContinuePageProps> = ({ onOpenReader }) => {
                     onClick={() => onOpenReader(comic.id)}
                     className="w-24 sm:w-28 flex-shrink-0 cursor-pointer rounded-lg overflow-hidden relative shadow-md"
                   >
-                    <CoverPlaceholder
+                    {comic.coverUrl ? <img src={comic.coverUrl} alt={`Capa de ${comic.title}`} className="h-full w-full object-cover" /> : <CoverPlaceholder
                       title={comic.title}
                       seriesTitle={comic.seriesTitle}
                       issueNumber={comic.issueNumber}
                       publisher={comic.publisher}
                       coverStyle={comic.coverStyle}
                       showSpine={false}
-                    />
+                    />}
                   </div>
 
                   <div className="flex-1 min-w-0 ml-4 flex flex-col justify-between py-1">
@@ -176,13 +176,13 @@ export const ContinuePage: React.FC<ContinuePageProps> = ({ onOpenReader }) => {
                 className="group relative flex flex-col bg-[#131722] p-2.5 rounded-xl border border-slate-800 hover:border-slate-700 cursor-pointer shadow-sm transition-all"
               >
                 <div className="relative aspect-[2/3] rounded-lg overflow-hidden mb-2">
-                  <CoverPlaceholder
+                  {comic.coverUrl ? <img src={comic.coverUrl} alt={`Capa de ${comic.title}`} className="h-full w-full object-cover" /> : <CoverPlaceholder
                     title={comic.title}
                     seriesTitle={comic.seriesTitle}
                     issueNumber={comic.issueNumber}
                     publisher={comic.publisher}
                     coverStyle={comic.coverStyle}
-                  />
+                  />}
                   <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded bg-emerald-500 text-black font-extrabold text-[9px] shadow">
                     LIDA
                   </div>

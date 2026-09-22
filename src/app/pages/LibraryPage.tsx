@@ -6,6 +6,7 @@ import { LibraryFilterBar } from "../../components/library/LibraryFilterBar";
 import { LibraryGrid } from "../../components/library/LibraryGrid";
 import { ComicDetailModal } from "../../components/library/ComicDetailModal";
 import { ProgressUpdateModal } from "../../components/library/ProgressUpdateModal";
+import { RecommendationRoulette } from "../../components/library/RecommendationRoulette";
 import { useLibrary } from "../../hooks/useLibrary";
 import { BookOpen, Info, LibraryBig, ShieldCheck } from "lucide-react";
 
@@ -61,12 +62,24 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
 
   const [selectedComic, setSelectedComic] = useState<Comic | null>(null);
   const [comicForProgress, setComicForProgress] = useState<Comic | null>(null);
-  const featuredComic = continueReadingComics[0] ?? recentlyAddedComics[0] ?? allComics[0];
+  const [featuredIndex, setFeaturedIndex] = useState(0);
+  const featuredCandidates = React.useMemo(() => {
+    const preferred = allComics.filter((comic) => comic.isFavorite || comic.progress?.status === "reading");
+    const pool = [...preferred, ...recentlyAddedComics, ...allComics];
+    return [...new Map(pool.map((comic) => [comic.id, comic])).values()].slice(0, 8);
+  }, [allComics, recentlyAddedComics]);
+  const featuredComic = featuredCandidates[featuredIndex % Math.max(featuredCandidates.length, 1)];
+
+  React.useEffect(() => {
+    if (featuredCandidates.length < 2 || searchQuery) return;
+    const timer = window.setInterval(() => setFeaturedIndex((index) => (index + 1) % featuredCandidates.length), 8500);
+    return () => window.clearInterval(timer);
+  }, [featuredCandidates.length, searchQuery]);
 
   return (
     <div className="streaming-page library-page space-y-8">
       {featuredComic && !searchQuery && (
-        <section className="catalog-hero" aria-label="Destaque da biblioteca">
+        <section key={featuredComic.id} className="catalog-hero catalog-hero-enter" aria-label="Destaque da biblioteca">
           {featuredComic.coverUrl && (
             <img src={featuredComic.coverUrl} alt="" className="catalog-hero-art" aria-hidden="true" />
           )}
@@ -95,8 +108,11 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
           <div className="catalog-cover-float">
             {featuredComic.coverUrl && <img src={featuredComic.coverUrl} alt={`Capa de ${featuredComic.title}`} />}
           </div>
+          {featuredCandidates.length > 1 && <div className="catalog-hero-pagination" aria-label="Recomendações em destaque">{featuredCandidates.map((comic, index) => <button key={comic.id} className={index === featuredIndex ? "active" : ""} onClick={() => setFeaturedIndex(index)} aria-label={`Mostrar ${comic.title}`} />)}</div>}
         </section>
       )}
+
+      {!searchQuery && <RecommendationRoulette comics={allComics} onOpenReader={onOpenReader} onOpenDetails={setSelectedComic} />}
 
       {!isLoading && allComics.length > 0 && (
         <div className="catalog-summary">
