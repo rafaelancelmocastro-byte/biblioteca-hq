@@ -42,6 +42,7 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, onBack,
   const pointersRef = useRef(new Map<number, { x: number; y: number }>());
   const pinchRef = useRef<{ distance: number; zoom: number } | null>(null);
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
+  const panRef = useRef<{ x: number; y: number; scrollLeft: number; scrollTop: number } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -135,16 +136,31 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, onBack,
   const handlePointerDown = (event: React.PointerEvent) => {
     event.currentTarget.setPointerCapture(event.pointerId);
     pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
-    if (pointersRef.current.size === 1) swipeStartRef.current = { x: event.clientX, y: event.clientY };
+    if (pointersRef.current.size === 1) {
+      swipeStartRef.current = { x: event.clientX, y: event.clientY };
+      if (zoom > 1.05 && stageRef.current) {
+        panRef.current = {
+          x: event.clientX,
+          y: event.clientY,
+          scrollLeft: stageRef.current.scrollLeft,
+          scrollTop: stageRef.current.scrollTop,
+        };
+      }
+    }
     if (pointersRef.current.size === 2) {
       pinchRef.current = { distance: distanceBetweenPointers(), zoom };
       swipeStartRef.current = null;
+      panRef.current = null;
     }
   };
 
   const handlePointerMove = (event: React.PointerEvent) => {
     if (!pointersRef.current.has(event.pointerId)) return;
     pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (pointersRef.current.size === 1 && panRef.current && stageRef.current) {
+      stageRef.current.scrollLeft = panRef.current.scrollLeft - (event.clientX - panRef.current.x);
+      stageRef.current.scrollTop = panRef.current.scrollTop - (event.clientY - panRef.current.y);
+    }
     if (pointersRef.current.size === 2 && pinchRef.current) {
       const ratio = distanceBetweenPointers() / Math.max(1, pinchRef.current.distance);
       setZoom(Math.min(3, Math.max(0.7, pinchRef.current.zoom * ratio)));
@@ -164,6 +180,7 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, onBack,
     pointersRef.current.delete(event.pointerId);
     if (pointersRef.current.size < 2) pinchRef.current = null;
     swipeStartRef.current = null;
+    panRef.current = null;
   };
 
   const toggleFullscreen = async () => {
@@ -211,7 +228,7 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, onBack,
 
       <main
         ref={stageRef}
-        className={`reader-stage texture-${texture}`}
+        className={`reader-stage texture-${texture} ${zoom > 1.05 ? "reader-stage-zoomed" : ""}`}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}

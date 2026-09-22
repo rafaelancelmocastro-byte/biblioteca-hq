@@ -207,6 +207,8 @@ button, input, select { font: inherit; }
 }
 .reader-stage.texture-paper { background: #29231e; }
 .reader-stage.texture-warm { background: radial-gradient(circle at 50% 20%, #35251c, #100b08 75%); }
+.reader-stage.reader-stage-zoomed { justify-content: flex-start; cursor: grab; }
+.reader-stage.reader-stage-zoomed:active { cursor: grabbing; }
 .reader-page { position: relative; flex: 0 0 auto; overflow: hidden; border-radius: .45rem; background: white; box-shadow: 0 30px 80px rgba(0,0,0,.65); transition: filter .2s ease; }
 .reader-page canvas { display: block; max-width: none; }
 .reader-paper-grain { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: multiply; opacity: 0; background-image: repeating-radial-gradient(circle at 20% 30%, rgba(72,45,25,.08) 0 1px, transparent 1px 4px); }
