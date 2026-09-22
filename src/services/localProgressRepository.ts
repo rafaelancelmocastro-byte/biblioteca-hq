@@ -1,6 +1,5 @@
 import { ProgressRepository } from "../types/repositories";
 import { Comic, ComicStatus, ReadingProgress } from "../types/comic";
-import { INITIAL_PROGRESS_MOCK, MOCK_COMICS } from "../data/mockComics";
 import { getLocalStorageItem, setLocalStorageItem } from "../lib/utils";
 
 const PROGRESS_STORAGE_KEY = "biblioteca_hq_progress_v1";
@@ -12,19 +11,6 @@ export class LocalProgressRepository implements ProgressRepository {
     if (this.cache) return this.cache;
 
     const initialMap: Record<string, ReadingProgress> = {};
-    // Carrega mock inicial
-    Object.entries(INITIAL_PROGRESS_MOCK).forEach(([comicId, item]) => {
-      const percentage = (item.currentPage / item.totalPages) * 100;
-      initialMap[comicId] = {
-        comicId,
-        currentPage: item.currentPage,
-        totalPages: item.totalPages,
-        percentage,
-        status: item.status,
-        lastReadAt: item.lastReadAt,
-        updatedAt: item.lastReadAt,
-      };
-    });
 
     const stored = getLocalStorageItem<Record<string, ReadingProgress>>(PROGRESS_STORAGE_KEY, initialMap);
     this.cache = stored;
@@ -109,23 +95,8 @@ export class LocalProgressRepository implements ProgressRepository {
   }
 
   async getContinueReading(limit = 6): Promise<Comic[]> {
-    const allProgress = this.load();
-    const readingList = Object.values(allProgress)
-      .filter((p) => p.status === "reading")
-      .sort((a, b) => new Date(b.lastReadAt).getTime() - new Date(a.lastReadAt).getTime())
-      .slice(0, limit);
-
-    const results: Comic[] = [];
-    for (const progress of readingList) {
-      const comic = MOCK_COMICS.find((c) => c.id === progress.comicId);
-      if (comic) {
-        results.push({
-          ...comic,
-          progress,
-        });
-      }
-    }
-    return results;
+    void limit;
+    return [];
   }
 }
 

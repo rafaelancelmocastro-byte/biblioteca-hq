@@ -51,13 +51,17 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
         {/* Coluna da Capa */}
         <div className="w-full sm:w-52 flex-shrink-0 flex flex-col items-center">
           <div className="w-48 sm:w-full rounded-xl overflow-hidden shadow-2xl shadow-black/80 border border-slate-700/80">
-            <CoverPlaceholder
-              title={comic.title}
-              seriesTitle={comic.seriesTitle}
-              issueNumber={comic.issueNumber}
-              publisher={comic.publisher}
-              coverStyle={comic.coverStyle}
-            />
+            {comic.coverUrl ? (
+              <img src={comic.coverUrl} alt={`Capa de ${comic.title}`} className="aspect-[2/3] w-full object-cover" />
+            ) : (
+              <CoverPlaceholder
+                title={comic.title}
+                seriesTitle={comic.seriesTitle}
+                issueNumber={comic.issueNumber}
+                publisher={comic.publisher}
+                coverStyle={comic.coverStyle}
+              />
+            )}
           </div>
 
           {/* Botões de Ação Imediata */}

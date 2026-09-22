@@ -1,5 +1,4 @@
 import { FavoriteRepository } from "../types/repositories";
-import { INITIAL_FAVORITES_MOCK } from "../data/mockComics";
 import { getLocalStorageItem, setLocalStorageItem } from "../lib/utils";
 
 const FAVORITES_STORAGE_KEY = "biblioteca_hq_favorites_v1";
@@ -9,7 +8,7 @@ export class LocalFavoriteRepository implements FavoriteRepository {
 
   private load(): Set<string> {
     if (this.cache) return this.cache;
-    const stored = getLocalStorageItem<string[]>(FAVORITES_STORAGE_KEY, INITIAL_FAVORITES_MOCK);
+    const stored = getLocalStorageItem<string[]>(FAVORITES_STORAGE_KEY, []);
     this.cache = new Set(stored);
     return this.cache;
   }

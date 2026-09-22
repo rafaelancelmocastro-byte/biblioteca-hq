@@ -9,6 +9,8 @@ interface HeaderProps {
   activeFiltersCount?: number;
   onNavigate: (path: string) => void;
   currentPath: string;
+  onLogout?: () => void | Promise<void>;
+  isOwner?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -18,6 +20,8 @@ export const Header: React.FC<HeaderProps> = ({
   activeFiltersCount = 0,
   onNavigate,
   currentPath,
+  onLogout,
+  isOwner = false,
 }) => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -146,12 +150,12 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
                 <div className="mt-2 flex items-center gap-1.5 text-[10px] text-emerald-400 font-medium">
                   <CheckCircle2 className="w-3 h-3" />
-                  <span>Sessão de Proprietário Ativa</span>
+                  <span>{isOwner ? "Sessão de Proprietário Ativa" : "Sessão Autenticada"}</span>
                 </div>
               </div>
 
               <div className="py-1">
-                <button
+                {isOwner && <button
                   onClick={() => {
                     setIsUserMenuOpen(false);
                     onNavigate("/admin");
@@ -162,12 +166,13 @@ export const Header: React.FC<HeaderProps> = ({
                 >
                   <Shield className="w-4 h-4 text-slate-400" />
                   <span>Painel de Administração</span>
-                </button>
+                </button>}
 
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     setIsUserMenuOpen(false);
-                    onNavigate("/login");
+                    if (onLogout) await onLogout();
+                    else onNavigate("/login");
                   }}
                   className="w-full text-left px-4 py-2 text-xs flex items-center gap-2.5 text-slate-400 hover:text-white hover:bg-slate-800/60 cursor-pointer"
                 >

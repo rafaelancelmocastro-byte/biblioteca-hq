@@ -49,8 +49,8 @@ export const APP_CONFIG: AppBrandConfig = {
     borderColor: "#222a3a",
   },
   infra: {
-    supabaseReady: false,
-    cloudflareR2Ready: false,
+    supabaseReady: true,
+    cloudflareR2Ready: true,
     pdfJsReady: false,
     storageBucketName: "biblioteca-hqs",
   },

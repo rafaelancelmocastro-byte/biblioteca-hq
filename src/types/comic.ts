@@ -61,6 +61,8 @@ export interface Comic {
   fileSizeMb: number;
   fileName: string;
   pdfPath?: string; // Caminho no bucket Cloudflare R2 futuramente
+  coverPath?: string;
+  coverUrl?: string;
   addedAt: string; // ISO 8601
   tags: string[];
   coverStyle: ComicCoverPalette;

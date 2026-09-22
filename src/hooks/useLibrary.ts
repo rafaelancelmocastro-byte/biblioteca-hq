@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Comic, ComicStatus, LibraryFilters, Series, Character } from "../types/comic";
-import { localComicRepository } from "../services/localComicRepository";
 import { localFavoriteRepository } from "../services/localFavoriteRepository";
 import { localProgressRepository } from "../services/localProgressRepository";
+import { getSupabaseCatalog } from "../services/supabaseCatalogRepository";
 import { getLocalStorageItem, setLocalStorageItem } from "../lib/utils";
 import {
   applySupabaseLibraryState,
@@ -43,13 +43,7 @@ export function useLibrary() {
   const reloadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [comics, series, characters, pubs, yrs] = await Promise.all([
-        localComicRepository.getAll(),
-        localComicRepository.getSeriesList(),
-        localComicRepository.getCharactersList(),
-        localComicRepository.getPublishers(),
-        localComicRepository.getYears(),
-      ]);
+      const { comics, series, characters, publishers: pubs, years: yrs } = await getSupabaseCatalog();
       const remoteState = await getSupabaseLibraryState();
       setAllComics(remoteState ? applySupabaseLibraryState(comics, remoteState) : comics);
       setSeriesList(series);

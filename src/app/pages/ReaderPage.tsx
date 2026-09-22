@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Comic } from "../../types/comic";
-import { localComicRepository } from "../../services/localComicRepository";
+import { getSupabaseComicById } from "../../services/supabaseCatalogRepository";
+import { storageProvider } from "../../services/storageProvider";
 import { ComicReader } from "../../components/reader/ComicReader";
 import { useLibrary } from "../../hooks/useLibrary";
 import { Button } from "../../components/ui/Button";
@@ -13,6 +14,7 @@ interface ReaderPageProps {
 
 export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack }) => {
   const [comic, setComic] = useState<Comic | null>(null);
+  const [pdfUrl, setPdfUrl] = useState("");
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const { updateProgress } = useLibrary();
 
@@ -20,11 +22,11 @@ export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack }) => {
     let isMounted = true;
     setIsLoading(true);
 
-    localComicRepository
-      .getById(comicId)
-      .then((data) => {
+    getSupabaseComicById(comicId)
+      .then(async (data) => {
         if (isMounted) {
           setComic(data);
+          if (data?.pdfPath) setPdfUrl(await storageProvider.getFileUrl(data.pdfPath));
           setIsLoading(false);
         }
       })
@@ -46,7 +48,7 @@ export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack }) => {
     );
   }
 
-  if (!comic) {
+  if (!comic || !pdfUrl) {
     return (
       <div className="fixed inset-0 bg-[#080a0f] flex flex-col items-center justify-center p-6 text-center z-50">
         <BookX className="w-12 h-12 text-slate-600 mb-3" />
@@ -65,6 +67,7 @@ export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack }) => {
   return (
     <ComicReader
       comic={comic}
+      pdfUrl={pdfUrl}
       onBack={onBack}
       onUpdateProgress={updateProgress}
     />

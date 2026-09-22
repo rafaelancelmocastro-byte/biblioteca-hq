@@ -17,6 +17,7 @@ interface SidebarProps {
   isCollapsed: boolean;
   onToggleCollapse: () => void;
   totalComicsCount?: number;
+  isOwner?: boolean;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -24,7 +25,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onNavigate,
   isCollapsed,
   onToggleCollapse,
-  totalComicsCount = 18,
+  totalComicsCount = 0,
+  isOwner = false,
 }) => {
   const navItems = [
     {
@@ -53,6 +55,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       path: "/admin",
       icon: ShieldCheck,
       tag: "Dono",
+      ownerOnly: true,
     },
   ];
 
@@ -90,7 +93,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Navigation Links */}
       <nav className="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto">
-        {navItems.map((item) => {
+        {navItems.filter((item) => !item.ownerOnly || isOwner).map((item) => {
           const Icon = item.icon;
           const isActive = currentPath === item.path;
 
@@ -151,7 +154,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span>Arquitetura Híbrida</span>
           </div>
           <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
-            Preparado para Supabase & Cloudflare R2 com streaming contínuo.
+            Supabase e Cloudflare R2 conectados ao acervo privado.
           </p>
         </div>
       )}

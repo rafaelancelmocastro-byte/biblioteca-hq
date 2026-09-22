@@ -9,7 +9,11 @@ interface LoginPageProps {
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
+  const [isInviteFlow] = useState(() =>
+    window.location.hash.includes("type=invite") || window.location.hash.includes("type=recovery")
+  );
   const [password, setPassword] = useState("");
+  const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -23,12 +27,29 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
       return;
     }
 
-    if (!password) {
-      setError("Informe sua senha para acessar a biblioteca.");
+    if (!password || password.length < 8) {
+      setError("A senha deve ter pelo menos 8 caracteres.");
+      return;
+    }
+
+    if (isInviteFlow && password !== passwordConfirmation) {
+      setError("A confirmação da senha não corresponde.");
       return;
     }
 
     setIsSubmitting(true);
+    if (isInviteFlow) {
+      const { error: updateError } = await supabase.auth.updateUser({ password });
+      setIsSubmitting(false);
+      if (updateError) {
+        setError("Não foi possível definir sua senha. Abra novamente o link do convite.");
+        return;
+      }
+      window.history.replaceState({}, "", "/login");
+      onSuccess();
+      return;
+    }
+
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email: APP_CONFIG.ownerEmail,
       password,
@@ -94,7 +115,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
                 htmlFor="login-password-input"
                 className="text-xs font-semibold text-slate-300"
               >
-                Chave de Acesso Pessoal
+                {isInviteFlow ? "Crie sua senha" : "Chave de Acesso Pessoal"}
               </label>
               <span className="text-[10px] text-amber-400/80 font-mono">
                 {isSupabaseConfigured ? "Supabase Ativo" : "Modo Protótipo"}
@@ -104,7 +125,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
               <input
                 id="login-password-input"
                 type="password"
-                placeholder="Insira sua senha ou pressione entrar"
+                placeholder={isInviteFlow ? "Mínimo de 8 caracteres" : "Insira sua senha"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full h-10 pl-3 pr-9 bg-[#0d1017] text-xs sm:text-sm text-slate-200 border border-slate-700 rounded-lg focus:border-amber-500 focus:outline-none"
@@ -112,6 +133,21 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
               <Lock className="w-4 h-4 text-slate-500 absolute right-3 pointer-events-none" />
             </div>
           </div>
+
+          {isInviteFlow && (
+            <div>
+              <label htmlFor="login-password-confirmation" className="text-xs font-semibold text-slate-300 block mb-1">
+                Confirme sua senha
+              </label>
+              <input
+                id="login-password-confirmation"
+                type="password"
+                value={passwordConfirmation}
+                onChange={(e) => setPasswordConfirmation(e.target.value)}
+                className="w-full h-10 px-3 bg-[#0d1017] text-xs sm:text-sm text-slate-200 border border-slate-700 rounded-lg focus:border-amber-500 focus:outline-none"
+              />
+            </div>
+          )}
 
           {error && <p className="text-xs text-rose-400">{error}</p>}
 
@@ -122,7 +158,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
             className="w-full font-bold shadow-lg shadow-amber-500/20 mt-2"
             disabled={isSubmitting}
           >
-            <span>{isSubmitting ? "Autenticando..." : "Acessar Meu Acervo"}</span>
+            <span>{isSubmitting ? "Processando..." : isInviteFlow ? "Definir senha e entrar" : "Acessar Meu Acervo"}</span>
             <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
         </form>

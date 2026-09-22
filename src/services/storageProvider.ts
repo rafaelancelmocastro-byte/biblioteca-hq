@@ -1,5 +1,73 @@
 import { StorageProvider, StorageUploadResult } from "../types/repositories";
 import { APP_CONFIG } from "../config/app";
+import { isSupabaseConfigured, supabase } from "./supabaseClient";
+
+async function getAccessToken(): Promise<string> {
+  if (!supabase) throw new Error("Supabase não está configurado.");
+  const { data } = await supabase.auth.getSession();
+  if (!data.session?.access_token) throw new Error("Sua sessão expirou. Entre novamente.");
+  return data.session.access_token;
+}
+
+async function readApiError(response: Response): Promise<string> {
+  const payload = await response.json().catch(() => null);
+  return payload?.error || "Não foi possível concluir a operação.";
+}
+
+export class R2StorageProvider implements StorageProvider {
+  async getFileUrl(fileKey: string): Promise<string> {
+    const accessToken = await getAccessToken();
+    const response = await fetch("/api/storage/presign-read", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ key: fileKey }),
+    });
+    if (!response.ok) throw new Error(await readApiError(response));
+    const payload = await response.json();
+    return payload.readUrl;
+  }
+
+  async createPresignedUploadUrl(fileName: string, contentType: string) {
+    const accessToken = await getAccessToken();
+    const purpose = contentType === "application/pdf" ? "comic" : "cover";
+    const response = await fetch("/api/storage/presign-upload", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ fileName, contentType, purpose }),
+    });
+    if (!response.ok) throw new Error(await readApiError(response));
+    const payload = await response.json();
+    return { uploadUrl: payload.uploadUrl, fileKey: payload.key };
+  }
+
+  async uploadFile(file: File, path: string): Promise<StorageUploadResult> {
+    const { uploadUrl, fileKey } = await this.createPresignedUploadUrl(file.name, file.type);
+    const response = await fetch(uploadUrl, {
+      method: "PUT",
+      headers: { "Content-Type": file.type },
+      body: file,
+    });
+    if (!response.ok) throw new Error("O R2 recusou o upload do arquivo.");
+
+    return {
+      fileKey,
+      fileSizeMb: Number((file.size / (1024 * 1024)).toFixed(2)),
+      signedUrl: path,
+    };
+  }
+
+  async checkHealth() {
+    const response = await fetch("/api/integrations/health");
+    const payload = await response.json().catch(() => null);
+    const configured = response.ok && payload?.integrations?.r2 === "ok";
+    return {
+      provider: "cloudflare_r2" as const,
+      configured,
+      bucketName: APP_CONFIG.infra.storageBucketName,
+      message: configured ? "Cloudflare R2 conectado." : "Cloudflare R2 indisponível.",
+    };
+  }
+}
 
 /**
  * Provedor de Armazenamento Local / Simulado.
@@ -64,4 +132,6 @@ export class LocalStorageProvider implements StorageProvider {
   }
 }
 
-export const storageProvider = new LocalStorageProvider();
+export const storageProvider: StorageProvider = isSupabaseConfigured
+  ? new R2StorageProvider()
+  : new LocalStorageProvider();

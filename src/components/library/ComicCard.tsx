@@ -63,13 +63,17 @@ export const ComicCard: React.FC<ComicCardProps> = ({
       {/* Container da Capa com proporção de HQ */}
       <div className="relative aspect-[2/3] w-full rounded-xl overflow-hidden bg-slate-900 border border-[#1e2535] group-hover:border-slate-600 transition-all duration-300 shadow-md group-hover:shadow-xl group-hover:shadow-black/60 group-hover:-translate-y-1">
         {/* Placeholder de Capa Vetorial Elegante */}
-        <CoverPlaceholder
-          title={comic.title}
-          seriesTitle={comic.seriesTitle}
-          issueNumber={comic.issueNumber}
-          publisher={comic.publisher}
-          coverStyle={comic.coverStyle}
-        />
+        {comic.coverUrl ? (
+          <img src={comic.coverUrl} alt={`Capa de ${comic.title}`} className="h-full w-full object-cover" loading="lazy" />
+        ) : (
+          <CoverPlaceholder
+            title={comic.title}
+            seriesTitle={comic.seriesTitle}
+            issueNumber={comic.issueNumber}
+            publisher={comic.publisher}
+            coverStyle={comic.coverStyle}
+          />
+        )}
 
         {/* Botão de Favorito Sobreposto (Canto Superior Direito) */}
         <button

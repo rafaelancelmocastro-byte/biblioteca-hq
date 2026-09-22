@@ -50,14 +50,18 @@ export const ContinueReadingSection: React.FC<ContinueReadingSectionProps> = ({
                 onClick={() => onOpenReader(comic.id)}
                 className="w-20 sm:w-24 flex-shrink-0 cursor-pointer rounded-lg overflow-hidden relative group/cover shadow-md"
               >
-                <CoverPlaceholder
-                  title={comic.title}
-                  seriesTitle={comic.seriesTitle}
-                  issueNumber={comic.issueNumber}
-                  publisher={comic.publisher}
-                  coverStyle={comic.coverStyle}
-                  showSpine={false}
-                />
+                {comic.coverUrl ? (
+                  <img src={comic.coverUrl} alt={`Capa de ${comic.title}`} className="h-full w-full object-cover" loading="lazy" />
+                ) : (
+                  <CoverPlaceholder
+                    title={comic.title}
+                    seriesTitle={comic.seriesTitle}
+                    issueNumber={comic.issueNumber}
+                    publisher={comic.publisher}
+                    coverStyle={comic.coverStyle}
+                    showSpine={false}
+                  />
+                )}
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/cover:opacity-100 transition-opacity flex items-center justify-center">
                   <Play className="w-6 h-6 text-amber-400 fill-amber-400" />
                 </div>

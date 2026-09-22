@@ -4,9 +4,10 @@ import { BookOpen, Clock, Layers, Heart, Shield } from "lucide-react";
 interface MobileNavProps {
   currentPath: string;
   onNavigate: (path: string) => void;
+  isOwner?: boolean;
 }
 
-export const MobileNav: React.FC<MobileNavProps> = ({ currentPath, onNavigate }) => {
+export const MobileNav: React.FC<MobileNavProps> = ({ currentPath, onNavigate, isOwner = false }) => {
   const items = [
     {
       label: "Biblioteca",
@@ -32,6 +33,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ currentPath, onNavigate })
       label: "Admin",
       path: "/admin",
       icon: Shield,
+      ownerOnly: true,
     },
   ];
 
@@ -40,8 +42,8 @@ export const MobileNav: React.FC<MobileNavProps> = ({ currentPath, onNavigate })
       className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0c0f16]/95 backdrop-blur-md border-t border-[#1e2535] pb-[env(safe-area-inset-bottom)] shadow-lg"
       aria-label="Navegação móvel"
     >
-      <div className="grid grid-cols-5 h-16 max-w-lg mx-auto">
-        {items.map((item) => {
+      <div className={`grid ${isOwner ? "grid-cols-5" : "grid-cols-4"} h-16 max-w-lg mx-auto`}>
+        {items.filter((item) => !item.ownerOnly || isOwner).map((item) => {
           const Icon = item.icon;
           const isActive = currentPath === item.path;
 

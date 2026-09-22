@@ -13,6 +13,8 @@ interface AppLayoutProps {
   activeFiltersCount?: number;
   totalComicsCount?: number;
   hideHeaderAndNav?: boolean; // Para modo de leitura imersivo ou login
+  onLogout?: () => void | Promise<void>;
+  isOwner?: boolean;
 }
 
 export const AppLayout: React.FC<AppLayoutProps> = ({
@@ -23,8 +25,10 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   onSearchChange,
   onToggleFilters,
   activeFiltersCount = 0,
-  totalComicsCount = 18,
+  totalComicsCount = 0,
   hideHeaderAndNav = false,
+  onLogout,
+  isOwner = false,
 }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -41,6 +45,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         totalComicsCount={totalComicsCount}
+        isOwner={isOwner}
       />
 
       {/* Conteúdo Principal com Header e Scroll independente */}
@@ -52,6 +57,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
           activeFiltersCount={activeFiltersCount}
           onNavigate={onNavigate}
           currentPath={currentPath}
+          onLogout={onLogout}
+          isOwner={isOwner}
         />
 
         <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 max-w-7xl w-full mx-auto">
@@ -59,7 +66,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         </main>
 
         {/* Mobile Navigation bar */}
-        <MobileNav currentPath={currentPath} onNavigate={onNavigate} />
+        <MobileNav currentPath={currentPath} onNavigate={onNavigate} isOwner={isOwner} />
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Shield,
   Server,
@@ -19,9 +19,11 @@ import { useLibrary } from "../../hooks/useLibrary";
 import { Button } from "../../components/ui/Button";
 import { Badge } from "../../components/ui/Badge";
 import { formatFileSize } from "../../lib/formatters";
+import { storageProvider } from "../../services/storageProvider";
+import { createComicRecord } from "../../services/comicAdminService";
 
 export const AdminPage: React.FC = () => {
-  const { allComics, seriesList } = useLibrary();
+  const { allComics, seriesList, reloadData } = useLibrary();
 
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -32,6 +34,11 @@ export const AdminPage: React.FC = () => {
   const [newSeries, setNewSeries] = useState(seriesList[0]?.id || "");
   const [newIssue, setNewIssue] = useState("1");
   const [newYear, setNewYear] = useState("2026");
+  const [newTotalPages, setNewTotalPages] = useState("1");
+
+  useEffect(() => {
+    if (!newSeries && seriesList[0]) setNewSeries(seriesList[0].id);
+  }, [newSeries, seriesList]);
 
   // Estatísticas calculadas
   const totalMb = allComics.reduce((acc, curr) => acc + curr.fileSizeMb, 0);
@@ -49,25 +56,46 @@ export const AdminPage: React.FC = () => {
     }
   };
 
-  const handleSimulateUpload = (e: React.FormEvent) => {
+  const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedFile && !newTitle) {
-      alert("Selecione um arquivo PDF ou informe o título da HQ.");
+    const series = seriesList.find((item) => item.id === newSeries) ?? seriesList[0];
+    if (!selectedFile || !newTitle.trim() || !series) {
+      setUploadStatus("Selecione o PDF, informe o título e escolha uma série.");
+      return;
+    }
+
+    if (selectedFile.size > 250 * 1024 * 1024) {
+      setUploadStatus("O arquivo excede o limite de 250 MB.");
       return;
     }
 
     setIsUploading(true);
-    setUploadStatus("Validando arquivo PDF e preparando chave privada R2...");
+    setUploadStatus("Enviando o PDF com conexão privada ao Cloudflare R2...");
 
-    setTimeout(() => {
-      setUploadStatus("Simulando upload para Cloudflare R2 (bucket: biblioteca-hqs)...");
-      setTimeout(() => {
-        setIsUploading(false);
-        setUploadStatus("Upload concluído com sucesso! (Modo de demonstração da Fase 1)");
-        setSelectedFile(null);
-        setNewTitle("");
-      }, 1200);
-    }, 800);
+    try {
+      const uploaded = await storageProvider.uploadFile(selectedFile, "comics");
+      setUploadStatus("PDF armazenado. Registrando metadados no Supabase...");
+      await createComicRecord({
+        title: newTitle,
+        issueNumber: Number(newIssue),
+        year: Number(newYear),
+        totalPages: Number(newTotalPages),
+        fileName: selectedFile.name,
+        fileSizeMb: uploaded.fileSizeMb,
+        pdfKey: uploaded.fileKey,
+        series,
+      });
+      setUploadStatus("HQ enviada ao R2 e cadastrada no Supabase com sucesso.");
+      setSelectedFile(null);
+      setNewTitle("");
+      setNewIssue("1");
+      setNewTotalPages("1");
+      await reloadData();
+    } catch (error) {
+      setUploadStatus(error instanceof Error ? error.message : "Não foi possível concluir o upload.");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleClearCache = () => {
@@ -118,7 +146,7 @@ export const AdminPage: React.FC = () => {
           <span className="text-2xl font-black text-white tabular-nums mt-1 block">
             {allComics.length}
           </span>
-          <span className="text-[11px] text-slate-400 mt-1 block">Em 6 séries e arcos</span>
+          <span className="text-[11px] text-slate-400 mt-1 block">Em {seriesList.length} séries e coleções</span>
         </div>
 
         <div className="bg-[#121622] p-4 rounded-xl border border-slate-800">
@@ -143,7 +171,7 @@ export const AdminPage: React.FC = () => {
             {completedCount}
           </span>
           <span className="text-[11px] text-emerald-500/80 mt-1 block">
-            {Math.round((completedCount / allComics.length) * 100)}% da biblioteca
+            {allComics.length ? Math.round((completedCount / allComics.length) * 100) : 0}% da biblioteca
           </span>
         </div>
       </div>
@@ -166,10 +194,10 @@ export const AdminPage: React.FC = () => {
                   <Database className="w-4 h-4 text-emerald-400" />
                   Supabase Database
                 </span>
-                <Badge variant="amber">Aguardando Fase 2</Badge>
+                <Badge variant="emerald">Conectado</Badge>
               </div>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Estrutura de repositórios tipados (ComicRepository, ProgressRepository, FavoriteRepository) já implementada com contratos estritos.
+                Catálogo, séries, favoritos e progresso de leitura persistidos no banco com acesso autenticado.
               </p>
             </div>
             <div className="mt-4 pt-2 border-t border-slate-800 text-[10px] text-slate-400 font-mono">
@@ -185,10 +213,10 @@ export const AdminPage: React.FC = () => {
                   <Cloud className="w-4 h-4 text-sky-400" />
                   Cloudflare R2 Bucket
                 </span>
-                <Badge variant="amber">Aguardando Fase 2</Badge>
+                <Badge variant="emerald">Conectado</Badge>
               </div>
               <p className="text-xs text-slate-400 leading-relaxed">
-                StorageProvider preparado para URLs assinadas temporárias e upload seguro sem exposição de Secret Access Key.
+                PDFs e capas privados com upload e leitura por URLs assinadas temporárias.
               </p>
             </div>
             <div className="mt-4 pt-2 border-t border-slate-800 text-[10px] text-slate-400 font-mono">
@@ -217,7 +245,7 @@ export const AdminPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Seção 3: Upload Simulado de Nova HQ */}
+      {/* Seção 3: Upload de Nova HQ */}
       <div className="bg-[#121622] border border-[#1e2535] rounded-2xl p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -227,7 +255,7 @@ export const AdminPage: React.FC = () => {
           <Badge variant="outline">Apenas Proprietário</Badge>
         </div>
 
-        <form onSubmit={handleSimulateUpload} className="space-y-4">
+        <form onSubmit={handleUpload} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <div className="sm:col-span-2">
               <label htmlFor="comic-title-input" className="text-xs font-semibold text-slate-300 block mb-1">
@@ -276,6 +304,21 @@ export const AdminPage: React.FC = () => {
             </div>
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="comic-year-input" className="text-xs font-semibold text-slate-300 block mb-1">
+                Ano de publicação
+              </label>
+              <input id="comic-year-input" type="number" min="1800" max="2200" value={newYear} onChange={(e) => setNewYear(e.target.value)} className="w-full h-9 px-3 bg-[#0d1017] text-xs sm:text-sm text-slate-200 border border-slate-700 rounded-lg focus:border-amber-500 focus:outline-none" />
+            </div>
+            <div>
+              <label htmlFor="comic-pages-input" className="text-xs font-semibold text-slate-300 block mb-1">
+                Total de páginas
+              </label>
+              <input id="comic-pages-input" type="number" min="1" value={newTotalPages} onChange={(e) => setNewTotalPages(e.target.value)} className="w-full h-9 px-3 bg-[#0d1017] text-xs sm:text-sm text-slate-200 border border-slate-700 rounded-lg focus:border-amber-500 focus:outline-none" />
+            </div>
+          </div>
+
           {/* Área de Seleção de Arquivo */}
           <div className="border-2 border-dashed border-slate-700 hover:border-amber-500/60 rounded-xl p-6 text-center bg-[#0d1017]/60 transition-colors">
             <input
@@ -315,7 +358,7 @@ export const AdminPage: React.FC = () => {
               isLoading={isUploading}
               className="font-bold"
             >
-              Simular Cadastro e Upload
+              Cadastrar e enviar ao R2
             </Button>
           </div>
         </form>
