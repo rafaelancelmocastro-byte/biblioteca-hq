@@ -157,14 +157,14 @@ export const Header: React.FC<HeaderProps> = ({
                 {isOwner && <button
                   onClick={() => {
                     setIsUserMenuOpen(false);
-                    onNavigate("/admin");
+                    onNavigate("/configuracoes");
                   }}
                   className={`w-full text-left px-4 py-2 text-xs flex items-center gap-2.5 hover:bg-slate-800/60 cursor-pointer ${
-                    currentPath === "/admin" ? "text-amber-400 font-semibold" : "text-slate-300"
+                    currentPath === "/configuracoes" || currentPath === "/admin" ? "text-amber-400 font-semibold" : "text-slate-300"
                   }`}
                 >
                   <Shield className="w-4 h-4 text-slate-400" />
-                  <span>Painel de Administração</span>
+                  <span>Configurações do Acervo</span>
                 </button>}
 
                 <button

@@ -30,8 +30,8 @@ export const MobileNav: React.FC<MobileNavProps> = ({ currentPath, onNavigate, i
       icon: Heart,
     },
     {
-      label: "Admin",
-      path: "/admin",
+      label: "Ajustes",
+      path: "/configuracoes",
       icon: Shield,
       ownerOnly: true,
     },

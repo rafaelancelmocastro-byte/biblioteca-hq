@@ -52,8 +52,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: Heart,
     },
     {
-      label: "Administração",
-      path: "/admin",
+      label: "Configurações",
+      path: "/configuracoes",
       icon: ShieldCheck,
       tag: "Dono",
       ownerOnly: true,

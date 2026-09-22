@@ -27,7 +27,7 @@ export default function App() {
   const isOwner = session?.user.email?.toLowerCase() === APP_CONFIG.ownerEmail.toLowerCase();
 
   useEffect(() => {
-    if (!isLoading && isSupabaseConfigured && session && activeRoute === "/admin" && !isOwner) {
+    if (!isLoading && isSupabaseConfigured && session && (activeRoute === "/admin" || activeRoute === "/configuracoes") && !isOwner) {
       navigate("/biblioteca");
     }
   }, [activeRoute, isLoading, isOwner, isSupabaseConfigured, navigate, session]);
@@ -100,7 +100,7 @@ export default function App() {
         />
       )}
 
-      {activeRoute === "/admin" && (isOwner || !isSupabaseConfigured) && <AdminPage />}
+      {(activeRoute === "/admin" || activeRoute === "/configuracoes") && (isOwner || !isSupabaseConfigured) && <AdminPage />}
     </AppLayout>
   );
 }
