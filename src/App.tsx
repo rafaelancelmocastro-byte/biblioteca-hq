@@ -10,11 +10,14 @@ import { ContinuePage } from "./app/pages/ContinuePage";
 import { SeriesPage } from "./app/pages/SeriesPage";
 import { FavoritesPage } from "./app/pages/FavoritesPage";
 import { AdminPage } from "./app/pages/AdminPage";
-import { ReaderPage } from "./app/pages/ReaderPage";
 import { LoginPage } from "./app/pages/LoginPage";
 import { useNavigation } from "./hooks/useNavigation";
 import { useAuth } from "./hooks/useAuth";
 import { APP_CONFIG } from "./config/app";
+
+const ReaderPage = React.lazy(() =>
+  import("./app/pages/ReaderPage").then((module) => ({ default: module.ReaderPage }))
+);
 
 export default function App() {
   const { pathname, activeRoute, comicId, navigate, openReader } = useNavigation();
@@ -44,10 +47,9 @@ export default function App() {
   // Rota de Leitura Imersiva (oculta layout padrão)
   if (activeRoute === "/ler" && comicId) {
     return (
-      <ReaderPage
-        comicId={comicId}
-        onBack={() => navigate("/biblioteca")}
-      />
+      <React.Suspense fallback={<div className="min-h-screen bg-[#080706] flex items-center justify-center"><div className="w-10 h-10 border-2 border-[#d95e32] border-t-transparent rounded-full animate-spin" /></div>}>
+        <ReaderPage comicId={comicId} onBack={() => navigate("/biblioteca")} />
+      </React.Suspense>
     );
   }
 

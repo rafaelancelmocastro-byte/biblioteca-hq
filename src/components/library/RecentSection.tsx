@@ -25,12 +25,12 @@ export const RecentSection: React.FC<RecentSectionProps> = ({
   if (comics.length === 0) return null;
 
   return (
-    <section className="mb-10" aria-labelledby="section-recent-comics">
+    <section className="mb-10 streaming-section" aria-labelledby="section-recent-comics">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-amber-400" />
-          <h2 id="section-recent-comics" className="text-lg font-bold text-white tracking-tight">
-            Adicionadas Recentemente
+          <Sparkles className="w-4 h-4 text-[#d6653e]" />
+          <h2 id="section-recent-comics" className="streaming-heading">
+            Novidades no acervo
           </h2>
           <span className="text-xs text-slate-400 font-mono">
             Últimas aquisições do acervo
@@ -39,7 +39,7 @@ export const RecentSection: React.FC<RecentSectionProps> = ({
       </div>
 
       {/* Grid horizontal responsivo */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
+      <div className="streaming-rail">
         {comics.map((comic) => (
           <ComicCard
             key={comic.id}

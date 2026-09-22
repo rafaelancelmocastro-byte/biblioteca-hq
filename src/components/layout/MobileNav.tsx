@@ -39,7 +39,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ currentPath, onNavigate, i
 
   return (
     <nav
-      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0c0f16]/95 backdrop-blur-md border-t border-[#1e2535] pb-[env(safe-area-inset-bottom)] shadow-lg"
+      className="app-mobile-nav md:hidden fixed bottom-0 left-0 right-0 z-40 pb-[env(safe-area-inset-bottom)] shadow-lg"
       aria-label="Navegação móvel"
     >
       <div className={`grid ${isOwner ? "grid-cols-5" : "grid-cols-4"} h-16 max-w-lg mx-auto`}>

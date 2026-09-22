@@ -57,11 +57,11 @@ export const ComicCard: React.FC<ComicCardProps> = ({
 
   return (
     <div
-      className="group relative flex flex-col focus-within:ring-2 focus-within:ring-amber-500 rounded-xl"
+      className="comic-tile group relative flex flex-col focus-within:ring-2 focus-within:ring-[#d6653e] rounded-2xl"
       id={`comic-card-${comic.id}`}
     >
       {/* Container da Capa com proporção de HQ */}
-      <div className="relative aspect-[2/3] w-full rounded-xl overflow-hidden bg-slate-900 border border-[#1e2535] group-hover:border-slate-600 transition-all duration-300 shadow-md group-hover:shadow-xl group-hover:shadow-black/60 group-hover:-translate-y-1">
+      <div className="comic-cover relative aspect-[2/3] w-full rounded-2xl overflow-hidden bg-[#171310] border border-white/8 transition-all duration-300 shadow-md group-hover:-translate-y-1.5">
         {/* Placeholder de Capa Vetorial Elegante */}
         {comic.coverUrl ? (
           <img src={comic.coverUrl} alt={`Capa de ${comic.title}`} className="h-full w-full object-cover" loading="lazy" />
@@ -181,7 +181,7 @@ export const ComicCard: React.FC<ComicCardProps> = ({
           onClick={() => onOpenReader(comic.id)}
           className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 z-10 cursor-pointer p-4 backdrop-blur-[2px]"
         >
-          <div className="w-12 h-12 rounded-full bg-amber-500 text-black flex items-center justify-center font-bold shadow-lg shadow-amber-500/30 transform scale-90 group-hover:scale-100 transition-transform">
+          <div className="w-12 h-12 rounded-full bg-[#d95e32] text-white flex items-center justify-center font-bold shadow-lg shadow-[#d95e32]/30 transform scale-90 group-hover:scale-100 transition-transform">
             <BookOpen className="w-6 h-6 ml-0.5" />
           </div>
           <span className="text-xs font-bold text-white bg-black/60 px-3 py-1 rounded-full border border-white/20">

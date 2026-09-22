@@ -7,6 +7,7 @@ import { LibraryGrid } from "../../components/library/LibraryGrid";
 import { ComicDetailModal } from "../../components/library/ComicDetailModal";
 import { ProgressUpdateModal } from "../../components/library/ProgressUpdateModal";
 import { useLibrary } from "../../hooks/useLibrary";
+import { BookOpen, Info, LibraryBig, ShieldCheck } from "lucide-react";
 
 interface LibraryPageProps {
   onOpenReader: (comicId: string) => void;
@@ -39,6 +40,8 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
     toggleFavorite,
     updateProgress,
     setStatus,
+    allComics,
+    isLoading,
   } = useLibrary();
 
   // Sincroniza query global da busca do cabeçalho com o filtro
@@ -51,9 +54,52 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
 
   const [selectedComic, setSelectedComic] = useState<Comic | null>(null);
   const [comicForProgress, setComicForProgress] = useState<Comic | null>(null);
+  const featuredComic = continueReadingComics[0] ?? recentlyAddedComics[0] ?? allComics[0];
 
   return (
     <div className="space-y-8">
+      {featuredComic && !searchQuery && (
+        <section className="catalog-hero" aria-label="Destaque da biblioteca">
+          {featuredComic.coverUrl && (
+            <img src={featuredComic.coverUrl} alt="" className="catalog-hero-art" aria-hidden="true" />
+          )}
+          <div className="catalog-hero-vignette" />
+          <div className="catalog-hero-content">
+            <div className="catalog-eyebrow"><ShieldCheck /> Acervo privado sincronizado</div>
+            <p className="catalog-kicker">{featuredComic.seriesTitle} · edição {featuredComic.issueNumber}</p>
+            <h1>{featuredComic.title}</h1>
+            <p className="catalog-hero-copy">
+              {featuredComic.synopsis || `${featuredComic.totalPages} páginas em alta definição, disponíveis no seu acervo pessoal.`}
+            </p>
+            <div className="catalog-hero-meta">
+              <span>{featuredComic.year}</span><i />
+              <span>{featuredComic.publisher}</span><i />
+              <span>{featuredComic.totalPages} páginas</span>
+            </div>
+            <div className="catalog-hero-actions">
+              <button onClick={() => onOpenReader(featuredComic.id)} className="catalog-primary-action">
+                <BookOpen /> {featuredComic.progress?.percentage ? "Continuar leitura" : "Ler agora"}
+              </button>
+              <button onClick={() => setSelectedComic(featuredComic)} className="catalog-secondary-action">
+                <Info /> Detalhes
+              </button>
+            </div>
+          </div>
+          <div className="catalog-cover-float">
+            {featuredComic.coverUrl && <img src={featuredComic.coverUrl} alt={`Capa de ${featuredComic.title}`} />}
+          </div>
+        </section>
+      )}
+
+      {!isLoading && allComics.length > 0 && (
+        <div className="catalog-summary">
+          <LibraryBig />
+          <span><strong>{allComics.length}</strong> títulos no acervo</span>
+          <span className="catalog-summary-dot" />
+          <span>PDFs e capas protegidos no Cloudflare R2</span>
+        </div>
+      )}
+
       {/* Seção 1: Continuar Lendo (cards horizontais) - aparece se não houver busca ativa */}
       {!searchQuery && filters.series === "all" && filters.status === "all" && (
         <ContinueReadingSection
@@ -81,10 +127,10 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-xl font-extrabold text-white tracking-tight">
-              Toda a Biblioteca
+              Catálogo completo
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              Explore o acervo completo, filtre por série, autor ou status de leitura
+              Encontre sua próxima leitura por série, ano ou progresso
             </p>
           </div>
         </div>

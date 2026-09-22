@@ -25,8 +25,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const readUrl = await getSignedUrl(
     createR2Client(config),
     new GetObjectCommand({ Bucket: config.bucketName, Key: key }),
-    { expiresIn: 600 }
+    { expiresIn: 3600 }
   );
 
-  return res.status(200).json({ key, readUrl, expiresInSeconds: 600 });
+  return res.status(200).json({ key, readUrl, expiresInSeconds: 3600 });
 }

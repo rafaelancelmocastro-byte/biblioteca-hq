@@ -61,7 +61,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside
-      className={`hidden md:flex flex-col flex-shrink-0 transition-all duration-300 ease-in-out border-r border-[#1e2535] bg-[#0d1017] z-30 select-none ${
+      className={`app-sidebar hidden md:flex flex-col flex-shrink-0 transition-all duration-300 ease-in-out z-30 select-none ${
         isCollapsed ? "w-20" : "w-64"
       }`}
       aria-label="Navegação Principal"
@@ -75,8 +75,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           }`}
           title={APP_CONFIG.name}
         >
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-black font-black text-lg shadow-md shadow-amber-500/20 flex-shrink-0">
-            HQ
+          <div className="w-9 h-9 rounded-full bg-[#b35532] flex items-center justify-center text-[#fff7f0] font-black text-sm shadow-lg shadow-[#b35532]/20 flex-shrink-0">
+            B
           </div>
           {!isCollapsed && (
             <div className="flex flex-col overflow-hidden">

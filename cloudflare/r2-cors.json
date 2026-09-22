@@ -1,0 +1,23 @@
+{
+  "rules": [
+    {
+      "id": "biblioteca-hq-web",
+      "allowed": {
+        "origins": [
+          "https://biblioteca-hq.vercel.app",
+          "http://localhost:3000"
+        ],
+        "methods": ["GET", "PUT", "HEAD"],
+        "headers": [
+          "Content-Type",
+          "Range",
+          "Cache-Control",
+          "x-amz-content-sha256",
+          "x-amz-date"
+        ]
+      },
+      "exposeHeaders": ["ETag", "Content-Length", "Content-Range", "Accept-Ranges"],
+      "maxAgeSeconds": 3600
+    }
+  ]
+}

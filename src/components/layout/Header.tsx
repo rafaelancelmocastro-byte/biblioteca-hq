@@ -48,7 +48,7 @@ export const Header: React.FC<HeaderProps> = ({
   }, [isUserMenuOpen]);
 
   return (
-    <header className="h-16 border-b border-[#1e2535] bg-[#0d1017]/90 backdrop-blur-md sticky top-0 z-30 px-4 sm:px-6 flex items-center justify-between gap-3">
+    <header className="app-header h-16 sticky top-0 z-30 px-4 sm:px-6 flex items-center justify-between gap-3">
       {/* Esquerda: Saudação discreta */}
       <div className="flex items-center gap-3">
         {/* Logo visível no mobile */}
@@ -62,8 +62,8 @@ export const Header: React.FC<HeaderProps> = ({
         </button>
 
         <div className="hidden sm:flex flex-col">
-          <span className="text-xs text-slate-400 font-medium">
-            {getGreeting()}, <strong className="text-slate-200 font-semibold">{APP_CONFIG.ownerName}</strong>
+          <span className="text-xs text-[#c2bbb4] font-medium">
+            {getGreeting()}, <strong className="text-[#f5eee9] font-semibold">{APP_CONFIG.ownerName}</strong>
           </span>
           <span className="text-[10px] text-slate-500 font-mono">
             {APP_CONFIG.tagline}
@@ -81,7 +81,7 @@ export const Header: React.FC<HeaderProps> = ({
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Buscar por HQ, série, personagem ou autor..."
-            className="w-full h-9 pl-9 pr-8 bg-[#141824] hover:bg-[#181d2c] focus:bg-[#181d2c] text-slate-200 placeholder-slate-500 text-xs sm:text-sm rounded-lg border border-slate-700/60 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/50 transition-colors"
+            className="app-search w-full h-10 pl-9 pr-8 text-[#f5eee9] placeholder-[#8d9585] text-xs sm:text-sm rounded-full focus:outline-none transition-colors"
             aria-label="Buscar na biblioteca"
           />
           {searchQuery && (

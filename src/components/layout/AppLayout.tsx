@@ -37,7 +37,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   }
 
   return (
-    <div className="min-h-screen flex bg-[#0b0e14] text-slate-100 overflow-x-hidden">
+    <div className="app-shell min-h-screen flex text-slate-100 overflow-x-hidden">
       {/* Sidebar Desktop/Tablet */}
       <Sidebar
         currentPath={currentPath}
@@ -61,7 +61,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
           isOwner={isOwner}
         />
 
-        <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 max-w-7xl w-full mx-auto">
+        <main className="cinematic-main flex-1 px-4 sm:px-6 lg:px-9 py-5 sm:py-7 max-w-[1680px] w-full mx-auto">
           {children}
         </main>
 
