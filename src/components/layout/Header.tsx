@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Search, SlidersHorizontal, User, Shield, LogOut, CheckCircle2, X } from "lucide-react";
 import { APP_CONFIG } from "../../config/app";
+import { BrandLogo } from "../ui/BrandLogo";
 
 interface HeaderProps {
   searchQuery: string;
@@ -56,9 +57,7 @@ export const Header: React.FC<HeaderProps> = ({
           onClick={() => onNavigate("/biblioteca")}
           className="md:hidden flex items-center gap-2 cursor-pointer focus-visible:outline-2 focus-visible:outline-amber-400 rounded-md"
         >
-          <div className="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center text-black font-black text-sm shadow-md">
-            HQ
-          </div>
+          <BrandLogo compact className="mobile-brand-mark" />
         </button>
 
         <div className="hidden sm:flex flex-col">

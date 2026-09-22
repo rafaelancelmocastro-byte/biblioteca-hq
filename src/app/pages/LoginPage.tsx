@@ -3,6 +3,7 @@ import { Lock, ArrowRight, ShieldCheck } from "lucide-react";
 import { APP_CONFIG } from "../../config/app";
 import { Button } from "../../components/ui/Button";
 import { isSupabaseConfigured, supabase } from "../../services/supabaseClient";
+import { BrandLogo } from "../../components/ui/BrandLogo";
 
 interface LoginPageProps {
   onSuccess: () => void;
@@ -80,26 +81,18 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-[#080a0f] relative overflow-hidden">
-      {/* Luz ambiente suave de fundo */}
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-
-      <div className="relative w-full max-w-md bg-[#121622] border border-slate-700/80 rounded-2xl p-6 sm:p-8 shadow-2xl shadow-black/90">
+    <div className="login-screen min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+      <div className="login-orbit login-orbit-one" />
+      <div className="login-orbit login-orbit-two" />
+      <div className="login-card relative w-full max-w-md rounded-[2rem] p-6 sm:p-8">
         {/* Logo & Marca */}
         <div className="text-center mb-6">
-          <div className="w-14 h-14 mx-auto rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-black font-black text-2xl shadow-xl shadow-amber-500/20 mb-3">
-            HQ
-          </div>
-          <h1 className="text-2xl font-black text-white tracking-tight">
-            {APP_CONFIG.name}
-          </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Coleção Pessoal & Privada de Quadrinhos
-          </p>
+          <BrandLogo showTagline className="login-brand" />
+          <p className="login-kicker">Streaming privado de quadrinhos</p>
         </div>
 
         {/* Mensagem de Segurança */}
-        <div className="mb-6 p-3 rounded-lg bg-[#161c2b] border border-slate-700/60 flex items-start gap-2.5 text-xs text-slate-300">
+        <div className="mb-6 p-3 rounded-xl bg-white/[.035] border border-white/10 flex items-start gap-2.5 text-xs text-[#c8c0b9]">
           <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
           <p className="leading-relaxed">
             Acesso restrito ao proprietário da biblioteca (<strong className="text-amber-400 font-semibold">{APP_CONFIG.ownerEmail}</strong>). Cadastro público desabilitado por diretiva de privacidade.

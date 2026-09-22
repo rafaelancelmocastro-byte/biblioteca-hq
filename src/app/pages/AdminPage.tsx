@@ -1,391 +1,99 @@
-import React, { useEffect, useState } from "react";
-import {
-  Shield,
-  Server,
-  Cloud,
-  FileUp,
-  Database,
-  CheckCircle2,
-  AlertCircle,
-  HardDrive,
-  Trash2,
-  Download,
-  UploadCloud,
-  Sparkles,
-  Lock,
-} from "lucide-react";
-import { APP_CONFIG } from "../../config/app";
+import React, { useEffect, useMemo, useState } from "react";
+import { BookCopy, CheckCircle2, Cloud, Database, Edit3, FileImage, FileUp, LibraryBig, Plus, Save, Shield, UploadCloud, X } from "lucide-react";
 import { useLibrary } from "../../hooks/useLibrary";
-import { Button } from "../../components/ui/Button";
-import { Badge } from "../../components/ui/Badge";
-import { formatFileSize } from "../../lib/formatters";
 import { storageProvider } from "../../services/storageProvider";
-import { createComicRecord } from "../../services/comicAdminService";
+import { createComicRecord, saveSeriesRecord, updateComicRecord } from "../../services/comicAdminService";
+import type { Comic, Series } from "../../types/comic";
+import { formatFileSize } from "../../lib/formatters";
+
+type Tab = "catalog" | "collections" | "status";
+const splitList = (value: string) => value.split(",").map((item) => item.trim()).filter(Boolean);
+const fieldClass = "admin-field";
 
 export const AdminPage: React.FC = () => {
   const { allComics, seriesList, reloadData } = useLibrary();
-
-  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-
-  // Form states
-  const [newTitle, setNewTitle] = useState("");
-  const [newSeries, setNewSeries] = useState(seriesList[0]?.id || "");
-  const [newIssue, setNewIssue] = useState("1");
-  const [newYear, setNewYear] = useState("2026");
-  const [newTotalPages, setNewTotalPages] = useState("1");
+  const [tab, setTab] = useState<Tab>("catalog");
+  const [editing, setEditing] = useState<Comic | null>(null);
+  const [pdf, setPdf] = useState<File | null>(null);
+  const [cover, setCover] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [form, setForm] = useState({ title: "", seriesId: "", issue: "1", year: String(new Date().getFullYear()), pages: "1", synopsis: "", writers: "", pencillers: "", colorists: "", tags: "" });
+  const [seriesForm, setSeriesForm] = useState({ id: "", title: "", publisher: "Marvel", startYear: String(new Date().getFullYear()), endYear: "", expected: "", description: "" });
 
   useEffect(() => {
-    if (!newSeries && seriesList[0]) setNewSeries(seriesList[0].id);
-  }, [newSeries, seriesList]);
+    if (!form.seriesId && seriesList[0]) setForm((current) => ({ ...current, seriesId: seriesList[0].id }));
+  }, [form.seriesId, seriesList]);
 
-  // Estatísticas calculadas
-  const totalMb = allComics.reduce((acc, curr) => acc + curr.fileSizeMb, 0);
-  const totalPages = allComics.reduce((acc, curr) => acc + curr.totalPages, 0);
-  const completedCount = allComics.filter((c) => c.progress?.status === "completed").length;
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (!file.name.toLowerCase().endsWith(".pdf")) {
-        alert("Apenas arquivos PDF são permitidos na biblioteca de quadrinhos.");
-        return;
-      }
-      setSelectedFile(file);
-    }
+  const totalMb = useMemo(() => allComics.reduce((sum, item) => sum + item.fileSizeMb, 0), [allComics]);
+  const totalPages = useMemo(() => allComics.reduce((sum, item) => sum + item.totalPages, 0), [allComics]);
+  const resetComicForm = () => {
+    setEditing(null); setPdf(null); setCover(null); setNotice("");
+    setForm({ title: "", seriesId: seriesList[0]?.id || "", issue: "1", year: String(new Date().getFullYear()), pages: "1", synopsis: "", writers: "", pencillers: "", colorists: "", tags: "" });
   };
-
-  const handleUpload = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const series = seriesList.find((item) => item.id === newSeries) ?? seriesList[0];
-    if (!selectedFile || !newTitle.trim() || !series) {
-      setUploadStatus("Selecione o PDF, informe o título e escolha uma série.");
-      return;
-    }
-
-    if (selectedFile.size > 250 * 1024 * 1024) {
-      setUploadStatus("O arquivo excede o limite de 250 MB.");
-      return;
-    }
-
-    setIsUploading(true);
-    setUploadStatus("Enviando o PDF com conexão privada ao Cloudflare R2...");
-
+  const startEditing = (comic: Comic) => {
+    setEditing(comic); setPdf(null); setCover(null); setNotice("");
+    setForm({ title: comic.title, seriesId: comic.seriesId, issue: String(comic.issueNumber), year: String(comic.year), pages: String(comic.totalPages), synopsis: comic.synopsis, writers: comic.writers.join(", "), pencillers: comic.pencillers.join(", "), colorists: (comic.colorists || []).join(", "), tags: comic.tags.join(", ") });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  const submitComic = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const series = seriesList.find((item) => item.id === form.seriesId);
+    if (!series || !form.title.trim() || (!editing && !pdf)) { setNotice("Preencha os dados obrigatórios e selecione o PDF."); return; }
+    if (pdf && pdf.size > 250 * 1024 * 1024) { setNotice("O PDF excede o limite de 250 MB."); return; }
+    setBusy(true);
     try {
-      const uploaded = await storageProvider.uploadFile(selectedFile, "comics");
-      setUploadStatus("PDF armazenado. Registrando metadados no Supabase...");
-      await createComicRecord({
-        title: newTitle,
-        issueNumber: Number(newIssue),
-        year: Number(newYear),
-        totalPages: Number(newTotalPages),
-        fileName: selectedFile.name,
-        fileSizeMb: uploaded.fileSizeMb,
-        pdfKey: uploaded.fileKey,
-        series,
-      });
-      setUploadStatus("HQ enviada ao R2 e cadastrada no Supabase com sucesso.");
-      setSelectedFile(null);
-      setNewTitle("");
-      setNewIssue("1");
-      setNewTotalPages("1");
+      setNotice("Enviando arquivos privados ao Cloudflare R2...");
+      const uploadedPdf = pdf ? await storageProvider.uploadFile(pdf, "comics") : null;
+      const uploadedCover = cover ? await storageProvider.uploadFile(cover, "covers") : null;
+      const payload = { title: form.title.trim(), issueNumber: Number(form.issue), year: Number(form.year), totalPages: Number(form.pages), fileName: pdf?.name || editing?.fileName || "", fileSizeMb: uploadedPdf?.fileSizeMb ?? editing?.fileSizeMb ?? 0, pdfKey: uploadedPdf?.fileKey || editing?.pdfPath || "", coverKey: uploadedCover?.fileKey || editing?.coverPath, synopsis: form.synopsis.trim(), writers: splitList(form.writers), pencillers: splitList(form.pencillers), colorists: splitList(form.colorists), tags: splitList(form.tags), series };
+      setNotice("Salvando catálogo e ficha criativa no Supabase...");
+      if (editing) await updateComicRecord(editing.id, payload); else await createComicRecord(payload);
       await reloadData();
-    } catch (error) {
-      setUploadStatus(error instanceof Error ? error.message : "Não foi possível concluir o upload.");
-    } finally {
-      setIsUploading(false);
-    }
+      setNotice(editing ? "Alterações publicadas com sucesso." : "HQ cadastrada e publicada com sucesso.");
+      setPdf(null); setCover(null);
+      if (!editing) setForm((current) => ({ ...current, title: "", issue: "1", pages: "1", synopsis: "", writers: "", pencillers: "", colorists: "", tags: "" }));
+    } catch (error) { setNotice(error instanceof Error ? error.message : "Não foi possível salvar."); }
+    finally { setBusy(false); }
+  };
+  const editSeries = (series?: Series) => setSeriesForm(series ? { id: series.id, title: series.title, publisher: series.publisher, startYear: String(series.startYear), endYear: series.endYear ? String(series.endYear) : "", expected: series.totalIssuesExpected ? String(series.totalIssuesExpected) : "", description: series.description } : { id: "", title: "", publisher: "Marvel", startYear: String(new Date().getFullYear()), endYear: "", expected: "", description: "" });
+  const submitSeries = async (event: React.FormEvent) => {
+    event.preventDefault(); setBusy(true); setNotice("Salvando coleção...");
+    try {
+      await saveSeriesRecord({ id: seriesForm.id || undefined, title: seriesForm.title, publisher: seriesForm.publisher, startYear: Number(seriesForm.startYear), endYear: seriesForm.endYear ? Number(seriesForm.endYear) : undefined, totalIssuesExpected: seriesForm.expected ? Number(seriesForm.expected) : undefined, description: seriesForm.description });
+      await reloadData(); editSeries(); setNotice("Coleção salva e disponível no catálogo.");
+    } catch (error) { setNotice(error instanceof Error ? error.message : "Não foi possível salvar a coleção."); }
+    finally { setBusy(false); }
   };
 
-  const handleClearCache = () => {
-    if (confirm("Deseja realmente limpar o histórico local de leitura e favoritos?")) {
-      window.localStorage.removeItem("biblioteca_hq_progress_v1");
-      window.localStorage.removeItem("biblioteca_hq_favorites_v1");
-      window.location.reload();
-    }
-  };
-
-  const handleExportBackup = () => {
-    const data = {
-      app: APP_CONFIG.name,
-      version: APP_CONFIG.version,
-      exportedAt: new Date().toISOString(),
-      owner: APP_CONFIG.ownerEmail,
-      comics: allComics,
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `backup_biblioteca_hq_${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  return (
-    <div className="space-y-10 max-w-6xl">
-      {/* Header Admin */}
-      <div className="border-b border-[#1e2535] pb-5">
-        <div className="flex items-center gap-2 text-amber-400 mb-1">
-          <Shield className="w-5 h-5" />
-          <span className="text-xs font-bold uppercase tracking-wider">Painel do Proprietário</span>
+  return <div className="streaming-page admin-studio">
+    <section className="page-spotlight admin-spotlight"><div><span className="page-kicker"><Shield /> Central do proprietário</span><h1>Estúdio do acervo</h1><p>Cadastre arquivos, capas, coleções e toda a ficha editorial sem sair da Biblioteca HQ.</p></div><div className="page-metrics"><span><strong>{allComics.length}</strong> títulos</span><span><strong>{seriesList.length}</strong> coleções</span><span><strong>{formatFileSize(totalMb)}</strong> no R2</span></div></section>
+    <div className="studio-tabs" role="tablist"><button className={tab === "catalog" ? "active" : ""} onClick={() => setTab("catalog")}><LibraryBig /> Acervo</button><button className={tab === "collections" ? "active" : ""} onClick={() => setTab("collections")}><BookCopy /> Coleções</button><button className={tab === "status" ? "active" : ""} onClick={() => setTab("status")}><Cloud /> Infraestrutura</button></div>
+    {notice && <div className="studio-notice"><CheckCircle2 /> {notice}</div>}
+    {tab === "catalog" && <div className="studio-grid">
+      <form className="studio-panel comic-editor" onSubmit={submitComic}>
+        <div className="studio-panel-title"><div><span>{editing ? "Editando edição" : "Nova publicação"}</span><h2>{editing?.title || "Cadastrar HQ ou livro"}</h2></div>{editing && <button type="button" onClick={resetComicForm} aria-label="Cancelar edição"><X /></button>}</div>
+        <div className="form-grid">
+          <label className="span-2">Título<input className={fieldClass} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required /></label>
+          <label>Coleção<select className={fieldClass} value={form.seriesId} onChange={(e) => setForm({ ...form, seriesId: e.target.value })}>{seriesList.map((series) => <option key={series.id} value={series.id}>{series.title}</option>)}</select></label>
+          <label>Edição<input className={fieldClass} type="number" min="1" value={form.issue} onChange={(e) => setForm({ ...form, issue: e.target.value })} required /></label>
+          <label>Ano<input className={fieldClass} type="number" min="1800" max="2200" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} required /></label>
+          <label>Páginas<input className={fieldClass} type="number" min="1" value={form.pages} onChange={(e) => setForm({ ...form, pages: e.target.value })} required /></label>
+          <label className="span-2">Sinopse<textarea className={fieldClass} rows={4} value={form.synopsis} onChange={(e) => setForm({ ...form, synopsis: e.target.value })} /></label>
+          <label>Roteiro<input className={fieldClass} placeholder="Nomes separados por vírgula" value={form.writers} onChange={(e) => setForm({ ...form, writers: e.target.value })} /></label>
+          <label>Arte e desenho<input className={fieldClass} placeholder="Nomes separados por vírgula" value={form.pencillers} onChange={(e) => setForm({ ...form, pencillers: e.target.value })} /></label>
+          <label>Cores<input className={fieldClass} placeholder="Nomes separados por vírgula" value={form.colorists} onChange={(e) => setForm({ ...form, colorists: e.target.value })} /></label>
+          <label>Categorias / tags<input className={fieldClass} placeholder="X-Men, mutantes, aventura" value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} /></label>
         </div>
-        <h1 className="text-2xl font-black text-white tracking-tight">
-          Administração do Acervo
-        </h1>
-        <p className="text-xs sm:text-sm text-slate-400 mt-1">
-          Monitoramento de armazenamento, preparação de infraestrutura e gestão da coleção privada
-        </p>
-      </div>
-
-      {/* Cards de Métricas do Acervo */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-[#121622] p-4 rounded-xl border border-slate-800">
-          <span className="text-xs text-slate-400 font-semibold block uppercase">Total de HQs</span>
-          <span className="text-2xl font-black text-white tabular-nums mt-1 block">
-            {allComics.length}
-          </span>
-          <span className="text-[11px] text-slate-400 mt-1 block">Em {seriesList.length} séries e coleções</span>
-        </div>
-
-        <div className="bg-[#121622] p-4 rounded-xl border border-slate-800">
-          <span className="text-xs text-slate-400 font-semibold block uppercase">Armazenamento</span>
-          <span className="text-2xl font-black text-amber-400 tabular-nums mt-1 block">
-            {formatFileSize(totalMb)}
-          </span>
-          <span className="text-[11px] text-slate-400 mt-1 block">PDFs de alta definição</span>
-        </div>
-
-        <div className="bg-[#121622] p-4 rounded-xl border border-slate-800">
-          <span className="text-xs text-slate-400 font-semibold block uppercase">Páginas Catalogadas</span>
-          <span className="text-2xl font-black text-white tabular-nums mt-1 block">
-            {totalPages.toLocaleString("pt-BR")}
-          </span>
-          <span className="text-[11px] text-slate-400 mt-1 block">Total digitalizado</span>
-        </div>
-
-        <div className="bg-[#121622] p-4 rounded-xl border border-slate-800">
-          <span className="text-xs text-slate-400 font-semibold block uppercase">Leituras Concluídas</span>
-          <span className="text-2xl font-black text-emerald-400 tabular-nums mt-1 block">
-            {completedCount}
-          </span>
-          <span className="text-[11px] text-emerald-500/80 mt-1 block">
-            {allComics.length ? Math.round((completedCount / allComics.length) * 100) : 0}% da biblioteca
-          </span>
-        </div>
-      </div>
-
-      {/* Seção 2: Status da Arquitetura Futura */}
-      <div className="bg-[#121622] border border-[#1e2535] rounded-2xl p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Server className="w-5 h-5 text-amber-400" />
-          <h2 className="text-base font-bold text-white">
-            Status da Arquitetura & Provedores
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Supabase */}
-          <div className="p-4 rounded-xl bg-[#161b2a] border border-slate-700/80 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                  <Database className="w-4 h-4 text-emerald-400" />
-                  Supabase Database
-                </span>
-                <Badge variant="emerald">Conectado</Badge>
-              </div>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Catálogo, séries, favoritos e progresso de leitura persistidos no banco com acesso autenticado.
-              </p>
-            </div>
-            <div className="mt-4 pt-2 border-t border-slate-800 text-[10px] text-slate-400 font-mono">
-              Variáveis públicas: VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
-            </div>
-          </div>
-
-          {/* Cloudflare R2 */}
-          <div className="p-4 rounded-xl bg-[#161b2a] border border-slate-700/80 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                  <Cloud className="w-4 h-4 text-sky-400" />
-                  Cloudflare R2 Bucket
-                </span>
-                <Badge variant="emerald">Conectado</Badge>
-              </div>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                PDFs e capas privados com upload e leitura por URLs assinadas temporárias.
-              </p>
-            </div>
-            <div className="mt-4 pt-2 border-t border-slate-800 text-[10px] text-slate-400 font-mono">
-              Bucket: {APP_CONFIG.infra.storageBucketName}
-            </div>
-          </div>
-
-          {/* PDF.js */}
-          <div className="p-4 rounded-xl bg-[#161b2a] border border-slate-700/80 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-amber-400" />
-                  PDF.js Engine
-                </span>
-                <Badge variant="amber">Aguardando Fase 2</Badge>
-              </div>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Leitor vetorial de alta fidelidade com modos simples, duplo, vertical e zoom ativo nesta primeira etapa.
-              </p>
-            </div>
-            <div className="mt-4 pt-2 border-t border-slate-800 text-[10px] text-slate-400 font-mono">
-              Canvas + Workers prontos
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Seção 3: Upload de Nova HQ */}
-      <div className="bg-[#121622] border border-[#1e2535] rounded-2xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <UploadCloud className="w-5 h-5 text-amber-400" />
-            <h2 className="text-base font-bold text-white">Cadastrar Nova HQ (PDF)</h2>
-          </div>
-          <Badge variant="outline">Apenas Proprietário</Badge>
-        </div>
-
-        <form onSubmit={handleUpload} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="sm:col-span-2">
-              <label htmlFor="comic-title-input" className="text-xs font-semibold text-slate-300 block mb-1">
-                Título da Edição
-              </label>
-              <input
-                id="comic-title-input"
-                type="text"
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                placeholder="Ex: O Retorno do Espectro Solar"
-                className="w-full h-9 px-3 bg-[#0d1017] text-xs sm:text-sm text-slate-200 border border-slate-700 rounded-lg focus:border-amber-500 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="comic-series-select" className="text-xs font-semibold text-slate-300 block mb-1">
-                Série / Coleção
-              </label>
-              <select
-                id="comic-series-select"
-                value={newSeries}
-                onChange={(e) => setNewSeries(e.target.value)}
-                className="w-full h-9 px-3 bg-[#0d1017] text-xs sm:text-sm text-slate-200 border border-slate-700 rounded-lg focus:border-amber-500 focus:outline-none"
-              >
-                {seriesList.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="comic-issue-input" className="text-xs font-semibold text-slate-300 block mb-1">
-                Número da Edição
-              </label>
-              <input
-                id="comic-issue-input"
-                type="number"
-                min="1"
-                value={newIssue}
-                onChange={(e) => setNewIssue(e.target.value)}
-                className="w-full h-9 px-3 bg-[#0d1017] text-xs sm:text-sm text-slate-200 border border-slate-700 rounded-lg focus:border-amber-500 focus:outline-none"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="comic-year-input" className="text-xs font-semibold text-slate-300 block mb-1">
-                Ano de publicação
-              </label>
-              <input id="comic-year-input" type="number" min="1800" max="2200" value={newYear} onChange={(e) => setNewYear(e.target.value)} className="w-full h-9 px-3 bg-[#0d1017] text-xs sm:text-sm text-slate-200 border border-slate-700 rounded-lg focus:border-amber-500 focus:outline-none" />
-            </div>
-            <div>
-              <label htmlFor="comic-pages-input" className="text-xs font-semibold text-slate-300 block mb-1">
-                Total de páginas
-              </label>
-              <input id="comic-pages-input" type="number" min="1" value={newTotalPages} onChange={(e) => setNewTotalPages(e.target.value)} className="w-full h-9 px-3 bg-[#0d1017] text-xs sm:text-sm text-slate-200 border border-slate-700 rounded-lg focus:border-amber-500 focus:outline-none" />
-            </div>
-          </div>
-
-          {/* Área de Seleção de Arquivo */}
-          <div className="border-2 border-dashed border-slate-700 hover:border-amber-500/60 rounded-xl p-6 text-center bg-[#0d1017]/60 transition-colors">
-            <input
-              type="file"
-              id="pdf-file-upload"
-              accept=".pdf,application/pdf"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-            <label
-              htmlFor="pdf-file-upload"
-              className="cursor-pointer flex flex-col items-center justify-center"
-            >
-              <FileUp className="w-8 h-8 text-amber-400 mb-2" />
-              <span className="text-xs sm:text-sm font-bold text-white">
-                {selectedFile ? selectedFile.name : "Clique para selecionar o arquivo PDF da HQ"}
-              </span>
-              <span className="text-[11px] text-slate-400 mt-1">
-                {selectedFile
-                  ? `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB selecionados`
-                  : "Suporta PDFs até 250 MB com validação de tipo MIME"}
-              </span>
-            </label>
-          </div>
-
-          {uploadStatus && (
-            <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300 flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{uploadStatus}</span>
-            </div>
-          )}
-
-          <div className="flex justify-end">
-            <Button
-              type="submit"
-              variant="primary"
-              isLoading={isUploading}
-              className="font-bold"
-            >
-              Cadastrar e enviar ao R2
-            </Button>
-          </div>
-        </form>
-      </div>
-
-      {/* Seção 4: Manutenção de Dados Locais & Backup */}
-      <div className="bg-[#121622] border border-[#1e2535] rounded-2xl p-6">
-        <h2 className="text-base font-bold text-white mb-2 flex items-center gap-2">
-          <HardDrive className="w-5 h-5 text-amber-400" />
-          <span>Manutenção do Acervo Local</span>
-        </h2>
-        <p className="text-xs text-slate-400 mb-5">
-          Gerencie o armazenamento de histórico temporário em localStorage desta etapa
-        </p>
-
-        <div className="flex flex-wrap gap-3">
-          <Button variant="secondary" onClick={handleExportBackup}>
-            <Download className="w-4 h-4 mr-2" />
-            Exportar Metadados em JSON
-          </Button>
-
-          <Button variant="danger" onClick={handleClearCache}>
-            <Trash2 className="w-4 h-4 mr-2" />
-            Restaurar Dados e Limpar Cache
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
+        <div className="upload-grid"><label className="upload-tile"><FileUp /><strong>{pdf?.name || (editing ? "Substituir PDF" : "Selecionar PDF")}</strong><small>{pdf ? formatFileSize(pdf.size / 1024 / 1024) : editing?.fileName || "Até 250 MB"}</small><input type="file" accept="application/pdf,.pdf" onChange={(e) => setPdf(e.target.files?.[0] || null)} /></label><label className="upload-tile"><FileImage /><strong>{cover?.name || (editing ? "Substituir capa" : "Adicionar capa")}</strong><small>JPG, PNG ou WebP</small><input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => setCover(e.target.files?.[0] || null)} /></label></div>
+        <button className="studio-primary" disabled={busy}><UploadCloud /> {busy ? "Publicando..." : editing ? "Salvar alterações" : "Cadastrar e publicar"}</button>
+      </form>
+      <section className="studio-panel catalog-manager"><div className="studio-panel-title"><div><span>Biblioteca publicada</span><h2>Gerenciar edições</h2></div><strong>{allComics.length}</strong></div><div className="catalog-manager-list">{allComics.map((comic) => <article key={comic.id}><img src={comic.coverUrl} alt="" /><div><strong>{comic.title}</strong><span>{comic.seriesTitle} · #{comic.issueNumber}</span><small>{comic.year} · {comic.totalPages} páginas</small></div><button onClick={() => startEditing(comic)}><Edit3 /> Editar</button></article>)}</div></section>
+    </div>}
+    {tab === "collections" && <div className="studio-grid collections-grid">
+      <form className="studio-panel" onSubmit={submitSeries}><div className="studio-panel-title"><div><span>{seriesForm.id ? "Editar coleção" : "Nova coleção"}</span><h2>Séries, arcos e categorias</h2></div>{seriesForm.id && <button type="button" onClick={() => editSeries()}><Plus /></button>}</div><div className="form-grid"><label className="span-2">Nome da coleção<input className={fieldClass} value={seriesForm.title} onChange={(e) => setSeriesForm({ ...seriesForm, title: e.target.value })} required /></label><label>Editora<input className={fieldClass} value={seriesForm.publisher} onChange={(e) => setSeriesForm({ ...seriesForm, publisher: e.target.value })} required /></label><label>Ano inicial<input className={fieldClass} type="number" value={seriesForm.startYear} onChange={(e) => setSeriesForm({ ...seriesForm, startYear: e.target.value })} required /></label><label>Ano final<input className={fieldClass} type="number" value={seriesForm.endYear} onChange={(e) => setSeriesForm({ ...seriesForm, endYear: e.target.value })} /></label><label>Edições previstas<input className={fieldClass} type="number" value={seriesForm.expected} onChange={(e) => setSeriesForm({ ...seriesForm, expected: e.target.value })} /></label><label className="span-2">Descrição<textarea className={fieldClass} rows={5} value={seriesForm.description} onChange={(e) => setSeriesForm({ ...seriesForm, description: e.target.value })} /></label></div><button className="studio-primary" disabled={busy}><Save /> Salvar coleção</button></form>
+      <section className="studio-panel catalog-manager"><div className="studio-panel-title"><div><span>Organização</span><h2>Coleções cadastradas</h2></div><strong>{seriesList.length}</strong></div><div className="collection-list">{seriesList.map((series) => <button key={series.id} onClick={() => editSeries(series)}><div><strong>{series.title}</strong><span>{series.publisher} · {series.startYear}</span><small>{allComics.filter((comic) => comic.seriesId === series.id).length} edições</small></div><Edit3 /></button>)}</div></section>
+    </div>}
+    {tab === "status" && <div className="provider-grid"><article><Database /><div><strong>Supabase</strong><span>Catálogo, metadados e progresso</span></div><em>Conectado</em></article><article><Cloud /><div><strong>Cloudflare R2</strong><span>PDFs e capas em armazenamento privado</span></div><em>Conectado</em></article><article><LibraryBig /><div><strong>PDF.js</strong><span>{totalPages.toLocaleString("pt-BR")} páginas prontas para leitura</span></div><em>Ativo</em></article></div>}
+  </div>;
 };

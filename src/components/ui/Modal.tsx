@@ -68,7 +68,7 @@ export const Modal: React.FC<ModalProps> = ({
 
       <div
         ref={modalRef}
-        className={`relative w-full ${maxWidthClass} bg-[#131722] border border-slate-700/80 rounded-xl shadow-2xl shadow-black/80 z-10 overflow-hidden my-auto transform transition-transform`}
+        className={`streaming-modal relative w-full ${maxWidthClass} z-10 overflow-hidden my-auto transform transition-transform`}
       >
         {/* Cabeçalho do modal */}
         {(title || description) && (

@@ -10,6 +10,12 @@ type CreateComicBody = {
   fileName?: string;
   fileSizeMb?: number;
   pdfKey?: string;
+  coverKey?: string;
+  synopsis?: string;
+  writers?: string[];
+  pencillers?: string[];
+  colorists?: string[];
+  tags?: string[];
   series?: {
     title?: string;
     publisher?: string;
@@ -88,6 +94,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       file_size_mb: body.fileSizeMb ?? 0,
       file_name: body.fileName.trim(),
       pdf_key: body.pdfKey,
+      cover_key: body.coverKey ?? null,
+      synopsis: body.synopsis?.trim() ?? "",
+      writers: body.writers ?? [],
+      pencillers: body.pencillers ?? [],
+      colorists: body.colorists ?? [],
+      tags: body.tags ?? [],
     })
     .select("id")
     .single();

@@ -40,9 +40,9 @@ export const SeriesPage: React.FC<SeriesPageProps> = ({ onOpenReader }) => {
   };
 
   return (
-    <div className="space-y-10">
+    <div className="streaming-page series-page space-y-10">
       {/* Cabeçalho */}
-      <div className="border-b border-[#1e2535] pb-5">
+      <div className="page-spotlight">
         <div className="flex items-center gap-2 text-amber-400 mb-1">
           <Layers className="w-5 h-5" />
           <span className="text-xs font-bold uppercase tracking-wider">Coleções Completas</span>
@@ -61,7 +61,7 @@ export const SeriesPage: React.FC<SeriesPageProps> = ({ onOpenReader }) => {
           return (
             <section
               key={series.id}
-              className="bg-[#10141f] border border-[#1e2535] rounded-2xl p-5 sm:p-6 shadow-md"
+              className="series-showcase rounded-2xl p-5 sm:p-6 shadow-md"
               aria-labelledby={`series-title-${series.id}`}
             >
               {/* Header da Série */}

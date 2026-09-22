@@ -1,0 +1,12 @@
+{
+  "name": "Biblioteca HQ",
+  "short_name": "BiblioHQ",
+  "description": "O multiverso dos quadrinhos em um só lugar.",
+  "start_url": "/biblioteca",
+  "display": "standalone",
+  "background_color": "#080706",
+  "theme_color": "#d71920",
+  "icons": [
+    { "src": "/brand-mark.png", "sizes": "1536x1536", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

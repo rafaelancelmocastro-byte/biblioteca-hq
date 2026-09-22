@@ -33,9 +33,9 @@ export interface AppBrandConfig {
 export const APP_CONFIG: AppBrandConfig = {
   name: "Biblioteca HQ",
   shortName: "BiblioHQ",
-  tagline: "Sua coleção pessoal de quadrinhos em alta definição",
+  tagline: "O multiverso dos quadrinhos em um só lugar.",
   description: "Biblioteca pessoal e privada de HQs em PDF com foco em capas, coleções e experiência de leitura.",
-  version: "1.0.0-alpha",
+  version: "1.1.0",
   ownerName: "Rafael Castro",
   ownerEmail: "rafaelancelmo.castro@gmail.com",
   locale: "pt-BR",
@@ -51,7 +51,7 @@ export const APP_CONFIG: AppBrandConfig = {
   infra: {
     supabaseReady: true,
     cloudflareR2Ready: true,
-    pdfJsReady: false,
+    pdfJsReady: true,
     storageBucketName: "biblioteca-hqs",
   },
 };

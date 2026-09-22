@@ -57,7 +57,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
   const featuredComic = continueReadingComics[0] ?? recentlyAddedComics[0] ?? allComics[0];
 
   return (
-    <div className="space-y-8">
+    <div className="streaming-page library-page space-y-8">
       {featuredComic && !searchQuery && (
         <section className="catalog-hero" aria-label="Destaque da biblioteca">
           {featuredComic.coverUrl && (

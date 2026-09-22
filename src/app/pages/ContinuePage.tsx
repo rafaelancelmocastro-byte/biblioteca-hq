@@ -35,9 +35,9 @@ export const ContinuePage: React.FC<ContinuePageProps> = ({ onOpenReader }) => {
     });
 
   return (
-    <div className="space-y-8">
+    <div className="streaming-page continue-page space-y-8">
       {/* Cabeçalho da página */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#1e2535] pb-5">
+      <div className="page-spotlight flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-amber-400 mb-1">
             <Clock className="w-5 h-5" />

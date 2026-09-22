@@ -47,7 +47,7 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} maxWidth="xl" id="comic-detail-modal">
-      <div className="flex flex-col sm:flex-row gap-6">
+      <div className="comic-detail-streaming flex flex-col sm:flex-row gap-6">
         {/* Coluna da Capa */}
         <div className="w-full sm:w-52 flex-shrink-0 flex flex-col items-center">
           <div className="w-48 sm:w-full rounded-xl overflow-hidden shadow-2xl shadow-black/80 border border-slate-700/80">

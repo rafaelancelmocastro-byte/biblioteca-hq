@@ -10,6 +10,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { APP_CONFIG } from "../../config/app";
+import { BrandLogo } from "../ui/BrandLogo";
 
 interface SidebarProps {
   currentPath: string;
@@ -75,9 +76,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           }`}
           title={APP_CONFIG.name}
         >
-          <div className="w-9 h-9 rounded-full bg-[#b35532] flex items-center justify-center text-[#fff7f0] font-black text-sm shadow-lg shadow-[#b35532]/20 flex-shrink-0">
-            B
-          </div>
+          <BrandLogo compact className="sidebar-brand-mark" />
           {!isCollapsed && (
             <div className="flex flex-col overflow-hidden">
               <span className="font-extrabold text-white text-base tracking-tight leading-none group-hover:text-amber-400 transition-colors">
