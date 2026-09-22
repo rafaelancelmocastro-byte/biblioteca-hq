@@ -15,6 +15,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -62,6 +63,20 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
     }
 
     onSuccess();
+  };
+
+  const handlePasswordRecovery = async () => {
+    if (!supabase) return;
+    setError("");
+    setNotice("");
+    const { error: recoveryError } = await supabase.auth.resetPasswordForEmail(APP_CONFIG.ownerEmail, {
+      redirectTo: `${window.location.origin}/login`,
+    });
+    if (recoveryError) {
+      setError("Não foi possível enviar o link agora. Tente novamente em alguns minutos.");
+      return;
+    }
+    setNotice("Enviamos um link seguro para você criar ou redefinir sua senha.");
   };
 
   return (
@@ -150,6 +165,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
           )}
 
           {error && <p className="text-xs text-rose-400">{error}</p>}
+          {notice && <p className="text-xs text-emerald-400">{notice}</p>}
 
           <Button
             type="submit"
@@ -161,6 +177,16 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
             <span>{isSubmitting ? "Processando..." : isInviteFlow ? "Definir senha e entrar" : "Acessar Meu Acervo"}</span>
             <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
+
+          {!isInviteFlow && isSupabaseConfigured && (
+            <button
+              type="button"
+              onClick={handlePasswordRecovery}
+              className="w-full text-xs text-slate-400 hover:text-amber-300 transition-colors cursor-pointer"
+            >
+              Criar ou redefinir minha senha por e-mail
+            </button>
+          )}
         </form>
 
         <div className="mt-6 pt-4 border-t border-slate-800/80 text-center text-[10px] text-slate-500 font-mono">
