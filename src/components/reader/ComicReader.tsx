@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
+  BookOpen,
   ChevronLeft,
   ChevronRight,
   Expand,
@@ -28,7 +29,7 @@ interface ComicReaderProps {
 }
 
 type Texture = "clean" | "paper" | "warm";
-type ReaderMode = "continuous" | "page" | "horizontal";
+type ReaderMode = "continuous" | "page" | "horizontal" | "spread";
 
 const ContinuousPdfPage: React.FC<{
   pdf: PDFDocumentProxy;
@@ -91,6 +92,7 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, onBack,
   const [currentPage, setCurrentPage] = useState(() => Math.max(1, comic.progress?.currentPage || 1));
   const [zoom, setZoom] = useState(1);
   const [readerMode, setReaderMode] = useState<ReaderMode>(() => (localStorage.getItem("biblioteca_reader_mode") as ReaderMode) || "page");
+  const [readingDirection, setReadingDirection] = useState<"ltr" | "rtl">(comic.readingDirection || (comic.contentType === "manga" ? "rtl" : "ltr"));
   const [brightness, setBrightness] = useState(100);
   const [texture, setTexture] = useState<Texture>("clean");
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -98,9 +100,12 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, onBack,
   const [isRendering, setIsRendering] = useState(true);
   const [error, setError] = useState("");
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const secondCanvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const shellRef = useRef<HTMLDivElement>(null);
   const renderTaskRef = useRef<RenderTask | null>(null);
+  const secondRenderTaskRef = useRef<RenderTask | null>(null);
+  const didSwipeRef = useRef(false);
   const pointersRef = useRef(new Map<number, { x: number; y: number }>());
   const pinchRef = useRef<{ distance: number; zoom: number } | null>(null);
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -140,7 +145,8 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, onBack,
       const style = window.getComputedStyle(stage);
       const availableWidth = Math.max(1, stage.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight));
       const availableHeight = Math.max(1, stage.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom));
-      const fitScale = Math.min(availableWidth / baseViewport.width, availableHeight / baseViewport.height);
+      const hasSecond = readerMode === "spread" && currentPage > 1 && currentPage + 1 <= pdf.numPages;
+      const fitScale = Math.min((hasSecond ? availableWidth / 2 : availableWidth) / baseViewport.width, availableHeight / baseViewport.height);
       const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
       const viewport = page.getViewport({ scale: fitScale * zoom * pixelRatio });
       const canvas = canvasRef.current;
@@ -153,6 +159,23 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, onBack,
       const renderTask = page.render({ canvas, canvasContext: context, viewport });
       renderTaskRef.current = renderTask;
       await renderTask.promise;
+      if (hasSecond && secondCanvasRef.current) {
+        secondRenderTaskRef.current?.cancel();
+        const secondPage = await pdf.getPage(currentPage + 1);
+        const secondBase = secondPage.getViewport({ scale: 1 });
+        const secondViewport = secondPage.getViewport({ scale: Math.min((availableWidth / 2) / secondBase.width, availableHeight / secondBase.height) * zoom * pixelRatio });
+        const secondCanvas = secondCanvasRef.current;
+        const secondContext = secondCanvas.getContext("2d", { alpha: false });
+        if (secondContext) {
+          secondCanvas.width = Math.floor(secondViewport.width);
+          secondCanvas.height = Math.floor(secondViewport.height);
+          secondCanvas.style.width = `${secondViewport.width / pixelRatio}px`;
+          secondCanvas.style.height = `${secondViewport.height / pixelRatio}px`;
+          const secondTask = secondPage.render({ canvas: secondCanvas, canvasContext: secondContext, viewport: secondViewport });
+          secondRenderTaskRef.current = secondTask;
+          await secondTask.promise;
+        }
+      }
       setError("");
     } catch (renderError) {
       if ((renderError as Error).name !== "RenderingCancelledException") {
@@ -188,6 +211,7 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, onBack,
 
   useEffect(() => {
     localStorage.setItem("biblioteca_reader_mode", readerMode);
+    if (readerMode === "spread") setCurrentPage((page) => page > 1 && page % 2 === 1 ? page - 1 : page);
     setZoom(1);
     requestAnimationFrame(() => stageRef.current?.scrollTo({ top: 0, left: 0 }));
   }, [readerMode]);
@@ -207,11 +231,11 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, onBack,
 
   useEffect(() => {
     const timer = window.setTimeout(
-      () => onUpdateProgress(comic.id, currentPage, pdf?.numPages ?? comic.totalPages),
+      () => onUpdateProgress(comic.id, Math.min(currentPage + (readerMode === "spread" && currentPage > 1 ? 1 : 0), pdf?.numPages ?? comic.totalPages), pdf?.numPages ?? comic.totalPages),
       700,
     );
     return () => window.clearTimeout(timer);
-  }, [comic.id, comic.totalPages, currentPage, onUpdateProgress, pdf?.numPages]);
+  }, [comic.id, comic.totalPages, currentPage, onUpdateProgress, pdf?.numPages, readerMode]);
 
   const totalPages = pdf?.numPages ?? comic.totalPages;
   const moveToPage = useCallback((target: number, direction: "next" | "previous") => {
@@ -222,8 +246,11 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, onBack,
       requestAnimationFrame(() => stageRef.current?.querySelector(`[data-reader-page="${page}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
     }
   }, [readerMode, totalPages]);
-  const previous = useCallback(() => moveToPage(currentPage - 1, "previous"), [currentPage, moveToPage]);
-  const next = useCallback(() => moveToPage(currentPage + 1, "next"), [currentPage, moveToPage]);
+  const previous = useCallback(() => moveToPage(currentPage - (readerMode === "spread" && currentPage > 2 ? 2 : 1), "previous"), [currentPage, moveToPage, readerMode]);
+  const next = useCallback(() => {
+    if (readerMode === "spread" && currentPage > 1 && currentPage + 1 >= totalPages) return;
+    moveToPage(currentPage + (readerMode === "spread" && currentPage > 1 ? 2 : 1), "next");
+  }, [currentPage, moveToPage, readerMode, totalPages]);
 
   const changeZoom = useCallback((nextZoom: number, clientX?: number, clientY?: number) => {
     const stage = stageRef.current;
@@ -280,15 +307,16 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, onBack,
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "ArrowLeft") previous();
-      if (event.key === "ArrowRight") next();
+      if (["INPUT", "TEXTAREA", "SELECT"].includes((event.target as HTMLElement)?.tagName)) return;
+      if (event.key === "ArrowLeft") readingDirection === "rtl" ? next() : previous();
+      if (event.key === "ArrowRight") readingDirection === "rtl" ? previous() : next();
       if (event.key === "+" || event.key === "=") changeZoom(zoom + 0.1);
       if (event.key === "-") changeZoom(zoom - 0.1);
       if (event.key === "0") changeZoom(1);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [changeZoom, next, previous, zoom]);
+  }, [changeZoom, next, previous, readingDirection, zoom]);
 
   useEffect(() => {
     const onFullscreenChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
@@ -345,8 +373,9 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, onBack,
       const deltaX = event.clientX - start.x;
       const deltaY = event.clientY - start.y;
       if (Math.abs(deltaX) > 70 && Math.abs(deltaX) > Math.abs(deltaY)) {
-        if (deltaX < 0) next();
-        else previous();
+        didSwipeRef.current = true;
+        if (deltaX < 0) readingDirection === "rtl" ? previous() : next();
+        else readingDirection === "rtl" ? next() : previous();
       }
     }
     pointersRef.current.delete(event.pointerId);
@@ -401,8 +430,10 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, onBack,
               <button onClick={() => setReaderMode("continuous")} className={readerMode === "continuous" ? "active" : ""} title="Rolagem vertical contínua"><Rows3 /> Vertical</button>
               <button onClick={() => setReaderMode("page")} className={readerMode === "page" ? "active" : ""} title="Uma página por vez"><Square /> Página</button>
               <button onClick={() => setReaderMode("horizontal")} className={readerMode === "horizontal" ? "active" : ""} title="Folhear horizontalmente"><GalleryHorizontal /> Horizontal</button>
+              <button onClick={() => setReaderMode("spread")} className={readerMode === "spread" ? "active" : ""} title="Páginas duplas como livro"><BookOpen /> Dupla</button>
             </div>
           </div>
+          <div className="reader-setting-row reader-mode-row"><span>Leitura</span><div className="reader-mode-options direction-options"><button className={readingDirection === "ltr" ? "active" : ""} onClick={() => setReadingDirection("ltr")}>Ocidental →</button><button className={readingDirection === "rtl" ? "active" : ""} onClick={() => setReadingDirection("rtl")}>← Mangá</button></div></div>
         </aside>
       )}
 
@@ -413,6 +444,14 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, onBack,
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
+        onClick={(event) => {
+          if (didSwipeRef.current) { didSwipeRef.current = false; return; }
+          if (readerMode === "continuous" || zoom > 1.05 || event.detail === 0) return;
+          const rect = event.currentTarget.getBoundingClientRect();
+          const ratio = (event.clientX - rect.left) / rect.width;
+          if (ratio < .24) readingDirection === "rtl" ? next() : previous();
+          if (ratio > .76) readingDirection === "rtl" ? previous() : next();
+        }}
         onWheel={(event) => {
           if (!event.ctrlKey) return;
           event.preventDefault();
@@ -433,8 +472,9 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, onBack,
             ))}
           </div>
         ) : (
-          <div key={`${currentPage}-${readerMode}`} className={`reader-page turn-${turnDirection}`} style={{ filter: `brightness(${brightness}%)` }}>
+          <div key={`${currentPage}-${readerMode}`} className={`reader-page ${readerMode === "spread" ? "reader-spread" : ""} turn-${turnDirection}`} dir={readingDirection} style={{ filter: `brightness(${brightness}%)` }}>
             <canvas ref={canvasRef} />
+            {readerMode === "spread" && currentPage > 1 && currentPage + 1 <= totalPages && <canvas ref={secondCanvasRef} />}
             <div className="reader-paper-grain" />
           </div>
         )}
@@ -443,19 +483,19 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, onBack,
       </main>
 
       <footer className="reader-dock">
-        <button onClick={previous} disabled={currentPage <= 1} aria-label="Página anterior"><ChevronLeft /></button>
+        <button onClick={readingDirection === "rtl" ? next : previous} disabled={readingDirection === "rtl" ? currentPage >= totalPages || (readerMode === "spread" && currentPage > 1 && currentPage + 1 >= totalPages) : currentPage <= 1} aria-label={readingDirection === "rtl" ? "Próxima página" : "Página anterior"}><ChevronLeft /></button>
         <div className="reader-page-control">
           <input
             type="range"
             min="1"
             max={totalPages}
             value={currentPage}
-            onChange={(event) => setCurrentPage(Number(event.target.value))}
+            onChange={(event) => { const page = Number(event.target.value); setCurrentPage(readerMode === "spread" && page > 1 && page % 2 === 1 ? page - 1 : page); }}
             aria-label="Progresso da leitura"
           />
           <span>{currentPage} <small>/ {totalPages}</small></span>
         </div>
-        <button onClick={next} disabled={currentPage >= totalPages} aria-label="Próxima página"><ChevronRight /></button>
+        <button onClick={readingDirection === "rtl" ? previous : next} disabled={readingDirection === "rtl" ? currentPage <= 1 : currentPage >= totalPages || (readerMode === "spread" && currentPage > 1 && currentPage + 1 >= totalPages)} aria-label={readingDirection === "rtl" ? "Página anterior" : "Próxima página"}><ChevronRight /></button>
         <div className="reader-zoom">
           <button onClick={() => changeZoom(zoom - 0.1)} aria-label="Reduzir zoom"><Minus /></button>
           <button onClick={() => changeZoom(1)} className="reader-reset-zoom" aria-label="Redefinir zoom para 100%"><RotateCcw /><span>{Math.round(zoom * 100)}%</span></button>

@@ -6,6 +6,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "PATCH") { res.setHeader("Allow", "PATCH"); return res.status(405).json({ error: "Method Not Allowed" }); }
   if (!(await requireOwner(req, res))) return;
   const body = req.body ?? {};
+  if (body.contentType && !["comic", "graphic_novel", "manga", "manhwa"].includes(body.contentType) || body.readingDirection && !["ltr", "rtl"].includes(body.readingDirection)) return res.status(400).json({ error: "Formato ou direção de leitura inválidos." });
   if (typeof body.id !== "string" || !body.title?.trim() || !body.series?.id) return res.status(400).json({ error: "Metadados inválidos." });
   const url = process.env.VITE_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -14,6 +15,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const update = {
     series_id: body.series.id,
     title: body.title.trim(),
+    content_type: body.contentType ?? "comic",
+    reading_direction: body.readingDirection ?? "ltr",
     issue_number: Number(body.issueNumber),
     volume: body.volume ? Number(body.volume) : null,
     publication_year: Number(body.year),

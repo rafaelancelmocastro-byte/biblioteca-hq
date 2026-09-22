@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { BookCopy, CheckCircle2, Cloud, Database, Edit3, FileImage, FileUp, LibraryBig, Plus, Save, Shield, UploadCloud, X } from "lucide-react";
 import { useLibrary } from "../../hooks/useLibrary";
 import { storageProvider } from "../../services/storageProvider";
-import { checkComicDuplicate, createComicRecord, deleteComicRecords, deleteSeriesRecord, saveSeriesRecord, updateCollectionComics, updateComicRecord } from "../../services/comicAdminService";
+import { checkComicDuplicate, checkStorageStatuses, createComicRecord, deleteComicRecords, deleteSeriesRecord, saveSeriesRecord, updateCollectionComics, updateComicRecord } from "../../services/comicAdminService";
 import type { Comic, Series } from "../../types/comic";
 import { formatFileSize } from "../../lib/formatters";
 import { BatchImport } from "../../components/admin/BatchImport";
@@ -28,18 +28,37 @@ export const AdminPage: React.FC = () => {
   const [applyToCollection, setApplyToCollection] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<{ type: "comics"; ids: string[] } | { type: "series"; id: string } | null>(null);
-  const [form, setForm] = useState({ title: "", seriesId: "", issue: "", year: "", pages: "", synopsis: "", writers: "", pencillers: "", colorists: "", tags: "", characters: "", volume: "" });
+  const [form, setForm] = useState({ title: "", seriesId: "", issue: "", year: "", pages: "", synopsis: "", writers: "", pencillers: "", colorists: "", tags: "", characters: "", volume: "", contentType: "comic", readingDirection: "ltr" });
   const [seriesForm, setSeriesForm] = useState({ id: "", kind: "collection", title: "", publisher: "", startYear: "", endYear: "", expected: "", description: "" });
+  const [managerSearch, setManagerSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [managerFormat, setManagerFormat] = useState("all");
+  const [managerPublisher, setManagerPublisher] = useState("all");
+  const [managerSeries, setManagerSeries] = useState("all");
+  const [managerStorage, setManagerStorage] = useState("all");
+  const [managerSort, setManagerSort] = useState("recent");
+  const [managerPage, setManagerPage] = useState(1);
+  const [storageStatuses, setStorageStatuses] = useState<Record<string, "present" | "pending" | "error">>({});
+
+  useEffect(() => { const timer = window.setTimeout(() => setDebouncedSearch(managerSearch.trim().toLocaleLowerCase("pt-BR")), 300); return () => window.clearTimeout(timer); }, [managerSearch]);
+  useEffect(() => { if (!allComics.length) return; let active = true; checkStorageStatuses(allComics.map((comic) => comic.id)).then((statuses) => { if (active) setStorageStatuses(statuses); }).catch(() => {}); return () => { active = false; }; }, [allComics]);
+  const managedComics = useMemo(() => allComics.filter((comic) => {
+    const haystack = [comic.title, comic.seriesTitle, ...comic.writers, ...comic.pencillers, ...comic.characters].join(" ").toLocaleLowerCase("pt-BR");
+    return (!debouncedSearch || haystack.includes(debouncedSearch)) && (managerFormat === "all" || (comic.contentType || "comic") === managerFormat) && (managerPublisher === "all" || comic.publisher === managerPublisher) && (managerSeries === "all" || comic.seriesId === managerSeries) && (managerStorage === "all" || storageStatuses[comic.id] === managerStorage);
+  }).sort((a, b) => managerSort === "az" ? a.title.localeCompare(b.title, "pt-BR") : managerSort === "za" ? b.title.localeCompare(a.title, "pt-BR") : managerSort === "size" ? b.fileSizeMb - a.fileSizeMb : b.addedAt.localeCompare(a.addedAt)), [allComics, debouncedSearch, managerFormat, managerPublisher, managerSeries, managerStorage, managerSort, storageStatuses]);
+  const pageCount = Math.max(1, Math.ceil(managedComics.length / 20));
+  const visibleComics = managedComics.slice((Math.min(managerPage, pageCount) - 1) * 20, Math.min(managerPage, pageCount) * 20);
+  useEffect(() => setManagerPage(1), [debouncedSearch, managerFormat, managerPublisher, managerSeries, managerStorage, managerSort]);
 
   const totalMb = useMemo(() => allComics.reduce((sum, item) => sum + item.fileSizeMb, 0), [allComics]);
   const totalPages = useMemo(() => allComics.reduce((sum, item) => sum + item.totalPages, 0), [allComics]);
   const resetComicForm = () => {
     setEditing(null); setPdf(null); setCover(null); setCoverThumbnail(null); setPdfHash(undefined); setBatchPdfs([]); setBatchCovers([]); setNotice(""); setApplyToCollection(false);
-    setForm({ title: "", seriesId: "", issue: "", year: "", pages: "", synopsis: "", writers: "", pencillers: "", colorists: "", tags: "", characters: "", volume: "" });
+    setForm({ title: "", seriesId: "", issue: "", year: "", pages: "", synopsis: "", writers: "", pencillers: "", colorists: "", tags: "", characters: "", volume: "", contentType: "comic", readingDirection: "ltr" });
   };
   const startEditing = (comic: Comic) => {
     setEditing(comic); setPdf(null); setCover(null); setCoverThumbnail(null); setPdfHash(undefined); setNotice(""); setApplyToCollection(false);
-    setForm({ title: comic.title, seriesId: comic.seriesId, issue: String(comic.issueNumber), year: String(comic.year), pages: String(comic.totalPages), synopsis: comic.synopsis, writers: comic.writers.join(", "), pencillers: comic.pencillers.join(", "), colorists: (comic.colorists || []).join(", "), tags: comic.tags.join(", "), characters: comic.characters.join(", "), volume: comic.volume ? String(comic.volume) : "" });
+    setForm({ title: comic.title, seriesId: comic.seriesId, issue: String(comic.issueNumber), year: String(comic.year), pages: String(comic.totalPages), synopsis: comic.synopsis, writers: comic.writers.join(", "), pencillers: comic.pencillers.join(", "), colorists: (comic.colorists || []).join(", "), tags: comic.tags.join(", "), characters: comic.characters.join(", "), volume: comic.volume ? String(comic.volume) : "", contentType: comic.contentType || "comic", readingDirection: comic.readingDirection || "ltr" });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
   const selectPdfs = async (files: File[]) => {
@@ -76,7 +95,7 @@ export const AdminPage: React.FC = () => {
       const uploadedCover = cover ? await storageProvider.uploadFile(cover, "covers") : null;
       const thumbnail = coverThumbnail || (cover ? await makeImageThumbnail(cover) : null);
       const uploadedThumb = thumbnail ? await storageProvider.uploadFile(thumbnail, "covers") : null;
-      const payload = { title: form.title.trim(), issueNumber: Number(form.issue), year: Number(form.year), totalPages: Number(form.pages), fileName: pdf?.name || editing?.fileName || "", fileSizeMb: uploadedPdf?.fileSizeMb ?? editing?.fileSizeMb ?? 0, pdfKey: uploadedPdf?.fileKey || "", coverKey: uploadedCover?.fileKey, coverThumbKey: uploadedThumb?.fileKey, fileSha256: pdfHash, synopsis: form.synopsis.trim(), writers: splitList(form.writers), pencillers: splitList(form.pencillers), colorists: splitList(form.colorists), tags: splitList(form.tags), characters: splitList(form.characters), volume: form.volume ? Number(form.volume) : undefined, series };
+      const payload = { title: form.title.trim(), contentType: form.contentType as Comic["contentType"], readingDirection: form.readingDirection as Comic["readingDirection"], issueNumber: Number(form.issue), year: Number(form.year), totalPages: Number(form.pages), fileName: pdf?.name || editing?.fileName || "", fileSizeMb: uploadedPdf?.fileSizeMb ?? editing?.fileSizeMb ?? 0, pdfKey: uploadedPdf?.fileKey || "", coverKey: uploadedCover?.fileKey, coverThumbKey: uploadedThumb?.fileKey, fileSha256: pdfHash, synopsis: form.synopsis.trim(), writers: splitList(form.writers), pencillers: splitList(form.pencillers), colorists: splitList(form.colorists), tags: splitList(form.tags), characters: splitList(form.characters), volume: form.volume ? Number(form.volume) : undefined, series };
       setNotice("Salvando catálogo e ficha criativa no Supabase...");
       let updatedCollectionCount = 0;
       if (editing) {
@@ -136,6 +155,8 @@ export const AdminPage: React.FC = () => {
         <div className="form-grid">
           <label className="span-2">Título{batchPdfs.length > 0 && <small>Gerado pelo nome de cada arquivo na publicação em lote</small>}<input className={fieldClass} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required={batchPdfs.length === 0} disabled={batchPdfs.length > 0} /></label>
           <label>Coleção<select className={fieldClass} value={form.seriesId} onChange={(e) => setForm({ ...form, seriesId: e.target.value })} required><option value="">Selecione uma coleção confirmada</option>{seriesList.map((series) => <option key={series.id} value={series.id}>{series.title}</option>)}</select></label>
+          <label>Formato<select className={fieldClass} value={form.contentType} onChange={(e) => setForm({ ...form, contentType: e.target.value, readingDirection: e.target.value === "manga" ? "rtl" : "ltr" })}><option value="comic">HQ ocidental</option><option value="graphic_novel">Graphic novel</option><option value="manga">Mangá</option><option value="manhwa">Manhwa</option></select></label>
+          <label>Sentido da leitura<select className={fieldClass} value={form.readingDirection} onChange={(e) => setForm({ ...form, readingDirection: e.target.value })}><option value="ltr">Esquerda → direita</option><option value="rtl">Direita → esquerda</option></select></label>
           <label>Edição<input className={fieldClass} type="number" min="1" value={form.issue} onChange={(e) => setForm({ ...form, issue: e.target.value })} required /></label>
           <label>Ano<input className={fieldClass} type="number" min="1800" max="2200" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} required /></label>
           <label>Páginas<input className={fieldClass} type="number" min="1" value={form.pages} onChange={(e) => setForm({ ...form, pages: e.target.value })} required /></label>
@@ -153,7 +174,21 @@ export const AdminPage: React.FC = () => {
         {batchPdfs.length === 0 && <button className="studio-primary" disabled={busy}><UploadCloud /> {busy ? "Publicando..." : editing ? "Salvar alterações" : "Cadastrar e publicar"}</button>}
       </form>
       {batchPdfs.length > 0 && <BatchImport files={batchPdfs} covers={batchCovers} series={seriesList} existingComics={allComics} onComplete={() => reloadData(true)} onClear={() => { setBatchPdfs([]); setBatchCovers([]); }} />}
-      <section className="studio-panel catalog-manager"><div className="studio-panel-title"><div><span>Biblioteca publicada</span><h2>Gerenciar edições</h2></div><strong>{allComics.length}</strong></div>{selectedIds.length > 0 && <button type="button" className="admin-delete-action" onClick={() => setDeleteTarget({ type: "comics", ids: selectedIds })}>Excluir {selectedIds.length} selecionada(s)</button>}<div className="catalog-manager-list">{allComics.map((comic) => <article key={comic.id}><input type="checkbox" aria-label={`Selecionar ${comic.title}`} checked={selectedIds.includes(comic.id)} onChange={(event) => setSelectedIds((current) => event.target.checked ? [...current, comic.id] : current.filter((id) => id !== comic.id))} /><img src={comic.coverUrl} alt="" loading="lazy" /><div><strong>{comic.title}</strong><span>{comic.seriesTitle || "Sem coleção"} · #{comic.issueNumber}</span><small>{comic.year} · {comic.totalPages} páginas</small></div><button type="button" onClick={() => startEditing(comic)}><Edit3 /> Editar</button><button type="button" className="admin-delete-action" onClick={() => setDeleteTarget({ type: "comics", ids: [comic.id] })}>Excluir</button></article>)}</div></section>
+      <section className="studio-panel catalog-manager">
+        <div className="studio-panel-title"><div><span>Biblioteca publicada</span><h2>Gerenciar edições</h2></div><strong>{managedComics.length} / {allComics.length}</strong></div>
+        <div className="manager-controls">
+          <label className="manager-search">Busca<input className={fieldClass} type="search" placeholder="Título, autor, artista ou personagem" value={managerSearch} onChange={(event) => setManagerSearch(event.target.value)} /></label>
+          <label>Formato<select className={fieldClass} value={managerFormat} onChange={(event) => setManagerFormat(event.target.value)}><option value="all">Todos</option><option value="comic">HQ ocidental</option><option value="graphic_novel">Graphic novel</option><option value="manga">Mangá</option><option value="manhwa">Manhwa</option></select></label>
+          <label>Editora<select className={fieldClass} value={managerPublisher} onChange={(event) => setManagerPublisher(event.target.value)}><option value="all">Todas</option>{[...new Set(allComics.map((comic) => comic.publisher))].sort().map((publisher) => <option key={publisher} value={publisher}>{publisher}</option>)}</select></label>
+          <label>Coleção<select className={fieldClass} value={managerSeries} onChange={(event) => setManagerSeries(event.target.value)}><option value="all">Todas</option>{seriesList.map((series) => <option key={series.id} value={series.id}>{series.title}</option>)}</select></label>
+          <label>Arquivo<select className={fieldClass} value={managerStorage} onChange={(event) => setManagerStorage(event.target.value)}><option value="all">Todos</option><option value="present">Presente no R2</option><option value="pending">Pendente</option><option value="error">Erro de sincronização</option></select></label>
+          <label>Ordenar<select className={fieldClass} value={managerSort} onChange={(event) => setManagerSort(event.target.value)}><option value="recent">Recentes</option><option value="az">Título A–Z</option><option value="za">Título Z–A</option><option value="size">Tamanho do arquivo</option></select></label>
+        </div>
+        {selectedIds.length > 0 && <button type="button" className="admin-delete-action" onClick={() => setDeleteTarget({ type: "comics", ids: selectedIds })}>Excluir {selectedIds.length} selecionada(s)</button>}
+        <div className="catalog-manager-list">{visibleComics.map((comic) => <article key={comic.id}><input type="checkbox" aria-label={`Selecionar ${comic.title}`} checked={selectedIds.includes(comic.id)} onChange={(event) => setSelectedIds((current) => event.target.checked ? [...current, comic.id] : current.filter((id) => id !== comic.id))} /><img src={comic.coverUrl} alt="" loading="lazy" /><div><strong>{comic.title}</strong><span>{comic.seriesTitle || "Sem coleção"} · #{comic.issueNumber}</span><small>{comic.year} · {comic.totalPages} páginas · {formatFileSize(comic.fileSizeMb)} · {storageStatuses[comic.id] === "present" ? "No R2" : storageStatuses[comic.id] === "pending" ? "Pendente" : storageStatuses[comic.id] === "error" ? "Erro no R2" : "Verificando…"}</small></div><details className="manager-row-menu"><summary aria-label={`Ações de ${comic.title}`}>Ações</summary><div><button type="button" onClick={() => startEditing(comic)}><Edit3 /> Editar</button><button type="button" onClick={() => { startEditing(comic); document.querySelector<HTMLInputElement>('.comic-editor input[type="file"][accept*="image"]')?.click(); }}><FileImage /> Alterar capa</button><button type="button" className="admin-delete-action" onClick={() => setDeleteTarget({ type: "comics", ids: [comic.id] })}>Excluir</button></div></details></article>)}</div>
+        {!managedComics.length && <p className="manager-empty">Nenhuma edição corresponde aos filtros.</p>}
+        {pageCount > 1 && <div className="manager-pagination"><button disabled={managerPage <= 1} onClick={() => setManagerPage((page) => page - 1)}>Anterior</button><span>Página {managerPage} de {pageCount}</span><button disabled={managerPage >= pageCount} onClick={() => setManagerPage((page) => page + 1)}>Próxima</button></div>}
+      </section>
     </div>}
     {tab === "collections" && <div className="studio-grid collections-grid">
       <form className="studio-panel" onSubmit={submitSeries}><div className="studio-panel-title"><div><span>{seriesForm.id ? "Editar agrupamento" : "Novo agrupamento"}</span><h2>Coleções e sagas</h2></div>{seriesForm.id && <button type="button" onClick={() => editSeries()}><Plus /></button>}</div><div className="form-grid"><label>Tipo<select className={fieldClass} value={seriesForm.kind} onChange={(e) => setSeriesForm({ ...seriesForm, kind: e.target.value })}><option value="collection">Coleção</option><option value="saga">Saga / arco narrativo</option></select></label><label>Nome<input className={fieldClass} value={seriesForm.title} onChange={(e) => setSeriesForm({ ...seriesForm, title: e.target.value })} required /></label><label>Editora<input className={fieldClass} value={seriesForm.publisher} onChange={(e) => setSeriesForm({ ...seriesForm, publisher: e.target.value })} required /></label><label>Ano inicial<input className={fieldClass} type="number" value={seriesForm.startYear} onChange={(e) => setSeriesForm({ ...seriesForm, startYear: e.target.value })} required /></label><label>Ano final<input className={fieldClass} type="number" value={seriesForm.endYear} onChange={(e) => setSeriesForm({ ...seriesForm, endYear: e.target.value })} /></label><label>Edições previstas<input className={fieldClass} type="number" value={seriesForm.expected} onChange={(e) => setSeriesForm({ ...seriesForm, expected: e.target.value })} /></label><label className="span-2">Descrição<textarea className={fieldClass} rows={5} value={seriesForm.description} onChange={(e) => setSeriesForm({ ...seriesForm, description: e.target.value })} /></label></div><button className="studio-primary" disabled={busy}><Save /> Salvar {seriesForm.kind === "saga" ? "saga" : "coleção"}</button></form>

@@ -1,5 +1,5 @@
 import React from "react";
-import { BookOpen, Clock, Layers, Heart, Shield } from "lucide-react";
+import { BookOpen, Clock, Layers, Heart, Shield, Compass } from "lucide-react";
 
 interface MobileNavProps {
   currentPath: string;
@@ -24,6 +24,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ currentPath, onNavigate, i
       path: "/series",
       icon: Layers,
     },
+    { label: "Indie", path: "/multiverso", icon: Compass },
     {
       label: "Favoritos",
       path: "/favoritos",
@@ -42,7 +43,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ currentPath, onNavigate, i
       className="app-mobile-nav md:hidden fixed bottom-0 left-0 right-0 z-40 pb-[env(safe-area-inset-bottom)] shadow-lg"
       aria-label="Navegação móvel"
     >
-      <div className={`grid ${isOwner ? "grid-cols-5" : "grid-cols-4"} h-16 max-w-lg mx-auto`}>
+      <div className={`grid ${isOwner ? "grid-cols-6" : "grid-cols-5"} h-16 max-w-lg mx-auto`}>
         {items.filter((item) => !item.ownerOnly || isOwner).map((item) => {
           const Icon = item.icon;
           const isActive = currentPath === item.path;

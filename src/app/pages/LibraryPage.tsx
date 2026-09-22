@@ -7,6 +7,7 @@ import { LibraryGrid } from "../../components/library/LibraryGrid";
 import { ComicDetailModal } from "../../components/library/ComicDetailModal";
 import { ProgressUpdateModal } from "../../components/library/ProgressUpdateModal";
 import { RecommendationRoulette } from "../../components/library/RecommendationRoulette";
+import { CoverFlow } from "../../components/library/CoverFlow";
 import { useLibrary } from "../../hooks/useLibrary";
 import { BookOpen, Info, LibraryBig, ShieldCheck } from "lucide-react";
 
@@ -79,7 +80,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
   return (
     <div className="streaming-page library-page space-y-8">
       {featuredComic && !searchQuery && (
-        <section key={featuredComic.id} className="catalog-hero catalog-hero-enter" aria-label="Destaque da biblioteca">
+        <section className="catalog-hero catalog-hero-flow" aria-label="Destaque da biblioteca">
           {featuredComic.coverUrl && (
             <img src={featuredComic.coverUrl} alt="" className="catalog-hero-art" aria-hidden="true" />
           )}
@@ -95,6 +96,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
               <span>{featuredComic.year}</span><i />
               <span>{featuredComic.publisher}</span><i />
               <span>{featuredComic.totalPages} páginas</span>
+              {featuredComic.tags.slice(0, 2).map((tag) => <React.Fragment key={tag}><i /><span>{tag}</span></React.Fragment>)}
             </div>
             <div className="catalog-hero-actions">
               <button onClick={() => onOpenReader(featuredComic.id)} className="catalog-primary-action">
@@ -105,10 +107,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
               </button>
             </div>
           </div>
-          <div className="catalog-cover-float">
-            {featuredComic.coverUrl && <img src={featuredComic.coverUrl} alt={`Capa de ${featuredComic.title}`} />}
-          </div>
-          {featuredCandidates.length > 1 && <div className="catalog-hero-pagination" aria-label="Recomendações em destaque">{featuredCandidates.map((comic, index) => <button key={comic.id} className={index === featuredIndex ? "active" : ""} onClick={() => setFeaturedIndex(index)} aria-label={`Mostrar ${comic.title}`} />)}</div>}
+          <div className="catalog-hero-flow-slot"><CoverFlow items={featuredCandidates.map((comic) => ({ id: comic.id, title: comic.title, image: comic.coverUrl, subtitle: `${comic.year} · ${comic.totalPages} páginas` }))} activeIndex={featuredIndex} onChange={setFeaturedIndex} onActivate={(item) => setSelectedComic(featuredCandidates.find((comic) => comic.id === item.id) || null)} label="HQs recomendadas" /></div>
         </section>
       )}
 

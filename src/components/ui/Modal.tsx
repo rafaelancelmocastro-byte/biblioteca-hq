@@ -58,6 +58,7 @@ export const Modal: React.FC<ModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby={`${id}-title`}
+      aria-label={!title ? "Detalhes da HQ" : undefined}
       id={id}
     >
       <div
@@ -72,7 +73,7 @@ export const Modal: React.FC<ModalProps> = ({
       >
         <button
           onClick={onClose}
-          className="modal-close-button fixed top-[max(.75rem,env(safe-area-inset-top))] right-[max(.75rem,env(safe-area-inset-right))] z-[60] grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-black/90 text-white shadow-2xl backdrop-blur-md transition-colors hover:bg-slate-800 cursor-pointer"
+          className="modal-close-button sticky top-3 float-right mr-3 mt-3 z-[60] grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-black/90 text-white shadow-2xl backdrop-blur-md transition-colors hover:bg-slate-800 cursor-pointer"
           aria-label="Fechar detalhes"
           title="Fechar"
         >

@@ -1,169 +1,41 @@
-import React, { useState } from "react";
-import { Layers, BookOpen, CheckCircle2 } from "lucide-react";
-import { Comic, Series } from "../../types/comic";
+import React, { useMemo, useState } from "react";
+import { ArrowLeft, Layers } from "lucide-react";
 import { useLibrary } from "../../hooks/useLibrary";
+import type { Comic } from "../../types/comic";
+import { CoverFlow } from "../../components/library/CoverFlow";
 import { ComicCard } from "../../components/library/ComicCard";
 import { ComicDetailModal } from "../../components/library/ComicDetailModal";
 import { ProgressUpdateModal } from "../../components/library/ProgressUpdateModal";
-import { ProgressBar } from "../../components/ui/ProgressBar";
-import { Badge } from "../../components/ui/Badge";
-import { formatPercentage } from "../../lib/formatters";
 
-interface SeriesPageProps {
-  onOpenReader: (comicId: string) => void;
-}
-
-export const SeriesPage: React.FC<SeriesPageProps> = ({ onOpenReader }) => {
+export const SeriesPage: React.FC<{ onOpenReader: (id: string) => void }> = ({ onOpenReader }) => {
   const { allComics, seriesList, toggleFavorite, updateProgress, setStatus } = useLibrary();
-  const [selectedComic, setSelectedComic] = useState<Comic | null>(null);
-  const [comicForProgress, setComicForProgress] = useState<Comic | null>(null);
   const [kind, setKind] = useState<"collection" | "saga">("collection");
-  const visibleSeries = seriesList.filter((series) => (series.bannerTone === "saga" ? "saga" : "collection") === kind);
-
-  // Calcula estatísticas para cada série
-  const getSeriesStats = (seriesId: string) => {
-    const comicsInSeries = allComics.filter((c) => c.seriesId === seriesId);
-    const totalIssues = comicsInSeries.length;
-    const completedCount = comicsInSeries.filter(
-      (c) => c.progress?.status === "completed"
-    ).length;
-    const readingCount = comicsInSeries.filter(
-      (c) => c.progress?.status === "reading"
-    ).length;
-    const percent = totalIssues > 0 ? (completedCount / totalIssues) * 100 : 0;
-
-    return {
-      comics: comicsInSeries.sort((a, b) => a.issueNumber - b.issueNumber),
-      totalIssues,
-      completedCount,
-      readingCount,
-      percent,
-    };
-  };
-
-  return (
-    <div className="streaming-page series-page space-y-10">
-      {/* Cabeçalho */}
-      <div className="page-spotlight">
-        <div className="flex items-center gap-2 text-amber-400 mb-1">
-          <Layers className="w-5 h-5" />
-          <span className="text-xs font-bold uppercase tracking-wider">Coleções Completas</span>
-        </div>
-        <h1 className="text-2xl font-black text-white tracking-tight">Coleções e sagas</h1>
-        <p className="text-xs sm:text-sm text-slate-400 mt-1">
-          Acompanhe suas sagas agrupadas com progresso cumulativo de cada coleção
-        </p>
-      </div>
-
-      <div className="collection-kind-tabs" role="tablist" aria-label="Tipo de agrupamento">
-        <button className={kind === "collection" ? "active" : ""} onClick={() => setKind("collection")}>Coleções <span>{seriesList.filter((series) => series.bannerTone !== "saga").length}</span></button>
-        <button className={kind === "saga" ? "active" : ""} onClick={() => setKind("saga")}>Sagas <span>{seriesList.filter((series) => series.bannerTone === "saga").length}</span></button>
-      </div>
-
-      {/* Lista de Séries */}
-      <div className="space-y-12">
-        {visibleSeries.length === 0 && <div className="empty-collection-kind"><Layers /><h2>Nenhuma saga cadastrada</h2><p>O proprietário pode classificar uma coleção como saga em Configurações → Coleções.</p></div>}
-        {visibleSeries.map((series) => {
-          const stats = getSeriesStats(series.id);
-
-          return (
-            <section
-              key={series.id}
-              className="series-showcase rounded-2xl p-5 sm:p-6 shadow-md"
-              aria-labelledby={`series-title-${series.id}`}
-            >
-              {/* Header da Série */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4 mb-6">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                    <Badge variant="amber">{series.publisher}</Badge>
-                    <Badge variant="outline">
-                      {series.startYear}
-                      {series.endYear ? ` — ${series.endYear}` : " — Atual"}
-                    </Badge>
-                    {stats.percent === 100 && (
-                      <Badge variant="emerald">
-                        <CheckCircle2 className="w-3 h-3 mr-1" />
-                        Série Completa
-                      </Badge>
-                    )}
-                  </div>
-
-                  <h2
-                    id={`series-title-${series.id}`}
-                    className="text-xl sm:text-2xl font-black text-white"
-                  >
-                    {series.title}
-                  </h2>
-
-                  <p className="text-xs sm:text-sm text-slate-300 mt-2 max-w-3xl leading-relaxed">
-                    {series.description}
-                  </p>
-                </div>
-
-                {/* Métricas de Progresso da Coleção */}
-                <div className="bg-[#141926] p-3.5 rounded-xl border border-slate-700/80 min-w-[200px]">
-                  <div className="flex items-center justify-between text-xs font-semibold mb-1">
-                    <span className="text-slate-300">Progresso da Coleção</span>
-                    <span className="text-amber-400 font-bold font-mono">
-                      {stats.completedCount}/{stats.totalIssues} lidas
-                    </span>
-                  </div>
-                  <ProgressBar percentage={stats.percent} size="sm" />
-                  <span className="text-[10px] text-slate-400 font-mono mt-1.5 block text-right">
-                    {formatPercentage(stats.percent)} concluído
-                  </span>
-                </div>
-              </div>
-
-              {/* Grid das Edições da Série */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
-                {stats.comics.map((comic) => (
-                  <ComicCard
-                    key={comic.id}
-                    comic={comic}
-                    onOpenReader={onOpenReader}
-                    onToggleFavorite={toggleFavorite}
-                    onOpenDetails={(c) => setSelectedComic(c)}
-                    onOpenProgressModal={(c) => setComicForProgress(c)}
-                    onMarkCompleted={(id, total) => setStatus(id, "completed", total)}
-                    onResetProgress={(id) => setStatus(id, "not_started", 10)}
-                    density="compact"
-                  />
-                ))}
-              </div>
-            </section>
-          );
-        })}
-      </div>
-
-      {/* Modais */}
-      <ComicDetailModal
-        comic={selectedComic}
-        isOpen={selectedComic !== null}
-        onClose={() => setSelectedComic(null)}
-        onOpenReader={onOpenReader}
-        onToggleFavorite={toggleFavorite}
-        onOpenProgressModal={(comic) => {
-          setSelectedComic(null);
-          setComicForProgress(comic);
-        }}
-        onMarkCompleted={(id, total) => {
-          setStatus(id, "completed", total);
-          setSelectedComic(null);
-        }}
-        onResetProgress={(id) => {
-          setStatus(id, "not_started", 10);
-          setSelectedComic(null);
-        }}
-      />
-
-      <ProgressUpdateModal
-        comic={comicForProgress}
-        isOpen={comicForProgress !== null}
-        onClose={() => setComicForProgress(null)}
-        onSaveProgress={updateProgress}
-      />
+  const [active, setActive] = useState(0);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [detail, setDetail] = useState<Comic | null>(null);
+  const [progress, setProgress] = useState<Comic | null>(null);
+  const groups = useMemo(() => seriesList.filter((series) => (series.bannerTone === "saga" ? "saga" : "collection") === kind), [kind, seriesList]);
+  const selected = groups[Math.min(active, groups.length - 1)];
+  const openGroup = groups.find((group) => group.id === openId);
+  const issues = useMemo(() => allComics.filter((comic) => comic.seriesId === openId).sort((a, b) => (a.volume || 0) - (b.volume || 0) || a.issueNumber - b.issueNumber || a.year - b.year), [allComics, openId]);
+  const items = useMemo(() => groups.map((group) => {
+    const comics = allComics.filter((comic) => comic.seriesId === group.id);
+    return { id: group.id, title: group.title, subtitle: `${comics.length} ${comics.length === 1 ? "edição" : "edições"} · ${group.publisher}`, image: comics.find((comic) => comic.coverUrl)?.coverUrl };
+  }), [allComics, groups]);
+  return <div className="streaming-page series-page space-y-8">
+    <div className="page-spotlight"><span className="page-kicker"><Layers /> Universos do acervo</span><h1>Coleções e sagas</h1><p>Descubra uma coleção e explore as edições na ordem de leitura.</p></div>
+    <div className="collection-kind-tabs" role="tablist" aria-label="Tipo de agrupamento">
+      {(["collection", "saga"] as const).map((option) => <button key={option} role="tab" aria-selected={kind === option} className={kind === option ? "active" : ""} onClick={() => { setKind(option); setActive(0); setOpenId(null); }}>{option === "collection" ? "Coleções" : "Sagas"}<span>{seriesList.filter((series) => (series.bannerTone === "saga" ? "saga" : "collection") === option).length}</span></button>)}
     </div>
-  );
+    {openGroup ? <section className="collection-open" key={openGroup.id}>
+      <button className="collection-back" onClick={() => setOpenId(null)}><ArrowLeft /> Voltar aos hubs</button>
+      <div className="collection-open-heading"><div><span>{openGroup.publisher} · {openGroup.startYear}</span><h2>{openGroup.title}</h2><p>{openGroup.description}</p></div><strong>{issues.length} edições</strong></div>
+      {issues.length ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">{issues.map((comic) => <ComicCard key={comic.id} comic={comic} density="compact" onOpenReader={onOpenReader} onToggleFavorite={toggleFavorite} onOpenDetails={setDetail} onOpenProgressModal={setProgress} onMarkCompleted={(id, total) => setStatus(id, "completed", total)} onResetProgress={(id) => setStatus(id, "not_started", 10)} />)}</div> : <p className="empty-collection-kind">Ainda não há edições nesta coleção.</p>}
+    </section> : groups.length ? <section className="collection-hub" aria-label="Explorar coleções e sagas">
+      <CoverFlow items={items} activeIndex={active} onChange={setActive} onActivate={(item) => setOpenId(item.id)} label="Capas de coleções e sagas" />
+      {selected && <div className="collection-hub-info"><div><span>{selected.publisher} · {selected.startYear}</span><h2>{selected.title}</h2><p>{selected.description || "Conheça todas as edições deste universo."}</p><small>{items[active]?.subtitle}</small></div><button className="catalog-primary-action" onClick={() => setOpenId(selected.id)}>Explorar edições</button></div>}
+    </section> : <div className="empty-collection-kind"><Layers /><h2>Nenhuma {kind === "saga" ? "saga" : "coleção"} cadastrada</h2><p>O proprietário pode criar uma em Configurações.</p></div>}
+    <ComicDetailModal comic={detail} isOpen={!!detail} onClose={() => setDetail(null)} onOpenReader={onOpenReader} onToggleFavorite={toggleFavorite} onOpenProgressModal={(comic) => { setDetail(null); setProgress(comic); }} onMarkCompleted={(id, total) => { setStatus(id, "completed", total); setDetail(null); }} onResetProgress={(id) => { setStatus(id, "not_started", 10); setDetail(null); }} />
+    <ProgressUpdateModal comic={progress} isOpen={!!progress} onClose={() => setProgress(null)} onSaveProgress={updateProgress} />
+  </div>;
 };

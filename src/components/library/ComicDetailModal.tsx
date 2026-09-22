@@ -82,12 +82,12 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
               {percentage > 0 ? "Continuar Leitura" : "Iniciar Leitura"}
             </Button>
 
-            <div className="flex gap-2">
+            <div className="comic-detail-actions flex flex-col gap-2">
               <Button
                 variant={isFavorite ? "danger" : "secondary"}
                 size="sm"
                 onClick={() => { setIsFavorite((value) => !value); void onToggleFavorite(comic.id); }}
-                className="flex-1 text-xs"
+                className="w-full min-w-0 text-xs"
                 aria-pressed={isFavorite}
               >
                 <Heart className={`w-3.5 h-3.5 mr-1.5 ${isFavorite ? "fill-current" : ""}`} />
@@ -98,7 +98,7 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
                 variant="secondary"
                 size="sm"
                 onClick={() => onOpenProgressModal(comic)}
-                className="flex-1 text-xs"
+                className="w-full min-w-0 text-xs"
               >
                 <Sliders className="w-3.5 h-3.5 mr-1.5 text-amber-400" />
                 Progresso

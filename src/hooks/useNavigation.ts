@@ -4,6 +4,7 @@ export type AppRoute =
   | { path: "/biblioteca" }
   | { path: "/continuar" }
   | { path: "/series" }
+  | { path: "/multiverso" }
   | { path: "/favoritos" }
   | { path: "/admin" }
   | { path: "/configuracoes" }
@@ -22,7 +23,7 @@ function parsePath(pathname: string): { route: string; comicId?: string } {
   }
 
   // Rotas normais
-  const validRoutes = ["/biblioteca", "/continuar", "/series", "/favoritos", "/admin", "/configuracoes", "/login"];
+  const validRoutes = ["/biblioteca", "/continuar", "/series", "/multiverso", "/favoritos", "/admin", "/configuracoes", "/login"];
   if (validRoutes.includes(pathname)) {
     return { route: pathname };
   }

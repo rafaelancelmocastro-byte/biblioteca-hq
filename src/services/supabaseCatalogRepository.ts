@@ -13,6 +13,8 @@ const DEFAULT_COVER: ComicCoverPalette = {
 type CatalogRow = {
   id: string;
   title: string;
+  content_type: Comic["contentType"];
+  reading_direction: Comic["readingDirection"];
   issue_number: number;
   volume: number | null;
   publication_year: number;
@@ -65,6 +67,8 @@ function mapComic(row: CatalogRow): Comic {
   return {
     id: row.id,
     title: row.title,
+    contentType: row.content_type ?? "comic",
+    readingDirection: row.reading_direction ?? "ltr",
     issueNumber: row.issue_number,
     seriesId: row.series?.id ?? "",
     seriesTitle: row.series?.title ?? "",
@@ -144,7 +148,7 @@ async function loadCatalog(): Promise<SupabaseCatalog> {
   if (!supabase) return { comics: [], series: [], characters: [], publishers: [], years: [] };
 
   const [comicsResult, seriesResult] = await Promise.all([
-    supabase.from("comics").select("id,title,issue_number,volume,publication_year,publisher,total_pages,synopsis,writers,pencillers,colorists,tags,file_size_mb,file_name,cover_palette,added_at,series(id,title,publisher,start_year,end_year,total_issues_expected,description,banner_tone),comic_characters(characters(id,name,alias,publisher))").order("added_at", { ascending: false }),
+    supabase.from("comics").select("id,title,content_type,reading_direction,issue_number,volume,publication_year,publisher,total_pages,synopsis,writers,pencillers,colorists,tags,file_size_mb,file_name,cover_palette,added_at,series(id,title,publisher,start_year,end_year,total_issues_expected,description,banner_tone),comic_characters(characters(id,name,alias,publisher))").order("added_at", { ascending: false }),
     supabase.from("series").select("id,title,publisher,start_year,end_year,total_issues_expected,description,banner_tone").order("title", { ascending: true }),
   ]);
 
@@ -187,7 +191,7 @@ async function loadCatalog(): Promise<SupabaseCatalog> {
 export async function getSupabaseComicById(id: string): Promise<Comic | null> {
   if (!supabase) return null;
   const { data, error } = await supabase.from("comics")
-    .select("id,title,issue_number,volume,publication_year,publisher,total_pages,synopsis,writers,pencillers,colorists,tags,file_size_mb,file_name,cover_palette,added_at,series(id,title,publisher,start_year,end_year,total_issues_expected,description,banner_tone),comic_characters(characters(id,name,alias,publisher))")
+    .select("id,title,content_type,reading_direction,issue_number,volume,publication_year,publisher,total_pages,synopsis,writers,pencillers,colorists,tags,file_size_mb,file_name,cover_palette,added_at,series(id,title,publisher,start_year,end_year,total_issues_expected,description,banner_tone),comic_characters(characters(id,name,alias,publisher))")
     .eq("id", id).maybeSingle();
   if (error || !data) return null;
   const comic = mapComic(data as unknown as CatalogRow);

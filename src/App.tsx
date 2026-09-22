@@ -8,6 +8,7 @@ import { AppLayout } from "./components/layout/AppLayout";
 import { LibraryPage } from "./app/pages/LibraryPage";
 import { ContinuePage } from "./app/pages/ContinuePage";
 import { SeriesPage } from "./app/pages/SeriesPage";
+import { IndieMangaPage } from "./app/pages/IndieMangaPage";
 import { FavoritesPage } from "./app/pages/FavoritesPage";
 import { LoginPage } from "./app/pages/LoginPage";
 import { useNavigation } from "./hooks/useNavigation";
@@ -92,6 +93,7 @@ export default function App() {
       {activeRoute === "/series" && (
         <SeriesPage onOpenReader={openReader} />
       )}
+      {activeRoute === "/multiverso" && <IndieMangaPage onOpenReader={openReader} />}
 
       {activeRoute === "/favoritos" && (
         <FavoritesPage

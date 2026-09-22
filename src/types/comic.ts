@@ -3,6 +3,8 @@
  */
 
 export type ComicStatus = "not_started" | "reading" | "completed";
+export type ContentType = "comic" | "graphic_novel" | "manga" | "manhwa";
+export type ReadingDirection = "ltr" | "rtl";
 
 export type SortOption =
   | "title_asc"
@@ -46,6 +48,8 @@ export interface ComicCoverPalette {
 export interface Comic {
   id: string;
   title: string;
+  contentType?: ContentType;
+  readingDirection?: ReadingDirection;
   issueNumber: number;
   seriesId: string;
   seriesTitle: string;

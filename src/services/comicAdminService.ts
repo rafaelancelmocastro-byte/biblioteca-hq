@@ -3,6 +3,8 @@ import { supabase } from "./supabaseClient";
 
 export type ComicRegistration = {
   title: string;
+  contentType?: Comic["contentType"];
+  readingDirection?: Comic["readingDirection"];
   issueNumber: number;
   year: number;
   totalPages: number;
@@ -51,6 +53,15 @@ export async function checkComicDuplicate(input: Pick<ComicRegistration, "title"
   return ownerRequest("/api/comics/check", { title: input.title, issueNumber: input.issueNumber, year: input.year, volume: input.volume, fileSha256: input.fileSha256, seriesId: input.series.id, publisher: input.series.publisher });
 }
 
+export async function checkStorageStatuses(ids: string[]): Promise<Record<string, "present" | "pending" | "error">> {
+  const statuses: Record<string, "present" | "pending" | "error"> = {};
+  for (let offset = 0; offset < ids.length; offset += 40) {
+    const result = await ownerRequest("/api/comics/check", { action: "storage-status", ids: ids.slice(offset, offset + 40) });
+    Object.assign(statuses, result.statuses || {});
+  }
+  return statuses;
+}
+
 export async function updateComicRecord(comicId: string, input: Partial<ComicRegistration>): Promise<void> {
   await ownerRequest("/api/comics/update", { id: comicId, ...input }, "PATCH");
 }
@@ -80,6 +91,8 @@ export async function deleteSeriesRecord(id: string, deleteContents: boolean): P
 export function comicToRegistration(comic: Comic, series: Series): ComicRegistration {
   return {
     title: comic.title,
+    contentType: comic.contentType,
+    readingDirection: comic.readingDirection,
     issueNumber: comic.issueNumber,
     year: comic.year,
     totalPages: comic.totalPages,

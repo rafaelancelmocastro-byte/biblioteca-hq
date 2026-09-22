@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
+  Compass,
 } from "lucide-react";
 import { APP_CONFIG } from "../../config/app";
 import { BrandLogo } from "../ui/BrandLogo";
@@ -46,6 +47,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       path: "/series",
       icon: Layers,
     },
+    { label: "Indie & Mangás", path: "/multiverso", icon: Compass },
     {
       label: "Favoritos",
       path: "/favoritos",

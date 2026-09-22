@@ -4,6 +4,8 @@ import { requireOwner } from "../_lib/auth.js";
 
 type CreateComicBody = {
   title?: string;
+  contentType?: string;
+  readingDirection?: string;
   issueNumber?: number;
   year?: number;
   totalPages?: number;
@@ -40,6 +42,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!(await requireOwner(req, res))) return;
 
   const body = (req.body ?? {}) as CreateComicBody;
+  if (body.contentType && !["comic", "graphic_novel", "manga", "manhwa"].includes(body.contentType) || body.readingDirection && !["ltr", "rtl"].includes(body.readingDirection)) return res.status(400).json({ error: "Formato ou direção de leitura inválidos." });
   if (
     !body.title?.trim() ||
     !body.fileName?.trim() ||
@@ -106,6 +109,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .insert({
       series_id: series.id,
       title: body.title.trim(),
+      content_type: body.contentType ?? "comic",
+      reading_direction: body.readingDirection ?? (body.contentType === "manga" ? "rtl" : "ltr"),
       issue_number: body.issueNumber,
       volume: body.volume ?? null,
       publication_year: body.year,
