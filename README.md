@@ -52,6 +52,7 @@ As funções abaixo executam somente na Vercel. Elas exigem um token de sessão 
 
 - `POST /api/storage/presign-upload`: aceita PDFs como `comic` e imagens JPEG, PNG ou WebP como `cover`; retorna uma URL temporária de upload e a chave privada do objeto.
 - `POST /api/storage/presign-read`: recebe uma chave emitida pelo servidor e retorna uma URL temporária de leitura.
+- `GET /api/integrations/health`: valida a conexão server-side com Supabase e R2 sem retornar credenciais ou dados privados.
 
 As URLs expiram em dez minutos. Nenhuma função retorna credenciais R2 ou a chave de serviço do Supabase.
 
