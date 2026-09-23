@@ -19,7 +19,7 @@ export function AppUpdateManager() {
     const check = () => { if (navigator.onLine) void registration?.update().catch(() => {}); };
     void navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" }).then((value) => { registration = value; check(); }).catch(() => {});
     const timer = window.setInterval(check, 5 * 60 * 1000);
-    const onVisibility = () => { if (document.visibilityState === "visible") check(); };
+    const onVisibility = () => { if (document.visibilityState === "visible" && !/^\/(ler|admin|configuracoes)(\/|$)/.test(location.pathname)) check(); };
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("online", check);
     return () => { disposed = true; window.clearInterval(timer); document.removeEventListener("visibilitychange", onVisibility); window.removeEventListener("online", check); navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange); };
@@ -30,7 +30,7 @@ export function AppUpdateManager() {
     let startX = 0;
     let canPull = false;
     const start = (event: TouchEvent) => {
-      canPull = window.scrollY <= 2 && !((event.target as HTMLElement).closest("input,textarea,select,[contenteditable=true],.reader-page"));
+      canPull = !/^\/(ler|admin|configuracoes)(\/|$)/.test(location.pathname) && window.scrollY <= 2 && !((event.target as HTMLElement).closest("input,textarea,select,[contenteditable=true],.reader-shell"));
       startY = event.touches[0]?.clientY || 0;
       startX = event.touches[0]?.clientX || 0;
     };
@@ -41,7 +41,7 @@ export function AppUpdateManager() {
     };
     const end = (event: TouchEvent) => {
       const touch = event.changedTouches[0];
-      const shouldReload = canPull && !!touch && touch.clientY - startY > 100 && Math.abs(touch.clientX - startX) < 60;
+      const shouldReload = canPull && !/^\/(ler|admin|configuracoes)(\/|$)/.test(location.pathname) && !!touch && touch.clientY - startY > 100 && Math.abs(touch.clientX - startX) < 60;
       setPullReady(false);
       canPull = false;
       if (shouldReload) location.reload();

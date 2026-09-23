@@ -192,12 +192,13 @@ async function loadCatalog(): Promise<SupabaseCatalog> {
 
 export async function getSupabaseComicById(id: string): Promise<Comic | null> {
   if (!supabase) return null;
-  const { data, error } = await supabase.from("comics")
+  const cached = catalogCache?.value.comics.find((comic) => comic.id === id);
+  const comicRequest = cached ? Promise.resolve({ data: null, error: null }) : supabase.from("comics")
     .select("id,title,content_type,reading_direction,issue_number,volume,publication_year,publisher,total_pages,synopsis,writers,pencillers,colorists,tags,file_size_mb,file_name,cover_palette,added_at,series(id,title,publisher,start_year,end_year,total_issues_expected,description,banner_tone,cover_key),comic_characters(characters(id,name,alias,publisher))")
     .eq("id", id).maybeSingle();
-  if (error || !data) return null;
-  const comic = mapComic(data as unknown as CatalogRow);
-  const progress = await supabase.from("reading_progress").select("current_page,total_pages,status,last_read_at,updated_at").eq("comic_id", id).maybeSingle();
+  const [record, progress] = await Promise.all([comicRequest, supabase.from("reading_progress").select("current_page,total_pages,status,last_read_at,updated_at").eq("comic_id", id).maybeSingle()]);
+  if (!cached && (record.error || !record.data)) return null;
+  const comic = cached ? { ...cached } : mapComic(record.data as unknown as CatalogRow);
   if (progress.data) {
     const row = progress.data;
     comic.progress = { comicId: id, currentPage: row.current_page, totalPages: row.total_pages, percentage: row.total_pages > 0 ? Math.round(row.current_page / row.total_pages * 100) : 0, status: row.status, lastReadAt: row.last_read_at || "", updatedAt: row.updated_at || "" };

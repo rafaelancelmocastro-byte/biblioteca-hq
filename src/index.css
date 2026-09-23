@@ -570,6 +570,8 @@ textarea.admin-field { resize: vertical; }
 .upload-tile strong { margin-top: .4rem; color: #fff; font-size: .75rem; }
 .upload-tile small { max-width: 100%; margin-top: .2rem; color: #8f8680; font-size: .62rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .upload-tile input[type="file"] { position: absolute; inset: 0; display: block; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 1rem; }
+.mobile-upload-help { margin: -.3rem 0 .9rem; color: #c6b8ac; font-size: .75rem; line-height: 1.5; }
+.upload-clear { margin: 0 0 1rem; color: #ffd521; font-size: .75rem; text-decoration: underline; cursor: pointer; }
 @media (pointer: coarse) {
   .upload-tile:has(input[accept*="pdf"]) { gap: .45rem; }
   .upload-tile input[type="file"][accept*="pdf"] { position: static; width: 100%; height: auto; opacity: 1; padding: .55rem; border: 1px solid rgba(255,213,33,.35); border-radius: .6rem; background: #211b18; color: #ddd3cc; font-size: .78rem; }

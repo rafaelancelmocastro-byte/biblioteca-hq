@@ -66,7 +66,7 @@ const ContinuousPdfPage: React.FC<{
     pdf.getPage(pageNumber).then((page) => {
       if (!active || !canvasRef.current) return;
       const base = page.getViewport({ scale: 1 });
-      const ratio = Math.min(window.devicePixelRatio || 1, 2);
+      const ratio = Math.min(window.devicePixelRatio || 1, window.matchMedia("(pointer: coarse)").matches ? 1 : 2);
       const viewport = page.getViewport({ scale: (width / base.width) * ratio });
       const canvas = canvasRef.current;
       const context = canvas.getContext("2d", { alpha: false });
@@ -154,7 +154,7 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, pdfData
       const availableHeight = Math.max(1, stage.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom));
       const hasSecond = readerMode === "spread" && currentPage > 1 && currentPage + 1 <= pdf.numPages;
       const fitScale = Math.min((hasSecond ? availableWidth / 2 : availableWidth) / baseViewport.width, availableHeight / baseViewport.height);
-      const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+      const pixelRatio = Math.min(window.devicePixelRatio || 1, window.matchMedia("(pointer: coarse)").matches ? 1 : 2);
       const viewport = page.getViewport({ scale: fitScale * zoom * pixelRatio });
       const canvas = canvasRef.current;
       const context = canvas.getContext("2d", { alpha: false });
@@ -194,10 +194,7 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, pdfData
   }, [currentPage, pdf, readerMode, zoom, stageSize]);
 
   useEffect(() => {
-    renderPage();
-    const onResize = () => renderPage();
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    if (stageSize.width > 0 && stageSize.height > 0) void renderPage();
   }, [renderPage]);
 
   useEffect(() => {
@@ -205,10 +202,9 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, pdfData
     if (!stage) return;
     const update = () => {
       const style = getComputedStyle(stage);
-      setStageSize({
-        width: Math.max(1, stage.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)),
-        height: Math.max(1, stage.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom)),
-      });
+      const width = Math.max(1, stage.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight));
+      const height = Math.max(1, stage.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom));
+      setStageSize((current) => current.width === width && current.height === height ? current : { width, height });
     };
     update();
     const observer = new ResizeObserver(update);

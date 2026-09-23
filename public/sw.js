@@ -1,4 +1,4 @@
-const CACHE = 'biblioteca-hq-shell-v4';
+const CACHE = 'biblioteca-hq-shell-v5';
 const SHELL = ['/', '/site.webmanifest', '/icon-192.png', '/icon-512.png', '/icon-maskable-512.png'];
 const ASSETS = __ASSETS__;
 self.addEventListener('install', (event) => {
@@ -21,6 +21,30 @@ self.addEventListener('activate', (event) => event.waitUntil((async () => {
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   const url = new URL(request.url);
+  if (request.method === 'POST' && url.pathname === '/share-pdf') {
+    event.respondWith((async () => {
+      try {
+        const form = await request.formData();
+        const files = form.getAll('pdfs').filter((item) => item instanceof File && (/\.pdf$/i.test(item.name) || item.type === 'application/pdf'));
+        if (!files.length) return Response.redirect(new URL('/configuracoes?share_error=1', self.location.origin).href, 303);
+        const db = await new Promise((resolve, reject) => {
+          const open = indexedDB.open('biblioteca-hq-shared-import-v1', 1);
+          open.onupgradeneeded = () => open.result.createObjectStore('files', { keyPath: 'id', autoIncrement: true });
+          open.onsuccess = () => resolve(open.result);
+          open.onerror = () => reject(open.error);
+        });
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction('files', 'readwrite');
+          for (const file of files) tx.objectStore('files').add({ file, addedAt: Date.now() });
+          tx.oncomplete = resolve;
+          tx.onerror = () => reject(tx.error);
+        });
+        db.close();
+        return Response.redirect(new URL('/configuracoes?shared=1', self.location.origin).href, 303);
+      } catch { return Response.redirect(new URL('/configuracoes?share_error=1', self.location.origin).href, 303); }
+    })());
+    return;
+  }
   if (request.method !== 'GET' || url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
   if (request.mode === 'navigate') {
     event.respondWith(fetch(request).catch(async () => (await caches.open(CACHE)).match('/')));

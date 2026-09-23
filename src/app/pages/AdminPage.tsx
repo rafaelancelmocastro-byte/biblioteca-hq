@@ -9,6 +9,7 @@ import { BatchImport } from "../../components/admin/BatchImport";
 import { inspectPdf, makeImageThumbnail, manualPdfInspection } from "../../services/pdfImport";
 import { UsersPanel } from "../../components/admin/UsersPanel";
 import { AssetsPanel } from "../../components/admin/AssetsPanel";
+import { takeSharedPdfs } from "../../services/sharedPdfImport";
 
 type Tab = "catalog" | "collections" | "users" | "status";
 const splitList = (value: string) => value.split(",").map((item) => item.trim()).filter(Boolean);
@@ -23,8 +24,10 @@ export const AdminPage: React.FC = () => {
   const [tab, setTab] = useState<Tab>("catalog");
   const [editing, setEditing] = useState<Comic | null>(null);
   const [pdf, setPdf] = useState<File | null>(null);
+  const mobilePdfPicker = useMemo(() => window.matchMedia("(pointer: coarse)").matches, []);
   const pdfInputRef = useRef<HTMLInputElement | null>(null);
   const waitingForPdfPicker = useRef(false);
+  const sharedImportLoaded = useRef(false);
   const lastPdfSelection = useRef({ signature: "", at: 0 });
   const [cover, setCover] = useState<File | null>(null);
   const [coverThumbnail, setCoverThumbnail] = useState<File | null>(null);
@@ -80,6 +83,13 @@ export const AdminPage: React.FC = () => {
   };
   const selectPdfs = async (files: File[]) => {
     if (!files.length) return;
+    if (mobilePdfPicker && !editing && files.length === 1 && (pdf || batchPdfs.length)) {
+      const next = [...batchPdfs, ...(pdf ? [pdf] : []), files[0]];
+      setBatchPdfs(next);
+      setPdf(null);
+      feedback(`${next.length} PDFs na fila. Você pode adicionar mais um ou revisar o lote.`, "info");
+      return;
+    }
     if (files.length > 1) { setBatchPdfs(files); setPdf(null); feedback(`${files.length} PDFs recebidos. Revise a fila abaixo antes de publicar.`, "info"); return; }
     setBatchPdfs([]);
     setPdf(files[0] || null);
@@ -117,6 +127,7 @@ export const AdminPage: React.FC = () => {
     const files = Array.from(input.files || []);
     if (!files.length) return;
     waitingForPdfPicker.current = false;
+    sessionStorage.removeItem("biblioteca-pdf-picker-open");
     const signature = files.map((file) => `${file.name}:${file.size}:${file.lastModified}`).join("|");
     const now = Date.now();
     if (lastPdfSelection.current.signature === signature && now - lastPdfSelection.current.at < 1000) return;
@@ -126,9 +137,34 @@ export const AdminPage: React.FC = () => {
   };
   const handlePdfSelection = (event: React.FormEvent<HTMLInputElement>) => processPdfInput(event.currentTarget);
   useEffect(() => {
-    const recoverPickerReturn = () => window.setTimeout(() => { if (waitingForPdfPicker.current && pdfInputRef.current?.files?.length) processPdfInput(pdfInputRef.current); }, 250);
+    const started = Number(sessionStorage.getItem("biblioteca-pdf-picker-open") || 0);
+    if (started && Date.now() - started < 120_000) feedback("A tela foi reiniciada enquanto o Android abria o PDF. Use o seletor alternativo ou Compartilhar → Biblioteca HQ.", "error");
+    sessionStorage.removeItem("biblioteca-pdf-picker-open");
+  }, []);
+  const choosePdfWithSystemPicker = async () => {
+    const picker = (window as Window & { showOpenFilePicker?: (options: { multiple: boolean; types: Array<{ description: string; accept: Record<string, string[]> }> }) => Promise<Array<{ getFile: () => Promise<File> }>> }).showOpenFilePicker;
+    if (!picker) return;
+    try {
+      const handles = await picker({ multiple: !editing && !mobilePdfPicker, types: [{ description: "Arquivos PDF", accept: { "application/pdf": [".pdf"] } }] });
+      const files = await Promise.all(handles.map((handle) => handle.getFile()));
+      void selectPdfs(files);
+    } catch (error) { if ((error as Error).name !== "AbortError") feedback("O seletor alternativo não conseguiu abrir os PDFs.", "error"); }
+  };
+  useEffect(() => {
+    if (sharedImportLoaded.current || !new URLSearchParams(window.location.search).has("shared")) return;
+    sharedImportLoaded.current = true;
+    void takeSharedPdfs().then((files) => { if (files.length) void selectPdfs(files); else feedback("Nenhum PDF foi recebido do compartilhamento.", "error"); }).catch(() => feedback("Não foi possível ler os PDFs compartilhados.", "error"));
+    window.history.replaceState({}, "", window.location.pathname);
+  });
+  useEffect(() => {
+    const recoverPickerReturn = () => { if (document.visibilityState !== "visible") return; window.setTimeout(() => {
+      if (!waitingForPdfPicker.current) return;
+      if (pdfInputRef.current?.files?.length) processPdfInput(pdfInputRef.current);
+      else { waitingForPdfPicker.current = false; sessionStorage.removeItem("biblioteca-pdf-picker-open"); feedback("O Android não devolveu o PDF selecionado. Tente o seletor alternativo ou Compartilhar → Biblioteca HQ.", "error"); }
+    }, 650); };
     window.addEventListener("focus", recoverPickerReturn);
-    return () => window.removeEventListener("focus", recoverPickerReturn);
+    document.addEventListener("visibilitychange", recoverPickerReturn);
+    return () => { window.removeEventListener("focus", recoverPickerReturn); document.removeEventListener("visibilitychange", recoverPickerReturn); };
   });
   const submitComic = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -253,7 +289,10 @@ export const AdminPage: React.FC = () => {
           <label>Categorias / tags<input className={fieldClass} placeholder="X-Men, mutantes, aventura" value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} /></label>
         </div>
         {editing && <label className="bulk-edit-toggle"><input type="checkbox" checked={applyToCollection} onChange={(e) => setApplyToCollection(e.target.checked)} /><div><strong>Aplicar ficha editorial a toda a coleção</strong><span>Atualiza sinopse, roteiro, arte, cores e categorias nas {allComics.filter((comic) => comic.seriesId === form.seriesId).length} edições de “{seriesList.find((series) => series.id === form.seriesId)?.title || "esta coleção"}”. Título, número, ano, páginas, PDF e capa continuam individuais.</span></div></label>}
-        <div className="upload-grid"><div className="upload-tile"><FileUp /><strong>{batchPdfs.length ? `${batchPdfs.length} PDFs selecionados` : pdf?.name || (editing ? "Substituir PDF" : "Selecionar um ou vários PDFs")}</strong><small>{pdf ? formatFileSize(pdf.size / 1024 / 1024) : editing?.fileName || "Envio direto ao R2 · até 5 GB por arquivo"}</small><input ref={pdfInputRef} type="file" aria-label={editing ? "Substituir PDF" : "Selecionar PDFs"} accept="application/pdf,.pdf" multiple={!editing} onClick={() => { waitingForPdfPicker.current = true; }} onInput={handlePdfSelection} onChange={handlePdfSelection} /></div><label className="upload-tile"><FileImage /><strong>{batchCovers.length ? `${batchCovers.length} capas selecionadas` : cover?.name || (editing ? "Substituir capa" : "Adicionar uma ou várias capas")}</strong><small>JPG, PNG ou WebP · nomes iguais aos PDFs fazem a associação automática</small><input type="file" aria-label={editing ? "Substituir capa" : "Selecionar capas"} accept="image/jpeg,image/png,image/webp" multiple={!editing} onChange={(e) => { const files = Array.from(e.currentTarget.files || []); e.currentTarget.value = ""; if (files.length > 1) { setBatchCovers(files); setCover(null); } else { setCover(files[0] || null); setCoverThumbnail(null); setBatchCovers([]); } }} /></label></div>
+        <div className="upload-grid"><div className="upload-tile"><FileUp /><strong>{batchPdfs.length ? `${batchPdfs.length} PDFs selecionados` : pdf?.name || (editing ? "Substituir PDF" : mobilePdfPicker ? "Adicionar PDF à fila" : "Selecionar um ou vários PDFs")}</strong><small>{pdf ? formatFileSize(pdf.size / 1024 / 1024) : editing?.fileName || (mobilePdfPicker ? "No celular, escolha um PDF por vez; repita para formar o lote" : "Envio direto ao R2 · até 5 GB por arquivo")}</small><input ref={pdfInputRef} type="file" aria-label={editing ? "Substituir PDF" : "Selecionar PDFs"} accept=".pdf,application/pdf" multiple={!editing && !mobilePdfPicker} onClick={() => { waitingForPdfPicker.current = true; sessionStorage.setItem("biblioteca-pdf-picker-open", String(Date.now())); }} onInput={handlePdfSelection} onChange={handlePdfSelection} /></div><label className="upload-tile"><FileImage /><strong>{batchCovers.length ? `${batchCovers.length} capas selecionadas` : cover?.name || (editing ? "Substituir capa" : "Adicionar uma ou várias capas")}</strong><small>JPG, PNG ou WebP · nomes iguais aos PDFs fazem a associação automática</small><input type="file" aria-label={editing ? "Substituir capa" : "Selecionar capas"} accept="image/jpeg,image/png,image/webp" multiple={!editing} onChange={(e) => { const files = Array.from(e.currentTarget.files || []); e.currentTarget.value = ""; if (files.length > 1) { setBatchCovers(files); setCover(null); } else { setCover(files[0] || null); setCoverThumbnail(null); setBatchCovers([]); } }} /></label></div>
+        {mobilePdfPicker && "showOpenFilePicker" in window && <button type="button" className="upload-clear" onClick={() => void choosePdfWithSystemPicker()}>Abrir seletor alternativo de PDFs</button>}
+        {mobilePdfPicker && <p className="mobile-upload-help">Se o seletor do Android voltar sem o arquivo, abra o PDF no app Arquivos e use Compartilhar → Biblioteca HQ. O arquivo entrará na mesma fila para revisão.</p>}
+        {(pdf || batchPdfs.length > 0) && <button type="button" className="upload-clear" onClick={() => { setPdf(null); setBatchPdfs([]); setNotice("Seleção de PDFs limpa."); }}>Limpar PDFs selecionados</button>}
         {pdf && !editing && <button type="button" onClick={() => { setBatchPdfs([pdf]); setPdf(null); }}>Revisar como lote (opções para duplicados)</button>}
         {batchPdfs.length === 0 && <button className="studio-primary" disabled={busy}><UploadCloud /> {busy ? "Publicando..." : editing ? "Salvar alterações" : "Cadastrar e publicar"}</button>}
       </form>

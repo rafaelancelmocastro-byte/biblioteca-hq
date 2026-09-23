@@ -28,10 +28,15 @@ export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack }) => {
     (async () => {
       const { data: auth } = await supabase!.auth.getSession();
       if (isMounted) setUserId(auth.session?.user.id || "");
+      if (navigator.onLine) {
+        try {
+          const [data, url] = await Promise.all([getSupabaseComicById(comicId), getComicReadUrl(comicId)]);
+          if (data && isMounted) { setComic(data); setPdfUrl(url); setIsLoading(false); return; }
+        } catch { /* Use uma cópia offline quando a rede falhar. */ }
+      }
       const offline = auth.session ? await readOffline(auth.session.user.id, comicId) : null;
-      if (offline) { if (isMounted) { const queued = getQueuedProgress(auth.session!.user.id, comicId); setComic(queued ? { ...offline.comic, progress: { comicId, currentPage: queued.page, totalPages: queued.total, percentage: Math.round(queued.page / queued.total * 100), status: queued.page >= queued.total ? "completed" : "reading", lastReadAt: queued.updatedAt, updatedAt: queued.updatedAt } } : offline.comic); setPdfData(offline.data); setIsLoading(false); } return; }
-      const data = await getSupabaseComicById(comicId);
-      if (isMounted) { setComic(data); if (data) setPdfUrl(await getComicReadUrl(data.id)); setIsLoading(false); }
+      if (offline && isMounted) { const queued = getQueuedProgress(auth.session!.user.id, comicId); setComic(queued ? { ...offline.comic, progress: { comicId, currentPage: queued.page, totalPages: queued.total, percentage: Math.round(queued.page / queued.total * 100), status: queued.page >= queued.total ? "completed" : "reading", lastReadAt: queued.updatedAt, updatedAt: queued.updatedAt } } : offline.comic); setPdfData(offline.data); setIsLoading(false); return; }
+      if (isMounted) setIsLoading(false);
     })()
       .catch(() => {
         if (isMounted) setIsLoading(false);
