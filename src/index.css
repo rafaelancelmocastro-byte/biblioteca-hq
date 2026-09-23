@@ -370,6 +370,12 @@ button, input, select { font: inherit; }
 @media (min-width: 641px) and (max-width: 1024px) { .comic-action-backdrop { align-items: center; padding: 1.5rem; } .comic-action-sheet { border-radius: 1.25rem; max-width: 30rem; } }
 
 .reader-shell { background: #070605; }
+.publication-stage { position: relative; flex: 1; min-height: 0; overflow: hidden; display: grid; place-items: center; background: #100d0b; }
+.publication-view { display: block; width: 100%; height: 100%; color: #211a16; background: #eee9df; }
+.publication-message { position: absolute; inset: 0; z-index: 2; display: grid; place-content: center; gap: 1rem; padding: 1rem; text-align: center; background: #100d0b; color: #eee9df; }
+.publication-message button,.publication-mode { display: inline-flex; align-items: center; justify-content: center; gap: .45rem; padding: .6rem .8rem; border: 1px solid #ffffff30; border-radius: .7rem; color: #f5eadf; }
+.publication-mode svg { width: 1rem; height: 1rem; }
+.publication-dock .reader-page-control { flex: 1; max-width: 32rem; }
 .reader-topbar {
   min-height: 3.75rem;
   flex: 0 0 auto;

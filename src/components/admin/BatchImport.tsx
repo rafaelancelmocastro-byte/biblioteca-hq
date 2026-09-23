@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { Comic, Series } from "../../types/comic";
-import { inspectPdf, makeImageThumbnail, manualPdfInspection, type PdfInspection } from "../../services/pdfImport";
+import { makeImageThumbnail, type PdfInspection } from "../../services/pdfImport";
+import { inspectPublication, manualPublicationInspection } from "../../services/publicationImport";
+import { publicationFormat } from "../../services/publicationFormats";
 import { checkComicDuplicate, createComicRecord, saveSeriesRecord, updateComicRecord, type ComicRegistration } from "../../services/comicAdminService";
 import { storageProvider } from "../../services/storageProvider";
 
@@ -75,7 +77,7 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
   const proposedGroup = useMemo(() => {
     const counts = new Map<string, { title: string; count: number }>();
     for (const file of files) {
-      const title = file.name.replace(/\.pdf$/i, "").replace(/(?:\s*[#№]\s*\d+|\s+(?:edi[çc][ãa]o|issue)\s*\d+|\s+\d{1,4})(?:\s+(?:18|19|20)\d{2})?$/i, "").trim();
+      const title = file.name.replace(/\.(pdf|cbr|epub|azw3)$/i, "").replace(/(?:\s*[#№]\s*\d+|\s+(?:edi[çc][ãa]o|issue)\s*\d+|\s+\d{1,4})(?:\s+(?:18|19|20)\d{2})?$/i, "").trim();
       const key = normalize(title);
       if (key.length < 6 || ["superman", "batman", "vingadores", "xmen", "homemaranha", "ligadajustica"].includes(key)) continue;
       const entry = counts.get(key);
@@ -112,7 +114,7 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
     const inspect = async () => {
       for (const [index, file] of files.entries()) {
         try {
-          const meta = window.matchMedia("(pointer: coarse)").matches ? await manualPdfInspection(file) : await inspectPdf(file);
+          const meta = await inspectPublication(file, window.matchMedia("(pointer: coarse)").matches);
           if (!active) return;
           const exact = suggestSeries(file.name, series);
           const matchedCover = covers.find((item) => normalize(item.name) === normalize(file.name));
@@ -121,14 +123,14 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
         } catch (error) {
           if (!active) return;
           try {
-            if (error instanceof Error && error.message === "PDF protegido por senha.") throw error;
-            const meta = await manualPdfInspection(file);
+            if (publicationFormat(file.name) !== "pdf") throw error;
+            const meta = await manualPublicationInspection(file);
             if (!active) return;
             const saved = savedDrafts.current[draftKey(file)];
             setDrafts((current) => current.map((draft, position) => position === index ? { ...draft, meta: saved?.meta || meta, seriesId: saved?.seriesId || draft.seriesId, status: saved?.status === "published" ? "published" : "incomplete", message: saved?.message || meta.warning || "Preencha os dados manualmente." } : draft));
           } catch (fallbackError) {
             if (!active) return;
-            setDrafts((current) => current.map((draft, position) => position === index ? { ...draft, status: "error", message: fallbackError instanceof Error ? fallbackError.message : "Falha ao analisar o PDF." } : draft));
+            setDrafts((current) => current.map((draft, position) => position === index ? { ...draft, status: "error", message: fallbackError instanceof Error ? fallbackError.message : "Falha ao analisar o arquivo." } : draft));
           }
         }
       }
@@ -180,14 +182,14 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
           const check = await checkComicDuplicate({ title: meta.title.trim(), issueNumber: Number(meta.issueNumber), year: Number(meta.year), fileSha256: meta.fileSha256, series: chosen });
           if (check.code !== "UNIQUE") { update(index, { status: "duplicate", message: check.message || "Possível duplicidade.", existingId: check.existing?.id }); continue; }
         }
-        update(index, { status: "uploading", message: "Enviando PDF e capa ao R2..." });
-        const pdfUpload = metadataOnly ? null : await storageProvider.uploadFile(draft.file, "comics", (percent) => update(index, { message: `Enviando PDF ao R2: ${percent}%` }));
+        update(index, { status: "uploading", message: "Enviando arquivo e capa ao R2..." });
+        const pdfUpload = metadataOnly ? null : await storageProvider.uploadFile(draft.file, "comics", (percent) => update(index, { message: `Enviando arquivo ao R2: ${percent}%` }));
         const coverFile = draft.coverOverride || meta.cover;
         const coverUpload = !metadataOnly && coverFile ? await storageProvider.uploadFile(coverFile, "covers") : null;
         const thumbnail = draft.coverOverride ? await makeImageThumbnail(draft.coverOverride) : meta.thumbnail;
         const thumbUpload = !metadataOnly && thumbnail ? await storageProvider.uploadFile(thumbnail, "covers") : null;
         const payload: ComicRegistration = {
-          title: meta.title.trim(), issueNumber: Number(meta.issueNumber), year: Number(meta.year), totalPages: Number(meta.totalPages),
+          title: meta.title.trim(), contentType: ["epub", "azw3"].includes(publicationFormat(draft.file.name) || "") ? "book" : "comic", issueNumber: Number(meta.issueNumber), year: Number(meta.year), totalPages: Number(meta.totalPages),
           fileName: draft.file.name, fileSizeMb: pdfUpload?.fileSizeMb ?? 0, pdfKey: pdfUpload?.fileKey ?? "",
           coverKey: coverUpload?.fileKey, coverThumbKey: thumbUpload?.fileKey, fileSha256: meta.fileSha256,
           synopsis: meta.synopsis, writers: split(meta.writers), pencillers: split(meta.pencillers), colorists: split(meta.colorists), tags: split(meta.tags), characters: split(meta.characters), series: chosen,
@@ -196,7 +198,7 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
         if ((replaceExisting || metadataOnly) && draft.existingId) await updateComicRecord(draft.existingId, metadataOnly ? { ...payload, fileName: "", fileSizeMb: 0, fileSha256: undefined } : payload);
         else await createComicRecord(payload);
         published++;
-        update(index, { status: "published", message: metadataOnly ? "Metadados atualizados; PDF existente preservado." : replaceExisting ? "Arquivo e ficha da edição existente atualizados." : "Publicado com ficha e arquivo individuais." });
+        update(index, { status: "published", message: metadataOnly ? "Metadados atualizados; Arquivo existente preservado." : replaceExisting ? "Arquivo e ficha da edição existente atualizados." : "Publicado com ficha e arquivo individuais." });
       } catch (error) {
         const typed = error as Error & { code?: string; existing?: { id: string } };
         update(index, { status: typed.code === "SAME_FILE" || typed.code === "POSSIBLE_DUPLICATE" ? "duplicate" : "error", message: typed.message, existingId: typed.existing?.id });
@@ -208,9 +210,9 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
   };
 
   return <section id="batch-review" className="batch-review" aria-label="Revisão da importação em lote">
-    <div className="batch-review-header"><div><strong>Revisar lote</strong><span>Cada PDF mantém sua própria ficha. Campos sem evidência ficam vazios. A fila fica salva neste dispositivo até você publicar ou descartar.</span></div><button type="button" onClick={discard} disabled={publishing}>Descartar fila</button></div>
-    <div className="batch-shared-panel"><strong>Dados comuns a todos os PDFs desta fila</strong><p>Marque somente o que se repete. O restante, como número da edição, páginas e capa, continua individual.</p><div className="batch-shared-grid">{sharedFields.map((field) => <label key={field} className={field === "synopsis" ? "wide" : ""}><span><input type="checkbox" checked={sharedEnabled.includes(field)} onChange={(event) => setSharedEnabled((current) => event.target.checked ? [...current, field] : current.filter((item) => item !== field))} /> Aplicar {sharedLabels[field]} a todos</span>{field === "seriesId" ? <select value={sharedValues.seriesId} onChange={(event) => setSharedValues((current) => ({ ...current, seriesId: event.target.value }))}><option value="">Selecione a coleção</option>{series.map((item) => <option key={item.id} value={item.id}>{seriesPath(item, series)}</option>)}</select> : field === "synopsis" ? <textarea rows={2} value={sharedValues.synopsis} onChange={(event) => setSharedValues((current) => ({ ...current, synopsis: event.target.value }))} /> : <input type={field === "year" ? "number" : "text"} min={field === "year" ? 1800 : undefined} max={field === "year" ? 2200 : undefined} value={sharedValues[field]} onChange={(event) => setSharedValues((current) => ({ ...current, [field]: event.target.value }))} />}</label>)}</div><button type="button" className="studio-primary" disabled={publishing || drafts.some((draft) => draft.status === "analyzing")} onClick={applyShared}>Aplicar campos marcados à fila</button>{sharedMessage && <p role="status">{sharedMessage}</p>}</div>
-    {proposedGroup && <div className="batch-group-suggestion"><strong>{proposedGroup.count} arquivo(s) sugerem o agrupamento “{proposedGroup.title}”</strong><span>Revise o tipo e a coleção principal. A sugestão vem dos nomes dos PDFs e pode ser corrigida.</span><div><label>Nome do agrupamento<input value={groupTitle} onChange={(event) => setGroupTitle(event.target.value)} /></label><label>Editora<input value={groupPublisher} onChange={(event) => setGroupPublisher(event.target.value)} /></label><label>Ano inicial<input type="number" min="1800" max="2200" value={groupYear} onChange={(event) => setGroupYear(event.target.value)} /></label><label>Tipo<select value={groupKind} onChange={(event) => setGroupKind(event.target.value)}><option value="collection">Coleção</option><option value="saga">Saga</option><option value="one_shot">Obra fechada / volume único</option></select></label>{groupKind !== "collection" && <label>Coleção principal<select required={groupKind === "one_shot"} value={groupParentId} onChange={(event) => { setGroupParentId(event.target.value); const parent = series.find((item) => item.id === event.target.value); if (parent) setGroupPublisher(parent.publisher); }}><option value="">Sem coleção principal</option>{series.filter((item) => item.bannerTone !== "saga" && item.bannerTone !== "one_shot").map((item) => <option key={item.id} value={item.id}>{item.publisher} → {item.title}</option>)}</select></label>}<button type="button" onClick={() => void createSuggestedGroup()} disabled={publishing}>Criar agrupamento e associar</button></div>{groupError && <p role="alert">{groupError}</p>}</div>}
+    <div className="batch-review-header"><div><strong>Revisar lote</strong><span>Cada arquivo mantém sua própria ficha. Campos sem evidência ficam vazios. A fila fica salva neste dispositivo até você publicar ou descartar.</span></div><button type="button" onClick={discard} disabled={publishing}>Descartar fila</button></div>
+    <div className="batch-shared-panel"><strong>Dados comuns a todos os arquivos desta fila</strong><p>Marque somente o que se repete. O restante, como número da edição, páginas e capa, continua individual.</p><div className="batch-shared-grid">{sharedFields.map((field) => <label key={field} className={field === "synopsis" ? "wide" : ""}><span><input type="checkbox" checked={sharedEnabled.includes(field)} onChange={(event) => setSharedEnabled((current) => event.target.checked ? [...current, field] : current.filter((item) => item !== field))} /> Aplicar {sharedLabels[field]} a todos</span>{field === "seriesId" ? <select value={sharedValues.seriesId} onChange={(event) => setSharedValues((current) => ({ ...current, seriesId: event.target.value }))}><option value="">Selecione a coleção</option>{series.map((item) => <option key={item.id} value={item.id}>{seriesPath(item, series)}</option>)}</select> : field === "synopsis" ? <textarea rows={2} value={sharedValues.synopsis} onChange={(event) => setSharedValues((current) => ({ ...current, synopsis: event.target.value }))} /> : <input type={field === "year" ? "number" : "text"} min={field === "year" ? 1800 : undefined} max={field === "year" ? 2200 : undefined} value={sharedValues[field]} onChange={(event) => setSharedValues((current) => ({ ...current, [field]: event.target.value }))} />}</label>)}</div><button type="button" className="studio-primary" disabled={publishing || drafts.some((draft) => draft.status === "analyzing")} onClick={applyShared}>Aplicar campos marcados à fila</button>{sharedMessage && <p role="status">{sharedMessage}</p>}</div>
+    {proposedGroup && <div className="batch-group-suggestion"><strong>{proposedGroup.count} arquivo(s) sugerem o agrupamento “{proposedGroup.title}”</strong><span>Revise o tipo e a coleção principal. A sugestão vem dos nomes dos arquivos e pode ser corrigida.</span><div><label>Nome do agrupamento<input value={groupTitle} onChange={(event) => setGroupTitle(event.target.value)} /></label><label>Editora<input value={groupPublisher} onChange={(event) => setGroupPublisher(event.target.value)} /></label><label>Ano inicial<input type="number" min="1800" max="2200" value={groupYear} onChange={(event) => setGroupYear(event.target.value)} /></label><label>Tipo<select value={groupKind} onChange={(event) => setGroupKind(event.target.value)}><option value="collection">Coleção</option><option value="saga">Saga</option><option value="one_shot">Obra fechada / volume único</option></select></label>{groupKind !== "collection" && <label>Coleção principal<select required={groupKind === "one_shot"} value={groupParentId} onChange={(event) => { setGroupParentId(event.target.value); const parent = series.find((item) => item.id === event.target.value); if (parent) setGroupPublisher(parent.publisher); }}><option value="">Sem coleção principal</option>{series.filter((item) => item.bannerTone !== "saga" && item.bannerTone !== "one_shot").map((item) => <option key={item.id} value={item.id}>{item.publisher} → {item.title}</option>)}</select></label>}<button type="button" onClick={() => void createSuggestedGroup()} disabled={publishing}>Criar agrupamento e associar</button></div>{groupError && <p role="alert">{groupError}</p>}</div>}
     {drafts.map((draft, index) => <details key={`${draft.file.name}-${draft.file.lastModified}`} className="batch-review-item" open={index === 0}>
       <summary><strong>{draft.file.name}</strong><span className={`batch-status ${draft.status}`}>{draft.status === "analyzing" ? "Analisando" : draft.status === "ready" ? "Revisar" : draft.status === "uploading" ? "Enviando" : draft.status === "published" ? "Publicado" : draft.status === "incomplete" ? "Incompleto" : draft.status === "duplicate" ? "Possível duplicado" : draft.status === "cancelled" ? "Cancelado" : "Erro"}</span></summary>
       <p role="status">{draft.message}</p>
@@ -229,7 +231,7 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
         <label className="span-2">Substituir capa automática<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => update(index, { coverOverride: event.target.files?.[0] })} /></label>
         {draft.meta.cover && !draft.coverOverride && <CoverPreview file={draft.meta.cover} alt={`Capa extraída de ${draft.file.name}`} />}
       </div>}
-      {draft.status === "duplicate" && <div className="batch-duplicate-actions"><button type="button" onClick={() => void publish(index)} disabled={publishing}>Manter ambos</button>{draft.existingId && <><button type="button" onClick={() => void publish(index, true)} disabled={publishing}>Substituir PDF existente</button><button type="button" onClick={() => void publish(index, false, true)} disabled={publishing}>Atualizar só metadados</button></>}<button type="button" onClick={() => update(index, { status: "cancelled", message: "Importação cancelada pelo proprietário." })}>Cancelar este arquivo</button></div>}
+      {draft.status === "duplicate" && <div className="batch-duplicate-actions"><button type="button" onClick={() => void publish(index)} disabled={publishing}>Manter ambos</button>{draft.existingId && <><button type="button" onClick={() => void publish(index, true)} disabled={publishing}>Substituir arquivo existente</button><button type="button" onClick={() => void publish(index, false, true)} disabled={publishing}>Atualizar só metadados</button></>}<button type="button" onClick={() => update(index, { status: "cancelled", message: "Importação cancelada pelo proprietário." })}>Cancelar este arquivo</button></div>}
     </details>)}
     <button type="button" className="studio-primary" disabled={publishing || drafts.some((draft) => draft.status === "analyzing")} onClick={() => void publish()}>{publishing ? "Processando fila..." : "Publicar arquivos revisados"}</button>
   </section>;

@@ -3,6 +3,8 @@ import { Comic } from "../../types/comic";
 import { getSupabaseComicById } from "../../services/supabaseCatalogRepository";
 import { getComicReadUrl } from "../../services/comicRead";
 import { ComicReader } from "../../components/reader/ComicReader";
+import { PublicationReader } from "../../components/reader/PublicationReader";
+import { publicationFormat } from "../../services/publicationFormats";
 import { getQueuedProgress, saveReadingProgress } from "../../services/offlineProgress";
 import { Button } from "../../components/ui/Button";
 import { ArrowLeft, BookX } from "lucide-react";
@@ -71,6 +73,8 @@ export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack }) => {
       </div>
     );
   }
+
+  if (publicationFormat(comic.fileName) && publicationFormat(comic.fileName) !== "pdf") return <PublicationReader comic={comic} fileUrl={pdfUrl} fileData={pdfData} onBack={onBack} onUpdateProgress={(id, page, total) => { void saveReadingProgress(userId, id, page, total); }} />;
 
   return (
     <ComicReader

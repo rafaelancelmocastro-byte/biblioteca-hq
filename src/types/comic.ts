@@ -3,7 +3,7 @@
  */
 
 export type ComicStatus = "not_started" | "reading" | "completed";
-export type ContentType = "comic" | "graphic_novel" | "manga" | "manhwa";
+export type ContentType = "comic" | "graphic_novel" | "manga" | "manhwa" | "book";
 export type ReadingDirection = "ltr" | "rtl";
 
 export type SortOption =

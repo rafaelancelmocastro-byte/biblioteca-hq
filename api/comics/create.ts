@@ -42,11 +42,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!(await requireOwner(req, res))) return;
 
   const body = (req.body ?? {}) as CreateComicBody;
-  if (body.contentType && !["comic", "graphic_novel", "manga", "manhwa"].includes(body.contentType) || body.readingDirection && !["ltr", "rtl"].includes(body.readingDirection)) return res.status(400).json({ error: "Formato ou direção de leitura inválidos." });
+  if (body.contentType && !["comic", "graphic_novel", "manga", "manhwa", "book"].includes(body.contentType) || body.readingDirection && !["ltr", "rtl"].includes(body.readingDirection)) return res.status(400).json({ error: "Formato ou direção de leitura inválidos." });
   if (
     !body.title?.trim() ||
     !body.fileName?.trim() ||
-    !body.pdfKey?.startsWith("comics/") ||
+    !/^comics\/[a-f0-9-]+\.(pdf|cbr|epub|azw3)$/i.test(body.pdfKey || "") ||
     !body.series?.id && !body.series?.title?.trim() ||
     !body.series?.publisher?.trim() ||
     !Number.isInteger(body.issueNumber) ||

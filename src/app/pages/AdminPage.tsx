@@ -6,7 +6,9 @@ import { checkComicDuplicate, checkStorageStatuses, createComicRecord, deleteCom
 import type { Comic, Series } from "../../types/comic";
 import { formatFileSize } from "../../lib/formatters";
 import { BatchImport } from "../../components/admin/BatchImport";
-import { inspectPdf, makeImageThumbnail, manualPdfInspection } from "../../services/pdfImport";
+import { makeImageThumbnail } from "../../services/pdfImport";
+import { inspectPublication, manualPublicationInspection } from "../../services/publicationImport";
+import { PUBLICATION_ACCEPT, publicationFormat } from "../../services/publicationFormats";
 import { UsersPanel } from "../../components/admin/UsersPanel";
 import { AssetsPanel } from "../../components/admin/AssetsPanel";
 import { clearSharedPdfs, takeSharedPdfs } from "../../services/sharedPdfImport";
@@ -64,7 +66,7 @@ export const AdminPage: React.FC = () => {
           setPdf(saved.pdf); setBatchPdfs(saved.batchPdfs); setCover(saved.cover); setBatchCovers(saved.batchCovers);
           const recentForm = localStorage.getItem(`biblioteca-hq-import-form:${userId}`);
           setForm(recentForm ? JSON.parse(recentForm) : saved.form);
-          setNotice(`${saved.batchPdfs.length + (saved.pdf ? 1 : 0)} PDF(s) pendente(s) recuperado(s) neste dispositivo.`);
+          setNotice(`${saved.batchPdfs.length + (saved.pdf ? 1 : 0)} arquivo(s) pendente(s) recuperado(s) neste dispositivo.`);
         }
       } catch { setNotice("Não foi possível recuperar o rascunho local neste dispositivo."); }
       setDraftUserId(userId);
@@ -125,32 +127,32 @@ export const AdminPage: React.FC = () => {
     if (mobilePdfPicker && !editing) {
       const next = mergeFiles([...batchPdfs, ...(pdf ? [pdf] : []), ...files]);
       setBatchPdfs(next); setPdf(null);
-      feedback(`${next.length} PDF(s) na fila. Revise os dados antes de publicar.`, "info");
+      feedback(`${next.length} arquivo(s) na fila. Revise os dados antes de publicar.`, "info");
       return;
     }
-    if (files.length > 1) { setBatchPdfs(files); setPdf(null); feedback(`${files.length} PDFs recebidos. Revise a fila abaixo antes de publicar.`, "info"); return; }
+    if (files.length > 1) { setBatchPdfs(files); setPdf(null); feedback(`${files.length} arquivos recebidos. Revise a fila abaixo antes de publicar.`, "info"); return; }
     setBatchPdfs([]);
     setPdf(files[0] || null);
     setPdfHash(undefined); setCoverThumbnail(null);
     feedback(`Arquivo selecionado: ${files[0].name}.`, "info");
     if (!files[0] || editing) return;
-    setNotice("Analisando a primeira página e os metadados do PDF...");
+    setNotice("Analisando o arquivo e seus metadados...");
     try {
-      const meta = await inspectPdf(files[0]);
+      const meta = await inspectPublication(files[0]);
       const normalizedFileName = normalizeName(files[0].name);
       const matchedSeries = [...seriesList].sort((a, b) => b.title.length - a.title.length).find((item) => normalizeName(item.title).length > 3 && normalizedFileName.includes(normalizeName(item.title)));
       setPdfHash(meta.fileSha256);
       setCoverThumbnail(meta.thumbnail || null);
-      setForm((current) => ({ ...current, title: meta.title, seriesId: matchedSeries?.id || "", issue: meta.issueNumber, year: meta.year, pages: meta.totalPages, synopsis: meta.synopsis, writers: meta.writers, tags: meta.tags, characters: meta.characters }));
+      setForm((current) => ({ ...current, title: meta.title, seriesId: matchedSeries?.id || "", issue: meta.issueNumber || (["epub", "azw3"].includes(publicationFormat(files[0].name) || "") ? "1" : ""), year: meta.year, pages: meta.totalPages, synopsis: meta.synopsis, writers: meta.writers, tags: meta.tags, characters: meta.characters, contentType: ["epub", "azw3"].includes(publicationFormat(files[0].name) || "") ? "book" : current.contentType }));
       if (meta.cover && !cover) setCover(meta.cover);
       setNotice(meta.warning || "Ficha extraída. Revise os campos vazios antes de publicar.");
     } catch (error) {
-      if (error instanceof Error && error.message === "PDF protegido por senha.") { feedback(error.message, "error"); return; }
+      if (publicationFormat(files[0].name) !== "pdf") { feedback(error instanceof Error ? error.message : "Arquivo incompatível.", "error"); return; }
       try {
-        const fallback = await manualPdfInspection(files[0]);
+        const fallback = await manualPublicationInspection(files[0]);
         setForm((current) => ({ ...current, title: fallback.title, issue: fallback.issueNumber, year: fallback.year, pages: "" }));
         feedback(fallback.warning || "Preencha os metadados manualmente.", "info");
-      } catch (fallbackError) { feedback(fallbackError instanceof Error ? fallbackError.message : "Não foi possível ler o PDF.", "error"); }
+      } catch (fallbackError) { feedback(fallbackError instanceof Error ? fallbackError.message : "Não foi possível ler o arquivo.", "error"); }
     }
   };
   const processPdfInput = (input: HTMLInputElement) => {
@@ -175,10 +177,10 @@ export const AdminPage: React.FC = () => {
     const picker = (window as Window & { showOpenFilePicker?: (options: { multiple: boolean; types: Array<{ description: string; accept: Record<string, string[]> }> }) => Promise<Array<{ getFile: () => Promise<File> }>> }).showOpenFilePicker;
     if (!picker) return;
     try {
-      const handles = await picker({ multiple: !editing && !mobilePdfPicker, types: [{ description: "Arquivos PDF", accept: { "application/pdf": [".pdf"] } }] });
+      const handles = await picker({ multiple: !editing && !mobilePdfPicker, types: [{ description: "HQs e livros", accept: { "application/pdf": [".pdf"], "application/vnd.comicbook-rar": [".cbr"], "application/epub+zip": [".epub"], "application/vnd.amazon.ebook": [".azw3"] } }] });
       const files = await Promise.all(handles.map((handle) => handle.getFile()));
       void selectPdfs(files);
-    } catch (error) { if ((error as Error).name !== "AbortError") feedback("O seletor alternativo não conseguiu abrir os PDFs.", "error"); }
+    } catch (error) { if ((error as Error).name !== "AbortError") feedback("O seletor alternativo não conseguiu abrir os arquivos.", "error"); }
   };
   useEffect(() => {
     if (!draftHydrated || sharedImportLoaded.current || !new URLSearchParams(window.location.search).has("shared")) return;
@@ -186,14 +188,14 @@ export const AdminPage: React.FC = () => {
     void (async () => {
       try {
         const files = await takeSharedPdfs();
-        if (!files.length) { feedback("Nenhum PDF foi recebido do compartilhamento.", "error"); return; }
+        if (!files.length) { feedback("Nenhum arquivo foi recebido do compartilhamento.", "error"); return; }
         const next = mergeFiles([...batchPdfs, ...(pdf ? [pdf] : []), ...files]);
-        if (!draftUserId) throw new Error("Entre como proprietário para guardar os PDFs compartilhados.");
+        if (!draftUserId) throw new Error("Entre como proprietário para guardar os arquivos compartilhados.");
         await savePendingImport(draftUserId, { pdf: null, batchPdfs: next, cover, batchCovers, form, savedAt: Date.now() });
         setBatchPdfs(next); setPdf(null);
         await clearSharedPdfs();
-        feedback(`${files.length} PDF(s) recebidos e salvos para revisão.`, "success");
-      } catch (error) { feedback(error instanceof Error ? error.message : "Não foi possível guardar os PDFs compartilhados.", "error"); }
+        feedback(`${files.length} Arquivo(s) recebidos e salvos para revisão.`, "success");
+      } catch (error) { feedback(error instanceof Error ? error.message : "Não foi possível guardar os arquivos compartilhados.", "error"); }
     })();
     window.history.replaceState({}, "", window.location.pathname);
   }, [draftHydrated]);
@@ -210,7 +212,7 @@ export const AdminPage: React.FC = () => {
   const submitComic = async (event: React.FormEvent) => {
     event.preventDefault();
     const series = seriesList.find((item) => item.id === form.seriesId);
-    if (!series || !form.title.trim() || (!editing && !pdf) || !form.issue || !form.year || !form.pages) { feedback("Complete título, edição, ano, páginas e PDF antes de publicar.", "error"); return; }
+    if (!series || !form.title.trim() || (!editing && !pdf) || !form.issue || !form.year || !form.pages) { feedback("Complete título, edição, ano, páginas e arquivo antes de publicar.", "error"); return; }
     if (pdf && pdf.size > 5 * 1024 * 1024 * 1024) { feedback("Cada arquivo pode ter no máximo 5 GB no envio direto ao R2.", "error"); return; }
     setBusy(true);
     try {
@@ -219,11 +221,11 @@ export const AdminPage: React.FC = () => {
         if (check.code !== "UNIQUE") { feedback(`${check.message} Use “Revisar como lote” para comparar e escolher entre manter, substituir ou cancelar.`, "error"); return; }
       }
       setNotice("Enviando arquivos privados ao Cloudflare R2...");
-      const uploadedPdf = pdf ? await storageProvider.uploadFile(pdf, "comics", (percent) => setNotice(`Enviando PDF ao R2: ${percent}%`)) : null;
+      const uploadedPdf = pdf ? await storageProvider.uploadFile(pdf, "comics", (percent) => setNotice(`Enviando arquivo ao R2: ${percent}%`)) : null;
       const uploadedCover = cover ? await storageProvider.uploadFile(cover, "covers") : null;
       const thumbnail = coverThumbnail || (cover ? await makeImageThumbnail(cover) : null);
       const uploadedThumb = thumbnail ? await storageProvider.uploadFile(thumbnail, "covers") : null;
-      const payload = { title: form.title.trim(), contentType: form.contentType as Comic["contentType"], readingDirection: form.readingDirection as Comic["readingDirection"], issueNumber: Number(form.issue), year: Number(form.year), totalPages: Number(form.pages), fileName: pdf?.name || editing?.fileName || "", fileSizeMb: uploadedPdf?.fileSizeMb ?? editing?.fileSizeMb ?? 0, pdfKey: uploadedPdf?.fileKey || "", coverKey: uploadedCover?.fileKey, coverThumbKey: uploadedThumb?.fileKey, fileSha256: pdfHash, synopsis: form.synopsis.trim(), writers: splitList(form.writers), pencillers: splitList(form.pencillers), colorists: splitList(form.colorists), tags: splitList(form.tags), characters: splitList(form.characters), volume: form.volume ? Number(form.volume) : undefined, series };
+      const payload = { title: form.title.trim(), contentType: (pdf && ["epub", "azw3"].includes(publicationFormat(pdf.name) || "") ? "book" : form.contentType) as Comic["contentType"], readingDirection: form.readingDirection as Comic["readingDirection"], issueNumber: Number(form.issue), year: Number(form.year), totalPages: Number(form.pages), fileName: pdf?.name || editing?.fileName || "", fileSizeMb: uploadedPdf?.fileSizeMb ?? editing?.fileSizeMb ?? 0, pdfKey: uploadedPdf?.fileKey || "", coverKey: uploadedCover?.fileKey, coverThumbKey: uploadedThumb?.fileKey, fileSha256: pdfHash, synopsis: form.synopsis.trim(), writers: splitList(form.writers), pencillers: splitList(form.pencillers), colorists: splitList(form.colorists), tags: splitList(form.tags), characters: splitList(form.characters), volume: form.volume ? Number(form.volume) : undefined, series };
       setNotice("Salvando catálogo e ficha criativa no Supabase...");
       let updatedCollectionCount = 0;
       if (editing) {
@@ -316,7 +318,7 @@ export const AdminPage: React.FC = () => {
         <div className="form-grid">
           <label className="span-2">Título{batchPdfs.length > 0 && <small>Gerado pelo nome de cada arquivo na publicação em lote</small>}<input className={fieldClass} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required={batchPdfs.length === 0} disabled={batchPdfs.length > 0} /></label>
           <label>Coleção / saga principal<select className={fieldClass} value={form.seriesId} onChange={(e) => setForm({ ...form, seriesId: e.target.value })} required><option value="">Selecione um agrupamento confirmado</option>{seriesList.map((series) => <option key={series.id} value={series.id}>{seriesPath(series, seriesList)}</option>)}</select></label>
-          <label>Formato<select className={fieldClass} value={form.contentType} onChange={(e) => setForm({ ...form, contentType: e.target.value, readingDirection: e.target.value === "manga" ? "rtl" : "ltr" })}><option value="comic">HQ ocidental</option><option value="graphic_novel">Graphic novel</option><option value="manga">Mangá</option><option value="manhwa">Manhwa</option></select></label>
+          <label>Formato<select className={fieldClass} value={form.contentType} onChange={(e) => setForm({ ...form, contentType: e.target.value, readingDirection: e.target.value === "manga" ? "rtl" : "ltr" })}><option value="comic">HQ ocidental</option><option value="graphic_novel">Graphic novel</option><option value="manga">Mangá</option><option value="manhwa">Manhwa</option><option value="book">Livro</option></select></label>
           <label>Sentido da leitura<select className={fieldClass} value={form.readingDirection} onChange={(e) => setForm({ ...form, readingDirection: e.target.value })}><option value="ltr">Esquerda → direita</option><option value="rtl">Direita → esquerda</option></select></label>
           <label>Edição / número<input className={fieldClass} type="number" min="1" value={form.issue} onChange={(e) => setForm({ ...form, issue: e.target.value })} required /></label>
           <label>Ano<input className={fieldClass} type="number" min="1800" max="2200" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} required /></label>
@@ -330,10 +332,10 @@ export const AdminPage: React.FC = () => {
           <label>Categorias / tags<input className={fieldClass} placeholder="X-Men, mutantes, aventura" value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} /></label>
         </div>
         {editing && <label className="bulk-edit-toggle"><input type="checkbox" checked={applyToCollection} onChange={(e) => setApplyToCollection(e.target.checked)} /><div><strong>Aplicar ficha editorial a toda a coleção</strong><span>Atualiza sinopse, roteiro, arte, cores e categorias nas {allComics.filter((comic) => comic.seriesId === form.seriesId).length} edições de “{seriesList.find((series) => series.id === form.seriesId)?.title || "esta coleção"}”. Título, número, ano, páginas, PDF e capa continuam individuais.</span></div></label>}
-        <div className="upload-grid"><div className="upload-tile"><FileUp /><strong>{batchPdfs.length ? `${batchPdfs.length} PDFs selecionados` : pdf?.name || (editing ? "Substituir PDF" : mobilePdfPicker ? "Adicionar PDF à fila" : "Selecionar um ou vários PDFs")}</strong><small>{pdf ? formatFileSize(pdf.size / 1024 / 1024) : editing?.fileName || (mobilePdfPicker ? "No celular, escolha um PDF por vez; a fila é salva neste dispositivo" : "Envio direto ao R2 · até 5 GB por arquivo")}</small><input ref={pdfInputRef} type="file" aria-label={editing ? "Substituir PDF" : "Selecionar PDFs"} accept=".pdf,application/pdf" multiple={!editing && !mobilePdfPicker} onClick={(event) => { if (mobilePdfPicker && !editing) { event.preventDefault(); window.location.assign("/mobile-upload.html"); return; } waitingForPdfPicker.current = true; sessionStorage.setItem("biblioteca-pdf-picker-open", String(Date.now())); }} onInput={handlePdfSelection} onChange={handlePdfSelection} /></div><label className="upload-tile"><FileImage /><strong>{batchCovers.length ? `${batchCovers.length} capas selecionadas` : cover?.name || (editing ? "Substituir capa" : "Adicionar uma ou várias capas")}</strong><small>JPG, PNG ou WebP · nomes iguais aos PDFs fazem a associação automática</small><input type="file" aria-label={editing ? "Substituir capa" : "Selecionar capas"} accept="image/jpeg,image/png,image/webp" multiple={!editing} onChange={(e) => { const files = Array.from(e.currentTarget.files || []); e.currentTarget.value = ""; if (files.length > 1) { setBatchCovers(files); setCover(null); } else { setCover(files[0] || null); setCoverThumbnail(null); setBatchCovers([]); } }} /></label></div>
-        {(pdf || batchPdfs.length > 0) && <p className="mobile-upload-help" role="status">{draftSaveState === "saving" ? "Salvando PDFs neste dispositivo..." : draftSaveState === "saved" ? "Fila salva neste dispositivo. Você pode sair e voltar para continuar." : draftSaveState === "error" ? "O armazenamento local falhou; não saia desta tela antes de publicar." : "Preparando rascunho..."}</p>}{mobilePdfPicker && "showOpenFilePicker" in window && <button type="button" className="upload-clear" onClick={() => void choosePdfWithSystemPicker()}>Abrir seletor alternativo de PDFs</button>}
-        {mobilePdfPicker && <p className="mobile-upload-help">A seleção abre em uma tela leve e volta para esta fila. Você também pode abrir o PDF em Arquivos e usar Compartilhar → Biblioteca HQ.</p>}
-        {(pdf || batchPdfs.length > 0) && <button type="button" className="upload-clear" onClick={() => { setPdf(null); setBatchPdfs([]); setNotice("Seleção de PDFs limpa."); }}>Limpar PDFs selecionados</button>}
+        <div className="upload-grid"><div className="upload-tile"><FileUp /><strong>{batchPdfs.length ? `${batchPdfs.length} arquivos selecionados` : pdf?.name || (editing ? "Substituir arquivo" : mobilePdfPicker ? "Adicionar arquivo à fila" : "Selecionar HQs ou livros")}</strong><small>{pdf ? formatFileSize(pdf.size / 1024 / 1024) : editing?.fileName || (mobilePdfPicker ? "No celular, escolha um arquivo por vez; a fila é salva neste dispositivo" : "PDF, CBR, EPUB ou AZW3 · até 5 GB por arquivo")}</small><input ref={pdfInputRef} type="file" aria-label={editing ? "Substituir arquivo" : "Selecionar HQs ou livros"} accept={PUBLICATION_ACCEPT} multiple={!editing && !mobilePdfPicker} onClick={(event) => { if (mobilePdfPicker && !editing) { event.preventDefault(); window.location.assign("/mobile-upload.html"); return; } waitingForPdfPicker.current = true; sessionStorage.setItem("biblioteca-pdf-picker-open", String(Date.now())); }} onInput={handlePdfSelection} onChange={handlePdfSelection} /></div><label className="upload-tile"><FileImage /><strong>{batchCovers.length ? `${batchCovers.length} capas selecionadas` : cover?.name || (editing ? "Substituir capa" : "Adicionar uma ou várias capas")}</strong><small>JPG, PNG ou WebP · nomes iguais aos arquivos fazem a associação automática</small><input type="file" aria-label={editing ? "Substituir capa" : "Selecionar capas"} accept="image/jpeg,image/png,image/webp" multiple={!editing} onChange={(e) => { const files = Array.from(e.currentTarget.files || []); e.currentTarget.value = ""; if (files.length > 1) { setBatchCovers(files); setCover(null); } else { setCover(files[0] || null); setCoverThumbnail(null); setBatchCovers([]); } }} /></label></div>
+        {(pdf || batchPdfs.length > 0) && <p className="mobile-upload-help" role="status">{draftSaveState === "saving" ? "Salvando arquivos neste dispositivo..." : draftSaveState === "saved" ? "Fila salva neste dispositivo. Você pode sair e voltar para continuar." : draftSaveState === "error" ? "O armazenamento local falhou; não saia desta tela antes de publicar." : "Preparando rascunho..."}</p>}{mobilePdfPicker && "showOpenFilePicker" in window && <button type="button" className="upload-clear" onClick={() => void choosePdfWithSystemPicker()}>Abrir seletor alternativo de arquivos</button>}
+        {mobilePdfPicker && <p className="mobile-upload-help">A seleção abre em uma tela leve e volta para esta fila. Você também pode abrir o arquivo em Arquivos e usar Compartilhar → Biblioteca HQ.</p>}
+        {(pdf || batchPdfs.length > 0) && <button type="button" className="upload-clear" onClick={() => { setPdf(null); setBatchPdfs([]); setNotice("Seleção de arquivos limpa."); }}>Limpar arquivos selecionados</button>}
         {pdf && !editing && <button type="button" onClick={() => { setBatchPdfs([pdf]); setPdf(null); }}>Revisar como lote (opções para duplicados)</button>}
         {batchPdfs.length === 0 && <button className="studio-primary" disabled={busy}><UploadCloud /> {busy ? "Publicando..." : editing ? "Salvar alterações" : "Cadastrar e publicar"}</button>}
       </form>
@@ -341,7 +343,7 @@ export const AdminPage: React.FC = () => {
         <div className="studio-panel-title"><div><span>Biblioteca publicada</span><h2>Gerenciar edições</h2></div><strong>{managedComics.length} / {allComics.length}</strong></div>
         <div className="manager-controls">
           <label className="manager-search">Busca<input className={fieldClass} type="search" placeholder="Título, autor, personagem ou arquivo" value={managerSearch} onChange={(event) => setManagerSearch(event.target.value)} /></label>
-          <label>Formato<select className={fieldClass} value={managerFormat} onChange={(event) => setManagerFormat(event.target.value)}><option value="all">Todos</option><option value="comic">HQ ocidental</option><option value="graphic_novel">Graphic novel</option><option value="manga">Mangá</option><option value="manhwa">Manhwa</option></select></label>
+          <label>Formato<select className={fieldClass} value={managerFormat} onChange={(event) => setManagerFormat(event.target.value)}><option value="all">Todos</option><option value="comic">HQ ocidental</option><option value="graphic_novel">Graphic novel</option><option value="manga">Mangá</option><option value="manhwa">Manhwa</option><option value="book">Livro</option></select></label>
           <label>Editora<select className={fieldClass} value={managerPublisher} onChange={(event) => setManagerPublisher(event.target.value)}><option value="all">Todas</option>{[...new Set(allComics.map((comic) => comic.publisher))].sort().map((publisher) => <option key={publisher} value={publisher}>{publisher}</option>)}</select></label>
           <label>Ano<select className={fieldClass} value={managerYear} onChange={(event) => setManagerYear(event.target.value)}><option value="all">Todos</option>{[...new Set(allComics.map((comic) => comic.year))].sort((a,b) => b-a).map((year) => <option key={year} value={year}>{year}</option>)}</select></label>
           <label>Coleção<select className={fieldClass} value={managerSeries} onChange={(event) => setManagerSeries(event.target.value)}><option value="all">Todas</option>{seriesList.map((series) => <option key={series.id} value={series.id}>{seriesPath(series, seriesList)}</option>)}</select></label>
@@ -349,7 +351,7 @@ export const AdminPage: React.FC = () => {
           <label>Ordenar<select className={fieldClass} value={managerSort} onChange={(event) => setManagerSort(event.target.value)}><option value="recent">Recentes</option><option value="az">Título A–Z</option><option value="za">Título Z–A</option><option value="size">Tamanho do arquivo</option></select></label>
         </div>
         {selectedIds.length > 0 && <div className="manager-selection-actions"><strong>{selectedIds.length} edição(ões) selecionada(s)</strong><button type="button" className="studio-primary" onClick={() => setBulkOpen((open) => !open)}><Edit3 /> {bulkOpen ? "Fechar edição em bloco" : "Editar selecionadas em bloco"}</button><button type="button" className="admin-delete-action" onClick={() => setDeleteTarget({ type: "comics", ids: selectedIds })}>Excluir selecionadas</button><button type="button" onClick={() => { setSelectedIds([]); setBulkOpen(false); }}>Limpar seleção</button></div>}
-        {bulkOpen && selectedIds.length > 0 && <form className="manager-bulk-editor" onSubmit={(event) => void submitBulkEdit(event)}><h3>Editar {selectedIds.length} edições em bloco</h3><p>Marque apenas os campos que devem mudar. Os demais dados, PDFs e capas permanecem individuais. Valores vazios nos campos marcados limpam esse campo.</p><div className="manager-bulk-grid">{bulkFields.map((field) => <label key={field} className={field === "synopsis" ? "wide" : ""}><span><input type="checkbox" checked={bulkEnabled.includes(field)} onChange={(event) => setBulkEnabled((current) => event.target.checked ? [...current, field] : current.filter((item) => item !== field))} /> {bulkLabels[field]}</span>{field === "seriesId" ? <select value={bulkValues.seriesId} onChange={(event) => setBulkValues((current) => ({ ...current, seriesId: event.target.value }))}><option value="">Sem coleção</option>{seriesList.map((series) => <option key={series.id} value={series.id}>{seriesPath(series, seriesList)}</option>)}</select> : field === "contentType" ? <select value={bulkValues.contentType} onChange={(event) => setBulkValues((current) => ({ ...current, contentType: event.target.value }))}><option value="comic">HQ ocidental</option><option value="graphic_novel">Graphic novel</option><option value="manga">Mangá</option><option value="manhwa">Manhwa</option></select> : field === "readingDirection" ? <select value={bulkValues.readingDirection} onChange={(event) => setBulkValues((current) => ({ ...current, readingDirection: event.target.value }))}><option value="ltr">Esquerda → direita</option><option value="rtl">Direita → esquerda</option></select> : field === "synopsis" ? <textarea rows={3} value={bulkValues.synopsis} onChange={(event) => setBulkValues((current) => ({ ...current, synopsis: event.target.value }))} /> : <input type={field === "year" ? "number" : "text"} min={field === "year" ? 1800 : undefined} max={field === "year" ? 2200 : undefined} placeholder={["characters", "writers", "pencillers", "colorists", "tags"].includes(field) ? "Separe por vírgulas" : undefined} value={bulkValues[field]} onChange={(event) => setBulkValues((current) => ({ ...current, [field]: event.target.value }))} />}</label>)}</div><button type="submit" className="studio-primary" disabled={busy || !bulkEnabled.length}>{busy ? "Salvando..." : `Aplicar ${bulkEnabled.length} campo(s) às ${selectedIds.length} edições`}</button></form>}
+        {bulkOpen && selectedIds.length > 0 && <form className="manager-bulk-editor" onSubmit={(event) => void submitBulkEdit(event)}><h3>Editar {selectedIds.length} edições em bloco</h3><p>Marque apenas os campos que devem mudar. Os demais dados, PDFs e capas permanecem individuais. Valores vazios nos campos marcados limpam esse campo.</p><div className="manager-bulk-grid">{bulkFields.map((field) => <label key={field} className={field === "synopsis" ? "wide" : ""}><span><input type="checkbox" checked={bulkEnabled.includes(field)} onChange={(event) => setBulkEnabled((current) => event.target.checked ? [...current, field] : current.filter((item) => item !== field))} /> {bulkLabels[field]}</span>{field === "seriesId" ? <select value={bulkValues.seriesId} onChange={(event) => setBulkValues((current) => ({ ...current, seriesId: event.target.value }))}><option value="">Sem coleção</option>{seriesList.map((series) => <option key={series.id} value={series.id}>{seriesPath(series, seriesList)}</option>)}</select> : field === "contentType" ? <select value={bulkValues.contentType} onChange={(event) => setBulkValues((current) => ({ ...current, contentType: event.target.value }))}><option value="comic">HQ ocidental</option><option value="graphic_novel">Graphic novel</option><option value="manga">Mangá</option><option value="manhwa">Manhwa</option><option value="book">Livro</option></select> : field === "readingDirection" ? <select value={bulkValues.readingDirection} onChange={(event) => setBulkValues((current) => ({ ...current, readingDirection: event.target.value }))}><option value="ltr">Esquerda → direita</option><option value="rtl">Direita → esquerda</option></select> : field === "synopsis" ? <textarea rows={3} value={bulkValues.synopsis} onChange={(event) => setBulkValues((current) => ({ ...current, synopsis: event.target.value }))} /> : <input type={field === "year" ? "number" : "text"} min={field === "year" ? 1800 : undefined} max={field === "year" ? 2200 : undefined} placeholder={["characters", "writers", "pencillers", "colorists", "tags"].includes(field) ? "Separe por vírgulas" : undefined} value={bulkValues[field]} onChange={(event) => setBulkValues((current) => ({ ...current, [field]: event.target.value }))} />}</label>)}</div><button type="submit" className="studio-primary" disabled={busy || !bulkEnabled.length}>{busy ? "Salvando..." : `Aplicar ${bulkEnabled.length} campo(s) às ${selectedIds.length} edições`}</button></form>}
         <div className="catalog-manager-list">{visibleComics.map((comic) => <article key={comic.id}><input type="checkbox" aria-label={`Selecionar ${comic.title}`} checked={selectedIds.includes(comic.id)} onChange={(event) => setSelectedIds((current) => event.target.checked ? [...current, comic.id] : current.filter((id) => id !== comic.id))} /><img src={comic.coverUrl} alt="" loading="lazy" /><div><strong>{comic.title}</strong><span>{comic.seriesTitle || "Sem coleção"} · #{comic.issueNumber}</span><small>{comic.year} · {comic.totalPages} páginas · {formatFileSize(comic.fileSizeMb)} · {storageStatuses[comic.id] === "present" ? "No R2" : storageStatuses[comic.id] === "pending" ? "Pendente" : storageStatuses[comic.id] === "error" ? "Erro no R2" : "Verificando…"}</small></div><details className="manager-row-menu"><summary aria-label={`Ações de ${comic.title}`}>Ações</summary><div><button type="button" onClick={(event) => { closeRowMenu(event); startEditing(comic); feedback(`Editor de “${comic.title}” aberto.`, "info"); }}><Edit3 /> Editar metadados</button><button type="button" onClick={(event) => { closeRowMenu(event); startEditing(comic); window.setTimeout(() => document.querySelector<HTMLInputElement>('.comic-editor input[type="file"][accept*="image"]')?.click(), 0); }}><FileImage /> Alterar capa</button><button type="button" onClick={(event) => { closeRowMenu(event); startEditing(comic); window.setTimeout(() => document.querySelector<HTMLInputElement>('.comic-editor input[type="file"][accept*="pdf"]')?.click(), 0); }}><FileUp /> Substituir arquivo</button><button type="button" className="admin-delete-action" onClick={(event) => { closeRowMenu(event); setDeleteTarget({ type: "comics", ids: [comic.id] }); }}>Excluir</button></div></details></article>)}</div>
         {!managedComics.length && <p className="manager-empty">Nenhuma edição corresponde aos filtros.</p>}
         {pageCount > 1 && <div className="manager-pagination"><button disabled={managerPage <= 1} onClick={() => setManagerPage((page) => page - 1)}>Anterior</button><span>Página {managerPage} de {pageCount}</span><button disabled={managerPage >= pageCount} onClick={() => setManagerPage((page) => page + 1)}>Próxima</button></div>}
@@ -361,7 +363,7 @@ export const AdminPage: React.FC = () => {
     </div>}
     {tab === "collections" && <AssetsPanel seriesList={seriesList} onSaved={() => reloadData(true)} />}
     {tab === "users" && <UsersPanel />}
-    {tab === "status" && <div className="provider-grid"><article><Database /><div><strong>Supabase</strong><span>Catálogo, metadados e progresso</span></div><em>Conectado</em></article><article><Cloud /><div><strong>Cloudflare R2</strong><span>PDFs e capas em armazenamento privado</span></div><em>Conectado</em></article><article><LibraryBig /><div><strong>PDF.js</strong><span>{totalPages.toLocaleString("pt-BR")} páginas prontas para leitura</span></div><em>Ativo</em></article></div>}
+    {tab === "status" && <div className="provider-grid"><article><Database /><div><strong>Supabase</strong><span>Catálogo, metadados e progresso</span></div><em>Conectado</em></article><article><Cloud /><div><strong>Cloudflare R2</strong><span>Publicações e capas em armazenamento privado</span></div><em>Conectado</em></article><article><LibraryBig /><div><strong>PDF.js</strong><span>{totalPages.toLocaleString("pt-BR")} páginas prontas para leitura</span></div><em>Ativo</em></article></div>}
     {deleteTarget && <div className="admin-confirm-backdrop" role="presentation"><div className="admin-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="admin-delete-title"><h2 id="admin-delete-title">Confirmar exclusão</h2><p>{deleteTarget.type === "comics" ? `${deleteTarget.ids.length} edição(ões) sairão do catálogo e da leitura. Os arquivos permanecerão no R2 para recuperação futura.` : `Este agrupamento contém ${allComics.filter((comic) => comic.seriesId === deleteTarget.id).length} edição(ões). Escolha o que acontecerá com elas.`}</p><div><button type="button" onClick={() => setDeleteTarget(null)} disabled={busy}>Cancelar</button>{deleteTarget.type === "series" && <button type="button" onClick={() => void confirmDelete(false)} disabled={busy}>Excluir agrupamento e manter HQs</button>}<button type="button" className="admin-delete-action" onClick={() => void confirmDelete(true)} disabled={busy}>{deleteTarget.type === "series" ? "Excluir agrupamento e HQs" : "Excluir edições"}</button></div></div></div>}
   </div>;
 };

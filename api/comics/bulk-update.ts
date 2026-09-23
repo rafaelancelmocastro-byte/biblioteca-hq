@@ -35,7 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       update.publication_year = year;
     }
     if (Object.hasOwn(fields, "contentType")) {
-      if (!["comic", "graphic_novel", "manga", "manhwa"].includes(fields.contentType)) return res.status(400).json({ error: "Formato inválido." });
+      if (!["comic", "graphic_novel", "manga", "manhwa", "book"].includes(fields.contentType)) return res.status(400).json({ error: "Formato inválido." });
       update.content_type = fields.contentType;
     }
     if (Object.hasOwn(fields, "readingDirection")) {

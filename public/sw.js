@@ -1,4 +1,4 @@
-const CACHE = 'biblioteca-hq-shell-v5';
+const CACHE = 'biblioteca-hq-shell-v6';
 const SHELL = ['/', '/mobile-upload.html', '/site.webmanifest', '/icon-192.png', '/icon-512.png', '/icon-maskable-512.png'];
 const ASSETS = __ASSETS__;
 self.addEventListener('install', (event) => {
@@ -25,7 +25,7 @@ self.addEventListener('fetch', (event) => {
     event.respondWith((async () => {
       try {
         const form = await request.formData();
-        const files = form.getAll('pdfs').filter((item) => item instanceof File && (/\.pdf$/i.test(item.name) || item.type === 'application/pdf'));
+        const files = form.getAll('pdfs').filter((item) => item instanceof File && /\.(pdf|cbr|epub|azw3)$/i.test(item.name));
         if (!files.length) return Response.redirect(new URL('/configuracoes?share_error=1', self.location.origin).href, 303);
         const db = await new Promise((resolve, reject) => {
           const open = indexedDB.open('biblioteca-hq-shared-import-v1', 1);

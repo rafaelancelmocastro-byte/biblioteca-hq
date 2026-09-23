@@ -1,6 +1,7 @@
 import { StorageProvider, StorageUploadResult } from "../types/repositories";
 import { APP_CONFIG } from "../config/app";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
+import { publicationFormat, publicationMime } from "./publicationFormats";
 
 async function getAccessToken(): Promise<string> {
   if (!supabase) throw new Error("Supabase não está configurado.");
@@ -29,7 +30,7 @@ export class R2StorageProvider implements StorageProvider {
 
   async createPresignedUploadUrl(fileName: string, contentType: string) {
     const accessToken = await getAccessToken();
-    const purpose = contentType === "application/pdf" ? "comic" : "cover";
+    const purpose = ["application/pdf", "application/vnd.comicbook-rar", "application/epub+zip", "application/vnd.amazon.ebook"].includes(contentType) ? "comic" : "cover";
     const response = await fetch("/api/storage/presign-upload", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
@@ -43,8 +44,8 @@ export class R2StorageProvider implements StorageProvider {
   async uploadFile(file: File, path: string, onProgress?: (percent: number) => void): Promise<StorageUploadResult> {
     // Mobile document pickers often report PDFs as octet-stream or x-pdf.
     // The signed-upload endpoint requires the canonical MIME type.
-    const contentType = path === "comics" ? "application/pdf" : /\.png$/i.test(file.name) ? "image/png" : /\.jpe?g$/i.test(file.name) ? "image/jpeg" : /\.webp$/i.test(file.name) ? "image/webp" : file.type;
-    if (path === "comics" && !/\.pdf$/i.test(file.name) && file.type !== "application/pdf") throw new Error("Selecione um arquivo PDF.");
+    const contentType = path === "comics" ? publicationMime(file.name) : /\.png$/i.test(file.name) ? "image/png" : /\.jpe?g$/i.test(file.name) ? "image/jpeg" : /\.webp$/i.test(file.name) ? "image/webp" : file.type;
+    if (path === "comics" && !publicationFormat(file.name)) throw new Error("Use PDF, CBR, EPUB ou AZW3.");
     if (path !== "comics" && !["image/png", "image/jpeg", "image/webp"].includes(contentType)) throw new Error("Use uma capa JPG, PNG ou WebP.");
     const { uploadUrl, fileKey } = await this.createPresignedUploadUrl(file.name, contentType);
     await new Promise<void>((resolve, reject) => {
