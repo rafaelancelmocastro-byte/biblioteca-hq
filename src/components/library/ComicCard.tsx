@@ -1,13 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   Heart,
   MoreVertical,
   BookOpen,
-  CheckCircle2,
-  RotateCcw,
-  Sliders,
-  Info,
   HardDriveDownload,
+  X,
 } from "lucide-react";
 import { Comic } from "../../types/comic";
 import { CoverPlaceholder } from "../ui/CoverPlaceholder";
@@ -15,6 +13,7 @@ import { ProgressBar } from "../ui/ProgressBar";
 import { formatPercentage, getStatusLabel } from "../../lib/formatters";
 import { getOfflineIds } from "../../services/offlineLibrary";
 import { supabase } from "../../services/supabaseClient";
+import { ComicActions } from "./ComicActions";
 
 interface ComicCardProps {
   comic: Comic;
@@ -40,6 +39,7 @@ export const ComicCard: React.FC<ComicCardProps> = ({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const portalRef = useRef<HTMLDivElement>(null);
 
   const percentage = comic.progress?.percentage || 0;
   const status = comic.progress?.status || "not_started";
@@ -50,7 +50,7 @@ export const ComicCard: React.FC<ComicCardProps> = ({
   // Fecha menu de contexto ao clicar fora
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node) && !portalRef.current?.contains(e.target as Node)) {
         setIsMenuOpen(false);
       }
     };
@@ -60,7 +60,18 @@ export const ComicCard: React.FC<ComicCardProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isMenuOpen]);
 
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") setIsMenuOpen(false); };
+    document.addEventListener("keydown", closeOnEscape);
+    const mobile = window.matchMedia("(max-width: 1024px)").matches;
+    const previousOverflow = document.body.style.overflow;
+    if (mobile) { document.body.style.overflow = "hidden"; window.requestAnimationFrame(() => portalRef.current?.querySelector<HTMLButtonElement>("button")?.focus()); }
+    return () => { document.removeEventListener("keydown", closeOnEscape); if (mobile) document.body.style.overflow = previousOverflow; };
+  }, [isMenuOpen]);
+
   return (
+    <>
     <div
       className="comic-tile group relative flex flex-col focus-within:ring-2 focus-within:ring-[#d6653e] rounded-2xl"
       id={`comic-card-${comic.id}`}
@@ -116,74 +127,8 @@ export const ComicCard: React.FC<ComicCardProps> = ({
             <MoreVertical className="w-4 h-4" />
           </button>
 
-          {/* Menu Dropdown Flutuante */}
-          {isMenuOpen && (
-            <div
-              className="absolute left-0 mt-1 w-48 rounded-xl bg-[#141824] border border-slate-700/80 shadow-2xl shadow-black/90 py-1.5 z-40 animate-in fade-in zoom-in-95 duration-100"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  onOpenReader(comic.id);
-                }}
-                className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 text-slate-200 hover:bg-slate-800/80 cursor-pointer"
-              >
-                <BookOpen className="w-3.5 h-3.5 text-amber-400" />
-                <span>{percentage > 0 ? "Continuar lendo" : "Começar leitura"}</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  onOpenDetails(comic);
-                }}
-                className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 text-slate-200 hover:bg-slate-800/80 cursor-pointer"
-              >
-                <Info className="w-3.5 h-3.5 text-sky-400" />
-                <span>Ver detalhes</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  onOpenProgressModal(comic);
-                }}
-                className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 text-slate-200 hover:bg-slate-800/80 cursor-pointer"
-              >
-                <Sliders className="w-3.5 h-3.5 text-amber-400" />
-                <span>Ajustar progresso</span>
-              </button>
-
-              <div className="my-1 border-t border-slate-800/80" />
-
-              {!isCompleted ? (
-                <button
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    onMarkCompleted(comic.id, comic.totalPages);
-                  }}
-                  className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 text-emerald-400 hover:bg-slate-800/80 cursor-pointer"
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>Marcar como lida</span>
-                </button>
-              ) : (
-                <button
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    onResetProgress(comic.id);
-                  }}
-                  className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800/80 cursor-pointer"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Reiniciar leitura</span>
-                </button>
-              )}
-            </div>
-          )}
+          {isMenuOpen && <div className="comic-action-desktop" onClick={(event) => event.stopPropagation()}><ComicActions comic={comic} onClose={() => setIsMenuOpen(false)} onOpenReader={onOpenReader} onOpenDetails={onOpenDetails} onOpenProgressModal={onOpenProgressModal} onMarkCompleted={onMarkCompleted} onResetProgress={onResetProgress} /></div>}
         </div>
-
         {/* Hover Action Overlay: Botão rápido para Ler */}
         <div
           onClick={() => onOpenReader(comic.id)}
@@ -238,5 +183,7 @@ export const ComicCard: React.FC<ComicCardProps> = ({
         )}
       </div>
     </div>
+    {isMenuOpen && createPortal(<div className="comic-action-backdrop" onClick={() => setIsMenuOpen(false)}><div className="comic-action-sheet" ref={portalRef} role="dialog" aria-modal="true" aria-label={`Ações de ${comic.title}`} onClick={(event) => event.stopPropagation()}><div className="comic-action-sheet-header"><div><small>Opções da HQ</small><strong>{comic.title}</strong></div><button type="button" aria-label="Fechar menu" onClick={() => setIsMenuOpen(false)}><X /></button></div><ComicActions comic={comic} onClose={() => setIsMenuOpen(false)} onOpenReader={onOpenReader} onOpenDetails={onOpenDetails} onOpenProgressModal={onOpenProgressModal} onMarkCompleted={onMarkCompleted} onResetProgress={onResetProgress} /></div></div>, document.body)}
+    </>
   );
 };

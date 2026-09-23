@@ -119,6 +119,7 @@ export default function App() {
         <FavoritesPage
           onOpenReader={openReader}
           onNavigateToLibrary={() => navigate("/biblioteca")}
+          onNavigateToSeries={(seriesId) => { navigate("/series"); window.history.replaceState({}, "", `/series?series=${encodeURIComponent(seriesId)}`); }}
         />
       )}
 

@@ -10,9 +10,11 @@ import {
   saveSupabaseProgress,
   setSupabaseProgressStatus,
   toggleSupabaseFavorite,
+  toggleSupabaseSeriesFavorite,
 } from "../services/supabaseLibrarySync";
 
 const DENSITY_STORAGE_KEY = "biblioteca_hq_density";
+const SERIES_FAVORITES_KEY = "biblioteca_hq_series_favorites_v1";
 
 const DEFAULT_FILTERS: LibraryFilters = {
   searchQuery: "",
@@ -28,6 +30,7 @@ const DEFAULT_FILTERS: LibraryFilters = {
 export function useLibrary() {
   const [allComics, setAllComics] = useState<Comic[]>([]);
   const [seriesList, setSeriesList] = useState<Series[]>([]);
+  const [favoriteSeriesIds, setFavoriteSeriesIds] = useState<Set<string>>(new Set());
   const [charactersList, setCharactersList] = useState<Character[]>([]);
   const [publishers, setPublishers] = useState<string[]>([]);
   const [years, setYears] = useState<number[]>([]);
@@ -46,6 +49,7 @@ export function useLibrary() {
       const hydrated = remoteState ? applySupabaseLibraryState(comics, remoteState) : comics;
       setAllComics(hydrated);
       setSeriesList(series);
+      setFavoriteSeriesIds(remoteState?.favoriteSeriesIds ?? new Set(getLocalStorageItem<string[]>(SERIES_FAVORITES_KEY, [])));
       setCharactersList(characters);
       setPublishers(pubs);
       setYears(yrs);
@@ -79,6 +83,23 @@ export function useLibrary() {
       throw error;
     }
   }, [allComics]);
+
+  const toggleSeriesFavorite = useCallback(async (seriesId: string) => {
+    const wasFavorite = favoriteSeriesIds.has(seriesId);
+    setFavoriteSeriesIds((current) => { const next = new Set(current); if (wasFavorite) next.delete(seriesId); else next.add(seriesId); return next; });
+    try {
+      const savedRemotely = await toggleSupabaseSeriesFavorite(seriesId, wasFavorite);
+      if (!savedRemotely) {
+        const next = new Set(getLocalStorageItem<string[]>(SERIES_FAVORITES_KEY, []));
+        if (wasFavorite) next.delete(seriesId); else next.add(seriesId);
+        setLocalStorageItem(SERIES_FAVORITES_KEY, [...next]);
+      }
+      return !wasFavorite;
+    } catch (error) {
+      setFavoriteSeriesIds((current) => { const next = new Set(current); if (wasFavorite) next.add(seriesId); else next.delete(seriesId); return next; });
+      throw error;
+    }
+  }, [favoriteSeriesIds]);
 
   const updateProgress = useCallback(
     async (comicId: string, currentPage: number, totalPages: number) => {
@@ -211,6 +232,7 @@ export function useLibrary() {
     continueReadingComics,
     recentlyAddedComics,
     seriesList,
+    favoriteSeriesIds,
     charactersList,
     publishers,
     years,
@@ -222,6 +244,7 @@ export function useLibrary() {
     gridDensity,
     setGridDensity,
     toggleFavorite,
+    toggleSeriesFavorite,
     updateProgress,
     setStatus,
     reloadData,

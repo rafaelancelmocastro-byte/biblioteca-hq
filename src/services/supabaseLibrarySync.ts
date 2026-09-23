@@ -13,6 +13,7 @@ type RemoteProgress = {
 
 export type SupabaseLibraryState = {
   favoriteIds: Set<string>;
+  favoriteSeriesIds: Set<string>;
   progressByComicId: Map<string, ReadingProgress>;
 };
 
@@ -29,17 +30,19 @@ export async function getSupabaseLibraryState(): Promise<SupabaseLibraryState | 
     const userId = await getAuthenticatedUserId();
     if (!supabase || !userId) return null;
 
-    const [favoritesResult, progressResult] = await Promise.all([
+    const [favoritesResult, seriesFavoritesResult, progressResult] = await Promise.all([
       supabase.from("favorites").select("comic_id").eq("user_id", userId),
+      supabase.from("series_favorites").select("series_id").eq("user_id", userId),
       supabase
         .from("reading_progress")
         .select("comic_id, current_page, total_pages, percentage, status, last_read_at, updated_at")
         .eq("user_id", userId),
     ]);
 
-    if (favoritesResult.error || progressResult.error) return null;
+    if (favoritesResult.error || seriesFavoritesResult.error || progressResult.error) return null;
 
     const favoriteIds = new Set((favoritesResult.data ?? []).map((item) => item.comic_id));
+    const favoriteSeriesIds = new Set((seriesFavoritesResult.data ?? []).map((item) => item.series_id));
     const progressByComicId = new Map<string, ReadingProgress>();
 
     for (const item of (progressResult.data ?? []) as RemoteProgress[]) {
@@ -54,7 +57,7 @@ export async function getSupabaseLibraryState(): Promise<SupabaseLibraryState | 
       });
     }
 
-    return { favoriteIds, progressByComicId };
+    return { favoriteIds, favoriteSeriesIds, progressByComicId };
   } catch {
     return null;
   }
@@ -81,6 +84,16 @@ export async function toggleSupabaseFavorite(comicId: string, isFavorite: boolea
   } catch {
     return false;
   }
+}
+
+export async function toggleSupabaseSeriesFavorite(seriesId: string, isFavorite: boolean): Promise<boolean> {
+  const userId = await getAuthenticatedUserId();
+  if (!supabase || !userId) return false;
+  const result = isFavorite
+    ? await supabase.from("series_favorites").delete().eq("user_id", userId).eq("series_id", seriesId)
+    : await supabase.from("series_favorites").insert({ user_id: userId, series_id: seriesId });
+  if (result.error) throw new Error("Não foi possível salvar o favorito. Tente novamente.");
+  return true;
 }
 
 export async function saveSupabaseProgress(

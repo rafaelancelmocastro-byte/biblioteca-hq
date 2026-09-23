@@ -182,6 +182,20 @@ button, input, select { font: inherit; }
 .collection-hub-info p,.collection-open-heading p { color: #bfb3ab; font-size: .85rem; line-height: 1.55; max-width: 42rem; }
 .collection-hub-info small { display: block; color: #8f8680; margin-top: .6rem; }
 .collection-hub-info .catalog-primary-action { flex: none; }
+.collection-hub-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: .65rem; }
+.collection-favorite-action { display: inline-flex; align-items: center; justify-content: center; gap: .45rem; min-height: 2.7rem; padding: .6rem .9rem; border: 1px solid rgba(255,255,255,.22); border-radius: .7rem; color: #f2e8df; background: #231a16; cursor: pointer; font-size: .8rem; font-weight: 750; }
+.collection-favorite-action svg { width: 1rem; height: 1rem; }
+.collection-favorite-action.active { border-color: rgba(244,114,151,.6); color: #ff9cbb; background: #38202b; }
+.favorite-groups-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(min(100%,16rem),1fr)); gap: .8rem; }
+.favorite-group-card { display: grid; border: 1px solid rgba(255,255,255,.14); border-radius: 1rem; overflow: hidden; background: #1b1513; }
+.favorite-group-card > button:first-child { display: flex; align-items: stretch; min-width: 0; min-height: 8rem; text-align: left; color: white; cursor: pointer; }
+.favorite-group-card img { width: 5.5rem; object-fit: cover; flex: none; }
+.favorite-group-card > button:first-child > div { display: flex; flex-direction: column; gap: .35rem; min-width: 0; padding: .9rem; }
+.favorite-group-card small { color: #d2a35c; font-size: .68rem; }
+.favorite-group-card strong { overflow-wrap: anywhere; line-height: 1.25; }
+.favorite-group-card span { color: #b7aaa0; font-size: .75rem; }
+.favorite-group-remove { display: inline-flex; justify-content: center; align-items: center; gap: .4rem; min-height: 2.6rem; border-top: 1px solid rgba(255,255,255,.1); color: #ff9cbb; cursor: pointer; font-size: .76rem; }
+@media (max-width: 900px) { .collection-hub-actions { width: 100%; justify-content: stretch; } .collection-hub-actions > button { flex: 1 1 10rem; } }
 .collection-open { animation: hero-crossfade .35s ease both; }
 .collection-back { display: flex; align-items: center; gap: .4rem; color: #e9d6c8; margin-bottom: 1.5rem; cursor: pointer; }.collection-back svg { width: 1rem; }
 .collection-open-heading { display: flex; justify-content: space-between; gap: 1rem; align-items: end; margin-bottom: 1.5rem; }.collection-open-heading strong { color: #ffd521; white-space: nowrap; }
@@ -331,6 +345,29 @@ button, input, select { font: inherit; }
 .streaming-rail > * { scroll-snap-align: start; }
 .comic-cover { box-shadow: 0 14px 34px rgba(0,0,0,.34); }
 .comic-tile:hover .comic-cover { border-color: rgba(217,94,50,.48); box-shadow: 0 22px 48px rgba(0,0,0,.5); }
+.comic-action-desktop { position: absolute; left: 0; top: calc(100% + .3rem); z-index: 40; width: 12rem; padding: .35rem; border: 1px solid rgba(255,255,255,.17); border-radius: .75rem; background: #211a16; box-shadow: 0 16px 35px #000b; }
+.comic-action-list { display: grid; gap: .2rem; }
+.comic-action-list button { display: flex; align-items: center; gap: .65rem; width: 100%; min-height: 2.5rem; padding: .55rem .65rem; border-radius: .5rem; color: #f2e8df; text-align: left; cursor: pointer; font-size: .76rem; }
+.comic-action-list button:hover,.comic-action-list button:focus-visible { background: rgba(255,255,255,.1); }
+.comic-action-list svg { flex: none; width: 1rem; height: 1rem; }
+.comic-action-list button:last-child { border-top: 1px solid rgba(255,255,255,.12); border-radius: 0; }
+@media (min-width: 1025px) { .comic-action-backdrop { display: none; } }
+@media (max-width: 1024px) {
+  .comic-cover button[aria-label="Opções da HQ"],.comic-cover button[aria-label="Remover dos favoritos"],.comic-cover button[aria-label="Adicionar aos favoritos"] { min-width: 2.75rem; width: 2.75rem; height: 2.75rem; }
+  .comic-cover button[aria-label="Remover dos favoritos"] span { display: none; }
+  .comic-action-desktop { display: none; }
+  .comic-action-backdrop { position: fixed; inset: 0; z-index: 250; display: flex; align-items: flex-end; justify-content: center; padding: 0; background: rgba(0,0,0,.7); backdrop-filter: blur(3px); }
+  .comic-action-sheet { width: 100%; max-width: 38rem; max-height: min(80dvh,42rem); overflow-y: auto; padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom)); border: 1px solid rgba(255,213,33,.25); border-radius: 1.25rem 1.25rem 0 0; background: #211a16; box-shadow: 0 -18px 50px #000a; }
+  .comic-action-sheet-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding: .25rem .25rem .8rem; border-bottom: 1px solid rgba(255,255,255,.12); margin-bottom: .5rem; }
+  .comic-action-sheet-header > div { display: grid; gap: .2rem; min-width: 0; }
+  .comic-action-sheet-header small { color: #ffd521; font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+  .comic-action-sheet-header strong { color: white; font-size: 1rem; overflow-wrap: anywhere; }
+  .comic-action-sheet-header button { flex: none; display: grid; place-items: center; width: 2.6rem; height: 2.6rem; border: 1px solid rgba(255,255,255,.18); border-radius: 50%; color: white; }
+  .comic-action-sheet-header svg { width: 1.1rem; height: 1.1rem; }
+  .comic-action-sheet .comic-action-list button { min-height: 3.25rem; padding: .7rem .8rem; font-size: .92rem; }
+  .comic-action-sheet .comic-action-list svg { width: 1.2rem; height: 1.2rem; }
+}
+@media (min-width: 641px) and (max-width: 1024px) { .comic-action-backdrop { align-items: center; padding: 1.5rem; } .comic-action-sheet { border-radius: 1.25rem; max-width: 30rem; } }
 
 .reader-shell { background: #070605; }
 .reader-topbar {
