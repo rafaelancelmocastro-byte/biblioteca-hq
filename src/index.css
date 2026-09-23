@@ -647,4 +647,11 @@ body { padding-top: env(safe-area-inset-top); }
 @media (prefers-reduced-motion: reduce) { .catalog-primary-action:hover, .catalog-secondary-action:hover { transform: none; } }
 .login-screen { min-height: 100dvh; overflow-y: auto; }
 .login-card { max-height: calc(100dvh - 2rem); overflow-y: auto; }
+
+/* Keep the publisher and collection covers inside their stage at tablet widths. */
+.collection-hub .cover-flow-card {
+  width: auto;
+  height: min(calc(100% - 2rem), 24rem);
+  aspect-ratio: 2 / 3;
+}
 @media (max-width: 640px) { .app-header { backdrop-filter: blur(10px); }.app-mobile-nav { backdrop-filter: blur(12px); }.streaming-page::before { display: none; }.login-card { border-radius: 1.2rem; }.reader-settings { max-width: calc(100vw - 1rem); } }
