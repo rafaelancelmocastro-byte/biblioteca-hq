@@ -184,7 +184,7 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
       try {
       const meta = draft.meta;
       const chosen = series.find((item) => item.id === draft.seriesId);
-      if (!meta || !chosen || !meta.title.trim() || !Number(meta.issueNumber) || !Number(meta.year) || !Number(meta.totalPages)) {
+      if (!meta || !chosen || !meta.title.trim() || !/^\d+$/.test(meta.issueNumber.trim()) || !Number(meta.year) || !Number(meta.totalPages)) {
         update(index, { status: "incomplete", message: "Complete título, edição, ano, páginas e coleção antes de publicar." });
         return;
       }
@@ -270,7 +270,7 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
       <p role="status">{draft.message}</p>
       {draft.meta && <div className="batch-review-fields">
         <label>Título<input value={draft.meta.title} onChange={(event) => updateMeta(index, "title", event.target.value)} /></label>
-        <label>Edição<input type="number" min="1" value={draft.meta.issueNumber} onChange={(event) => updateMeta(index, "issueNumber", event.target.value)} /></label>
+        <label>Edição<input type="number" min="0" value={draft.meta.issueNumber} onChange={(event) => updateMeta(index, "issueNumber", event.target.value)} /></label>
         <label>Ano<input type="number" min="1800" max="2200" value={draft.meta.year} onChange={(event) => updateMeta(index, "year", event.target.value)} /></label>
         <label>Páginas<input type="number" min="1" value={draft.meta.totalPages} onChange={(event) => updateMeta(index, "totalPages", event.target.value)} /></label>
         <label>Coleção / saga<select value={draft.seriesId} onChange={(event) => update(index, { seriesId: event.target.value })}><option value="">Selecione uma coleção confirmada</option>{series.map((item) => <option key={item.id} value={item.id}>{seriesPath(item, series)}</option>)}</select></label>

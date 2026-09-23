@@ -245,7 +245,7 @@ export const AdminPage: React.FC = () => {
   const submitComic = async (event: React.FormEvent) => {
     event.preventDefault();
     const series = seriesList.find((item) => item.id === form.seriesId);
-    if (!series || !form.title.trim() || (!editing && !pdf) || !form.issue || !form.year || !form.pages) { feedback("Complete título, edição, ano, páginas e arquivo antes de publicar.", "error"); return; }
+    if (!series || !form.title.trim() || (!editing && !pdf) || !/^\d+$/.test(form.issue.trim()) || !form.year || !form.pages) { feedback("Complete título, edição, ano, páginas e arquivo antes de publicar.", "error"); return; }
     if (!series.parentSeriesId && isPhaseTitle(`${form.title} ${pdf?.name || editing?.fileName || ""}`) && seriesList.some((item) => item.parentSeriesId === series.id && item.bannerTone === "phase")) { feedback(`Esta edição parece pertencer a uma fase de “${series.title}”. Selecione a fase antes de publicar.`, "error"); return; }
     if (pdf && pdf.size > 5 * 1024 * 1024 * 1024) { feedback("Cada arquivo pode ter no máximo 5 GB.", "error"); return; }
     setBusy(true);
@@ -362,7 +362,7 @@ export const AdminPage: React.FC = () => {
           <label>Coleção / saga principal<select className={fieldClass} value={form.seriesId} onChange={(e) => setForm({ ...form, seriesId: e.target.value })} required><option value="">Selecione um agrupamento confirmado</option>{seriesList.map((series) => <option key={series.id} value={series.id}>{seriesPath(series, seriesList)}</option>)}</select></label>
           <label>Formato<select className={fieldClass} value={form.contentType} onChange={(e) => setForm({ ...form, contentType: e.target.value, readingDirection: e.target.value === "manga" ? "rtl" : "ltr" })}><option value="comic">HQ ocidental</option><option value="graphic_novel">Graphic novel</option><option value="manga">Mangá</option><option value="manhwa">Manhwa</option><option value="book">Livro</option></select></label>
           <label>Sentido da leitura<select className={fieldClass} value={form.readingDirection} onChange={(e) => setForm({ ...form, readingDirection: e.target.value })}><option value="ltr">Esquerda → direita</option><option value="rtl">Direita → esquerda</option></select></label>
-          <label>Edição / número<input className={fieldClass} type="number" min="1" value={form.issue} onChange={(e) => setForm({ ...form, issue: e.target.value })} required /></label>
+          <label>Edição / número<input className={fieldClass} type="number" min="0" value={form.issue} onChange={(e) => setForm({ ...form, issue: e.target.value })} required /></label>
           <label>Ano<input className={fieldClass} type="number" min="1800" max="2200" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} required /></label>
           <label>Páginas<input className={fieldClass} type="number" min="1" value={form.pages} onChange={(e) => setForm({ ...form, pages: e.target.value })} required /></label>
           <label className="span-2">Sinopse<textarea className={fieldClass} rows={4} value={form.synopsis} onChange={(e) => setForm({ ...form, synopsis: e.target.value })} /></label>

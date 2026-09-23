@@ -52,7 +52,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     !Number.isInteger(body.issueNumber) ||
     !Number.isInteger(body.year) ||
     !Number.isInteger(body.totalPages) ||
-    (body.issueNumber ?? 0) < 1 ||
+    (body.issueNumber ?? -1) < 0 ||
     (body.totalPages ?? 0) < 1
   ) {
     return res.status(400).json({ error: "Metadados da HQ inválidos." });
