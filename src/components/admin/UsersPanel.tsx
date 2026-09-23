@@ -40,7 +40,7 @@ export function UsersPanel() {
     try {
       const { data } = await supabase.auth.getSession();
       if (!data.session) throw new Error("Sua sessão expirou. Entre novamente.");
-      const response = await fetch("/api/users/delete", { method: "DELETE", headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session.access_token}` }, body: JSON.stringify({ id: target.id }) });
+      const response = await fetch("/api/comics/delete", { method: "DELETE", headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session.access_token}` }, body: JSON.stringify({ id: target.id }) });
       const payload = await response.json().catch(() => null);
       if (!response.ok) throw new Error(payload?.error || "Não foi possível excluir o usuário.");
       setDeleteTarget(null); setMessageType("success"); setMessage(`Conta de ${target.email} excluída.`); await load();
