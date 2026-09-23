@@ -1,4 +1,4 @@
-const CACHE = 'biblioteca-hq-shell-v2';
+const CACHE = 'biblioteca-hq-shell-v3';
 const SHELL = ['/', '/site.webmanifest', '/icon-192.png', '/icon-512.png', '/icon-maskable-512.png'];
 const ASSETS = __ASSETS__;
 self.addEventListener('install', (event) => {

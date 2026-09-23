@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, BookCopy, CheckCircle2, Cloud, Database, Edit3, FileImage, FileUp, LibraryBig, Plus, Save, Shield, UploadCloud, X } from "lucide-react";
 import { useLibrary } from "../../hooks/useLibrary";
 import { storageProvider } from "../../services/storageProvider";
@@ -23,6 +23,9 @@ export const AdminPage: React.FC = () => {
   const [tab, setTab] = useState<Tab>("catalog");
   const [editing, setEditing] = useState<Comic | null>(null);
   const [pdf, setPdf] = useState<File | null>(null);
+  const pdfInputRef = useRef<HTMLInputElement | null>(null);
+  const waitingForPdfPicker = useRef(false);
+  const lastPdfSelection = useRef({ signature: "", at: 0 });
   const [cover, setCover] = useState<File | null>(null);
   const [coverThumbnail, setCoverThumbnail] = useState<File | null>(null);
   const [pdfHash, setPdfHash] = useState<string | undefined>();
@@ -110,6 +113,23 @@ export const AdminPage: React.FC = () => {
       } catch (fallbackError) { feedback(fallbackError instanceof Error ? fallbackError.message : "Não foi possível ler o PDF.", "error"); }
     }
   };
+  const processPdfInput = (input: HTMLInputElement) => {
+    const files = Array.from(input.files || []);
+    if (!files.length) return;
+    waitingForPdfPicker.current = false;
+    const signature = files.map((file) => `${file.name}:${file.size}:${file.lastModified}`).join("|");
+    const now = Date.now();
+    if (lastPdfSelection.current.signature === signature && now - lastPdfSelection.current.at < 1000) return;
+    lastPdfSelection.current = { signature, at: now };
+    void selectPdfs(files);
+    window.setTimeout(() => { input.value = ""; }, 0);
+  };
+  const handlePdfSelection = (event: React.FormEvent<HTMLInputElement>) => processPdfInput(event.currentTarget);
+  useEffect(() => {
+    const recoverPickerReturn = () => window.setTimeout(() => { if (waitingForPdfPicker.current && pdfInputRef.current?.files?.length) processPdfInput(pdfInputRef.current); }, 250);
+    window.addEventListener("focus", recoverPickerReturn);
+    return () => window.removeEventListener("focus", recoverPickerReturn);
+  });
   const submitComic = async (event: React.FormEvent) => {
     event.preventDefault();
     const series = seriesList.find((item) => item.id === form.seriesId);
@@ -207,8 +227,9 @@ export const AdminPage: React.FC = () => {
   const closeRowMenu = (event: React.MouseEvent<HTMLButtonElement>) => { event.currentTarget.closest("details")?.removeAttribute("open"); };
 
   return <div className="streaming-page admin-studio">
-    <section className="page-spotlight admin-spotlight"><div><span className="page-kicker"><Shield /> Central do proprietário</span><h1>Estúdio do acervo</h1><p>Cadastre arquivos, capas, coleções e toda a ficha editorial sem sair da Biblioteca HQ.</p></div><div className="page-metrics"><span><strong>{allComics.length}</strong> títulos</span><span><strong>{seriesList.length}</strong> coleções</span><span><strong>{formatFileSize(totalMb)}</strong> no R2</span></div></section>
+    <section className="page-spotlight admin-spotlight"><div><span className="page-kicker"><Shield /> Central do proprietário</span><h1>Estúdio do acervo</h1><p>Cadastre arquivos, capas, coleções e toda a ficha editorial sem sair da Biblioteca HQ.</p></div><div className="page-metrics"><span><strong>{allComics.length}</strong> títulos</span><span><strong>{seriesList.length}</strong> agrupamentos</span><span><strong>{formatFileSize(totalMb)}</strong> no R2</span></div></section>
     <div className="studio-tabs" role="tablist"><button className={tab === "catalog" ? "active" : ""} onClick={() => setTab("catalog")}><LibraryBig /> Acervo</button><button className={tab === "collections" ? "active" : ""} onClick={() => setTab("collections")}><BookCopy /> Coleções</button><button className={tab === "users" ? "active" : ""} onClick={() => setTab("users")}><Shield /> Usuários e PIX</button><button className={tab === "status" ? "active" : ""} onClick={() => setTab("status")}><Cloud /> Infraestrutura</button></div>
+    <details className="catalog-organization-guide"><summary>Como organizar editora, coleção, saga, volume e edição</summary><div><p><strong>Editora ou selo</strong> publica a HQ, como DC Comics ou Marvel. Você informa a editora ao criar o agrupamento.</p><p><strong>Coleção</strong> é o título contínuo, como Action Comics. Cadastre-a uma vez e associe suas edições.</p><p><strong>Saga</strong> é um arco ou evento com começo e fim, como uma história que pode aparecer em várias coleções. Se atravessar coleções, mantenha cada edição na coleção principal e registre o nome da saga em Categorias / tags.</p><p><strong>Volume</strong> identifica um tomo, encadernado ou fase quando essa divisão existe na publicação. Use apenas quando o material indicar um volume.</p><p><strong>Edição</strong> é a unidade publicada no arquivo, com número, ano, páginas e capa próprios. Para um livro único, use edição 1. Exemplo: DC Comics → Action Comics → volume 1 → edição 2.</p><p>Ordem sugerida: crie a coleção, selecione os PDFs, aplique os dados comuns ao lote e revise número, volume, páginas e capa de cada arquivo.</p></div></details>
     {notice && <div className="studio-notice"><CheckCircle2 /> {notice}</div>}
     {toast && <div className={`admin-toast ${toast.type}`} role={toast.type === "error" ? "alert" : "status"}>{toast.type === "error" ? <AlertCircle /> : <CheckCircle2 />}<span>{toast.message}</span><button type="button" aria-label="Fechar aviso" onClick={() => setToast(null)}><X /></button></div>}
     {tab === "catalog" && <div className="studio-grid">
@@ -217,14 +238,14 @@ export const AdminPage: React.FC = () => {
         <div className="studio-panel-title"><div><span>{editing ? "Editando edição" : "Nova publicação"}</span><h2>{editing?.title || "Cadastrar HQ ou livro"}</h2></div>{editing && <button type="button" onClick={resetComicForm} aria-label="Cancelar edição"><X /></button>}</div>
         <div className="form-grid">
           <label className="span-2">Título{batchPdfs.length > 0 && <small>Gerado pelo nome de cada arquivo na publicação em lote</small>}<input className={fieldClass} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required={batchPdfs.length === 0} disabled={batchPdfs.length > 0} /></label>
-          <label>Coleção<select className={fieldClass} value={form.seriesId} onChange={(e) => setForm({ ...form, seriesId: e.target.value })} required><option value="">Selecione uma coleção confirmada</option>{seriesList.map((series) => <option key={series.id} value={series.id}>{series.title}</option>)}</select></label>
+          <label>Coleção / saga principal<select className={fieldClass} value={form.seriesId} onChange={(e) => setForm({ ...form, seriesId: e.target.value })} required><option value="">Selecione um agrupamento confirmado</option>{seriesList.map((series) => <option key={series.id} value={series.id}>{series.title}</option>)}</select></label>
           <label>Formato<select className={fieldClass} value={form.contentType} onChange={(e) => setForm({ ...form, contentType: e.target.value, readingDirection: e.target.value === "manga" ? "rtl" : "ltr" })}><option value="comic">HQ ocidental</option><option value="graphic_novel">Graphic novel</option><option value="manga">Mangá</option><option value="manhwa">Manhwa</option></select></label>
           <label>Sentido da leitura<select className={fieldClass} value={form.readingDirection} onChange={(e) => setForm({ ...form, readingDirection: e.target.value })}><option value="ltr">Esquerda → direita</option><option value="rtl">Direita → esquerda</option></select></label>
-          <label>Edição<input className={fieldClass} type="number" min="1" value={form.issue} onChange={(e) => setForm({ ...form, issue: e.target.value })} required /></label>
+          <label>Edição / número<input className={fieldClass} type="number" min="1" value={form.issue} onChange={(e) => setForm({ ...form, issue: e.target.value })} required /></label>
           <label>Ano<input className={fieldClass} type="number" min="1800" max="2200" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} required /></label>
           <label>Páginas<input className={fieldClass} type="number" min="1" value={form.pages} onChange={(e) => setForm({ ...form, pages: e.target.value })} required /></label>
           <label className="span-2">Sinopse<textarea className={fieldClass} rows={4} value={form.synopsis} onChange={(e) => setForm({ ...form, synopsis: e.target.value })} /></label>
-          <label>Volume<input className={fieldClass} type="number" min="1" value={form.volume} onChange={(e) => setForm({ ...form, volume: e.target.value })} /></label>
+          <label>Volume (opcional)<input className={fieldClass} type="number" min="1" value={form.volume} onChange={(e) => setForm({ ...form, volume: e.target.value })} /></label>
           <label>Personagens / grupos<input className={fieldClass} placeholder="Somente os confirmados" value={form.characters} onChange={(e) => setForm({ ...form, characters: e.target.value })} /></label>
           <label>Roteiro<input className={fieldClass} placeholder="Nomes separados por vírgula" value={form.writers} onChange={(e) => setForm({ ...form, writers: e.target.value })} /></label>
           <label>Arte e desenho<input className={fieldClass} placeholder="Nomes separados por vírgula" value={form.pencillers} onChange={(e) => setForm({ ...form, pencillers: e.target.value })} /></label>
@@ -232,7 +253,7 @@ export const AdminPage: React.FC = () => {
           <label>Categorias / tags<input className={fieldClass} placeholder="X-Men, mutantes, aventura" value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} /></label>
         </div>
         {editing && <label className="bulk-edit-toggle"><input type="checkbox" checked={applyToCollection} onChange={(e) => setApplyToCollection(e.target.checked)} /><div><strong>Aplicar ficha editorial a toda a coleção</strong><span>Atualiza sinopse, roteiro, arte, cores e categorias nas {allComics.filter((comic) => comic.seriesId === form.seriesId).length} edições de “{seriesList.find((series) => series.id === form.seriesId)?.title || "esta coleção"}”. Título, número, ano, páginas, PDF e capa continuam individuais.</span></div></label>}
-        <div className="upload-grid"><label className="upload-tile"><FileUp /><strong>{batchPdfs.length ? `${batchPdfs.length} PDFs selecionados` : pdf?.name || (editing ? "Substituir PDF" : "Selecionar um ou vários PDFs")}</strong><small>{pdf ? formatFileSize(pdf.size / 1024 / 1024) : editing?.fileName || "Envio direto ao R2 · até 5 GB por arquivo"}</small><input type="file" aria-label={editing ? "Substituir PDF" : "Selecionar PDFs"} accept="application/pdf,.pdf" multiple={!editing} onChange={(e) => { const files = Array.from(e.currentTarget.files || []); e.currentTarget.value = ""; void selectPdfs(files); }} /></label><label className="upload-tile"><FileImage /><strong>{batchCovers.length ? `${batchCovers.length} capas selecionadas` : cover?.name || (editing ? "Substituir capa" : "Adicionar uma ou várias capas")}</strong><small>JPG, PNG ou WebP · nomes iguais aos PDFs fazem a associação automática</small><input type="file" aria-label={editing ? "Substituir capa" : "Selecionar capas"} accept="image/jpeg,image/png,image/webp" multiple={!editing} onChange={(e) => { const files = Array.from(e.currentTarget.files || []); e.currentTarget.value = ""; if (files.length > 1) { setBatchCovers(files); setCover(null); } else { setCover(files[0] || null); setCoverThumbnail(null); setBatchCovers([]); } }} /></label></div>
+        <div className="upload-grid"><div className="upload-tile"><FileUp /><strong>{batchPdfs.length ? `${batchPdfs.length} PDFs selecionados` : pdf?.name || (editing ? "Substituir PDF" : "Selecionar um ou vários PDFs")}</strong><small>{pdf ? formatFileSize(pdf.size / 1024 / 1024) : editing?.fileName || "Envio direto ao R2 · até 5 GB por arquivo"}</small><input ref={pdfInputRef} type="file" aria-label={editing ? "Substituir PDF" : "Selecionar PDFs"} accept="application/pdf,.pdf" multiple={!editing} onClick={() => { waitingForPdfPicker.current = true; }} onInput={handlePdfSelection} onChange={handlePdfSelection} /></div><label className="upload-tile"><FileImage /><strong>{batchCovers.length ? `${batchCovers.length} capas selecionadas` : cover?.name || (editing ? "Substituir capa" : "Adicionar uma ou várias capas")}</strong><small>JPG, PNG ou WebP · nomes iguais aos PDFs fazem a associação automática</small><input type="file" aria-label={editing ? "Substituir capa" : "Selecionar capas"} accept="image/jpeg,image/png,image/webp" multiple={!editing} onChange={(e) => { const files = Array.from(e.currentTarget.files || []); e.currentTarget.value = ""; if (files.length > 1) { setBatchCovers(files); setCover(null); } else { setCover(files[0] || null); setCoverThumbnail(null); setBatchCovers([]); } }} /></label></div>
         {pdf && !editing && <button type="button" onClick={() => { setBatchPdfs([pdf]); setPdf(null); }}>Revisar como lote (opções para duplicados)</button>}
         {batchPdfs.length === 0 && <button className="studio-primary" disabled={busy}><UploadCloud /> {busy ? "Publicando..." : editing ? "Salvar alterações" : "Cadastrar e publicar"}</button>}
       </form>
