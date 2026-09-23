@@ -1,4 +1,4 @@
-const CACHE = 'biblioteca-hq-shell-v3';
+const CACHE = 'biblioteca-hq-shell-v4';
 const SHELL = ['/', '/site.webmanifest', '/icon-192.png', '/icon-512.png', '/icon-maskable-512.png'];
 const ASSETS = __ASSETS__;
 self.addEventListener('install', (event) => {
@@ -10,8 +10,13 @@ self.addEventListener('install', (event) => {
   })());
 });
 self.addEventListener('activate', (event) => event.waitUntil((async () => {
-  for (const key of await caches.keys()) if (key !== CACHE) await caches.delete(key);
+  const previousCaches = (await caches.keys()).filter((key) => key.startsWith('biblioteca-hq-shell-') && key !== CACHE);
+  for (const key of previousCaches) await caches.delete(key);
   await self.clients.claim();
+  if (previousCaches.length) {
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    await Promise.allSettled(windows.filter((client) => !/^\/(ler|admin|configuracoes|login)(\/|$)/.test(new URL(client.url).pathname)).map((client) => client.navigate(client.url)));
+  }
 })()));
 self.addEventListener('fetch', (event) => {
   const request = event.request;
