@@ -76,11 +76,21 @@ export const AdminPage: React.FC = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
   const selectPdfs = async (files: File[]) => {
-    if (files.length > 1) { setBatchPdfs(files); setPdf(null); return; }
+    if (!files.length) return;
+    if (files.length > 1) { setBatchPdfs(files); setPdf(null); feedback(`${files.length} PDFs recebidos. Revise a fila abaixo antes de publicar.`, "info"); return; }
     setBatchPdfs([]);
     setPdf(files[0] || null);
     setPdfHash(undefined); setCoverThumbnail(null);
+    feedback(`Arquivo selecionado: ${files[0].name}.`, "info");
     if (!files[0] || editing) return;
+    if (window.matchMedia("(pointer: coarse)").matches) {
+      try {
+        const meta = await manualPdfInspection(files[0]);
+        setForm((current) => ({ ...current, title: meta.title, issue: meta.issueNumber, year: meta.year, pages: "" }));
+        setNotice("PDF recebido. Complete a ficha e toque em Cadastrar e publicar para enviar.");
+      } catch (error) { feedback(error instanceof Error ? error.message : "PDF inválido.", "error"); }
+      return;
+    }
     setNotice("Analisando a primeira página e os metadados do PDF...");
     try {
       const meta = await inspectPdf(files[0]);

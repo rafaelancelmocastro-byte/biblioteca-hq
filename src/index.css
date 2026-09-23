@@ -189,6 +189,26 @@ button, input, select { font: inherit; }
 .manager-controls { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .6rem; margin: 1rem 0; }.manager-controls label { display: grid; gap: .2rem; min-width: 0; color: #a99d95; font-size: .68rem; }.manager-controls .manager-search { grid-column: 1 / -1; }
 .manager-row-menu { position: relative; align-self: center; }.manager-row-menu summary { list-style: none; padding: .5rem .65rem; border: 1px solid rgba(255,213,33,.16); border-radius: .55rem; color: #e8d675; cursor: pointer; font-size: .68rem; }.manager-row-menu summary::-webkit-details-marker { display: none; }.manager-row-menu > div { position: absolute; z-index: 5; right: 0; top: 100%; display: grid; gap: .2rem; width: 9rem; padding: .35rem; border: 1px solid rgba(255,255,255,.15); border-radius: .6rem; background: #211a16; box-shadow: 0 12px 28px #0009; }.manager-row-menu button { width: 100%; }
 .manager-pagination { display: flex; justify-content: center; align-items: center; gap: 1rem; margin-top: 1rem; color: #a99d95; font-size: .75rem; }.manager-pagination button { padding: .5rem .8rem; border: 1px solid var(--line); border-radius: .5rem; color: white; cursor: pointer; }.manager-pagination button:disabled { opacity: .35; cursor: default; }.manager-empty { padding: 1.5rem; color: #aaa; text-align: center; }
+.collection-filters { display: flex; flex-wrap: wrap; gap: .7rem; margin: 1rem 0 1.5rem; }
+.collection-filters label { display: grid; flex: 1 1 11rem; gap: .3rem; min-width: 0; color: #bfb3ab; font-size: .75rem; }
+.collection-filters input,.collection-filters select { width: 100%; min-height: 2.7rem; padding: .6rem .75rem; border: 1px solid rgba(225,216,209,.18); border-radius: .6rem; background: #1d1714; color: #fff; }
+.reading-insights,.comics-news { border: 1px solid rgba(225,216,209,.12); border-radius: 1.2rem; padding: clamp(1rem,3vw,1.5rem); background: #171210; }
+.reading-insights h2 { margin: .3rem 0; color: #fff; font: 800 clamp(1.6rem,3vw,2.3rem)/1.1 Georgia,serif; }
+.reading-insights p,.comics-news p { color: #bfb3ab; font-size: .85rem; }
+.reading-insights-metrics { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .6rem; margin: 1.2rem 0; }
+.reading-insights-metrics div { display: grid; gap: .25rem; min-width: 0; padding: .85rem; border: 1px solid rgba(225,216,209,.09); border-radius: .8rem; background: #231a16; }
+.reading-insights-metrics strong { color: #ffd521; font-size: clamp(1.4rem,3vw,2rem); }
+.reading-insights-metrics span,.reading-insights small { color: #a99d95; font-size: .72rem; }
+.reading-insights summary,.comics-news summary { color: #ffd521; cursor: pointer; font-weight: 750; }
+.comics-news summary span { margin-left: .5rem; color: #a99d95; font-size: .72rem; font-weight: 400; }
+.comics-news-list { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,17rem),1fr)); gap: .7rem; margin: 1rem 0; }
+.comics-news-list a { display: grid; gap: .5rem; padding: .85rem; border: 1px solid rgba(225,216,209,.12); border-radius: .7rem; color: white; text-decoration: none; }
+.comics-news-list a:hover { border-color: #ffd521; }
+.comics-news-list small,.comics-news > small { color: #a99d95; font-size: .68rem; }
+.install-prompt { position: fixed; z-index: 100; right: 1rem; bottom: max(1rem,env(safe-area-inset-bottom)); width: min(24rem,calc(100vw - 2rem)); padding: 1.25rem; border: 1px solid rgba(255,213,33,.5); border-radius: 1rem; background: #211914; box-shadow: 0 20px 70px #000b; }
+.install-prompt strong { display: block; padding-right: 2rem; color: white; }.install-prompt p { margin: .6rem 0 1rem; color: #d1c5bb; font-size: .82rem; }
+.install-prompt > div { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }.install-prompt > div span { display: flex; align-items: center; gap: .4rem; color: #ffd521; font-size: .75rem; }.install-prompt svg { width: 1rem; }.install-close { position: absolute; right: .8rem; top: .8rem; color: white; cursor: pointer; }
+@media (max-width: 640px) { .reading-insights-metrics { grid-template-columns: 1fr 1fr; }.install-prompt { bottom: calc(5rem + env(safe-area-inset-bottom)); } }
 .reader-mode-options { grid-template-columns: repeat(4,1fr); }.reader-mode-options.direction-options { grid-template-columns: repeat(2,1fr); }
 .reader-spread { display: flex; flex-direction: row; }.reader-spread canvas { flex: none; }.reader-spread canvas + canvas { border-left: 1px solid #ddd; }.reader-spread[dir="rtl"] canvas + canvas { border-left: 0; border-right: 1px solid #ddd; }
 .catalog-manager-list article { grid-template-columns: 1.2rem 3.15rem minmax(0,1fr) auto; }
@@ -202,6 +222,15 @@ button, input, select { font: inherit; }
   .catalog-hero-flow .catalog-eyebrow { margin-bottom: .7rem; }
   .catalog-hero-flow .catalog-hero-actions { margin-top: 1rem; }
   .collection-hub .cover-flow-card { width: clamp(10rem,38%,17rem); }
+}
+@media (min-width: 641px) and (max-width: 1024px) {
+  .catalog-hero-flow { display: flex; flex-direction: column; min-height: 0; }
+  .catalog-hero-flow-slot { position: relative; top: auto; right: auto; width: 100%; transform: none; padding: 1.25rem 1.5rem 0; }
+  .catalog-hero-flow-slot .cover-flow-stage { height: clamp(22rem, 47vw, 28rem); }
+  .catalog-hero-flow-slot .cover-flow-card { width: clamp(11rem, 29%, 15rem); }
+  .catalog-hero-flow .catalog-hero-content { order: 2; width: 100%; min-height: 0; padding: 1rem 2rem 2rem; justify-content: flex-start; }
+  .catalog-hero-flow .catalog-hero-content h1 { max-width: 20ch; font-size: clamp(2.3rem, 5vw, 4rem); }
+  .catalog-hero-flow .catalog-hero-actions { flex-wrap: wrap; }
 }
 @media (max-width: 640px) {
   .catalog-hero-flow { min-height: 40rem; }

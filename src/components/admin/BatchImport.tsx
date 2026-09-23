@@ -76,15 +76,15 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
 
   useEffect(() => {
     let active = true;
-    setDrafts(files.map((file) => ({ file, meta: null, seriesId: "", status: "analyzing", message: "Analisando o PDF..." })));
+    setDrafts(files.map((file) => ({ file, meta: null, seriesId: "", status: "analyzing", message: "Arquivo recebido. Preparando a ficha..." })));
     const inspect = async () => {
       for (const [index, file] of files.entries()) {
         try {
-          const meta = await inspectPdf(file);
+          const meta = window.matchMedia("(pointer: coarse)").matches ? await manualPdfInspection(file) : await inspectPdf(file);
           if (!active) return;
           const exact = series.find((item) => normalize(file.name).includes(normalize(item.title)) && normalize(item.title).length > 3);
           const matchedCover = covers.find((item) => normalize(item.name) === normalize(file.name));
-          setDrafts((current) => current.map((draft, position) => position === index ? { ...draft, meta, seriesId: exact?.id || "", coverOverride: matchedCover, status: "ready", message: meta.warning || (exact ? `Coleção “${exact.title}” sugerida pelo nome do arquivo; confirme antes de publicar.` : "Selecione a coleção; campos sem evidência permanecem vazios.") } : draft));
+          setDrafts((current) => current.map((draft, position) => position === index ? { ...draft, meta, seriesId: exact?.id || "", coverOverride: matchedCover, status: meta.totalPages ? "ready" : "incomplete", message: meta.warning || (exact ? `Coleção “${exact.title}” sugerida pelo nome do arquivo; confirme antes de publicar.` : "Selecione a coleção; campos sem evidência permanecem vazios.") } : draft));
         } catch (error) {
           if (!active) return;
           try {

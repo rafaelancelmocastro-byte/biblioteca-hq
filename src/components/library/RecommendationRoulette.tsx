@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from "react";
 import { BookOpen, Dices, Heart, Sparkles } from "lucide-react";
 import type { Comic } from "../../types/comic";
+import { readingInsights } from "../../lib/readingInsights";
 
 interface RecommendationRouletteProps {
   comics: Comic[];
@@ -8,7 +9,7 @@ interface RecommendationRouletteProps {
   onOpenDetails: (comic: Comic) => void;
 }
 
-function recommendationScore(comic: Comic, signals: Comic[]) {
+function recommendationScore(comic: Comic, signals: Comic[], favoriteCharacters: string[], favoritePublishers: string[]) {
   if (signals.length === 0) return 1;
   let score = 1;
   for (const signal of signals) {
@@ -17,15 +18,17 @@ function recommendationScore(comic: Comic, signals: Comic[]) {
     score += comic.tags.filter((tag) => signal.tags.includes(tag)).length * 2;
     score += comic.writers.filter((writer) => signal.writers.includes(writer)).length * 1.5;
   }
+  if (favoritePublishers.includes(comic.publisher)) score += 2;
+  score += comic.characters.filter((character) => favoriteCharacters.includes(character)).length * 2;
   if (comic.progress?.status === "completed") score *= 0.25;
   if (comic.progress?.status === "reading") score *= 0.55;
   return score;
 }
 
-function weightedPick(comics: Comic[], signals: Comic[], previousId?: string) {
+function weightedPick(comics: Comic[], signals: Comic[], favoriteCharacters: string[], favoritePublishers: string[], previousId?: string) {
   const pool = comics.filter((comic) => comic.id !== previousId);
   const candidates = pool.length ? pool : comics;
-  const weighted = candidates.map((comic) => ({ comic, score: recommendationScore(comic, signals) }));
+  const weighted = candidates.map((comic) => ({ comic, score: recommendationScore(comic, signals, favoriteCharacters, favoritePublishers) }));
   const total = weighted.reduce((sum, item) => sum + item.score, 0);
   let cursor = Math.random() * total;
   for (const item of weighted) {
@@ -37,6 +40,7 @@ function weightedPick(comics: Comic[], signals: Comic[], previousId?: string) {
 
 export const RecommendationRoulette: React.FC<RecommendationRouletteProps> = ({ comics, onOpenReader, onOpenDetails }) => {
   const signals = useMemo(() => comics.filter((comic) => comic.isFavorite || comic.progress?.status === "reading" || comic.progress?.status === "completed"), [comics]);
+  const insights = useMemo(() => readingInsights(comics), [comics]);
   const initial = useMemo(() => comics[Math.floor(Math.random() * Math.max(comics.length, 1))], [comics]);
   const [recommendation, setRecommendation] = useState<Comic | undefined>(initial);
   const [rotation, setRotation] = useState(0);
@@ -56,7 +60,7 @@ export const RecommendationRoulette: React.FC<RecommendationRouletteProps> = ({ 
     setRotation((value) => value + 1440 + Math.floor(Math.random() * 720));
     if (timerRef.current) window.clearTimeout(timerRef.current);
     timerRef.current = window.setTimeout(() => {
-      setRecommendation(weightedPick(comics, signals, recommendation.id));
+      setRecommendation(weightedPick(comics, signals, insights.favoriteCharacters, insights.favoritePublishers, recommendation.id));
       setSpinning(false);
     }, 1250);
   };

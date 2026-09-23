@@ -88,6 +88,7 @@ export default function App() {
       }}
       isOwner={isOwner || !isSupabaseConfigured}
       userName={isOwner ? "Rafael Castro" : profile?.email?.split("@")[0] || "Leitor"}
+      userId={session?.user.id}
     >
       {restrictedNotice && <div role="alert" className="fixed top-20 right-4 z-50 rounded-xl bg-[#2c1d18] border border-amber-400/40 px-4 py-3 text-sm text-amber-200 shadow-xl" onClick={() => setRestrictedNotice(false)}>Acesso restrito</div>}
       <React.Suspense fallback={<div className="studio-panel" role="status">Carregando página...</div>}>

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 import { MobileNav } from "./MobileNav";
+import { InstallPrompt } from "./InstallPrompt";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -16,6 +17,7 @@ interface AppLayoutProps {
   onLogout?: () => void | Promise<void>;
   isOwner?: boolean;
   userName?: string;
+  userId?: string;
 }
 
 export const AppLayout: React.FC<AppLayoutProps> = ({
@@ -31,6 +33,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   onLogout,
   isOwner = false,
   userName = "Leitor",
+  userId,
 }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -71,6 +74,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
 
         {/* Mobile Navigation bar */}
         <MobileNav currentPath={currentPath} onNavigate={onNavigate} isOwner={isOwner} />
+        <InstallPrompt userId={userId} />
       </div>
     </div>
   );

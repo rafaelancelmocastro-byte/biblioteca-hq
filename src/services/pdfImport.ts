@@ -119,7 +119,7 @@ export async function inspectPdf(file: File): Promise<PdfInspection> {
 
 export async function manualPdfInspection(file: File): Promise<PdfInspection> {
   const header = new TextDecoder().decode(await file.slice(0, 1024).arrayBuffer());
-  if (!/\.pdf$/i.test(file.name) || !/%PDF-\d/.test(header)) throw new Error("O arquivo selecionado não parece ser um PDF válido.");
+  if ((!/\.pdf$/i.test(file.name) && file.type !== "application/pdf") || !/%PDF-\d/.test(header)) throw new Error("O arquivo selecionado não parece ser um PDF válido.");
   const title = clean(file.name);
   const year = yearMatch(file.name);
   const issueNumber = issueMatch(file.name);

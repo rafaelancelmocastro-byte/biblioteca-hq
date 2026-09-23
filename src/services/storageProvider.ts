@@ -44,16 +44,18 @@ export class R2StorageProvider implements StorageProvider {
     // Mobile document pickers often report PDFs as octet-stream or x-pdf.
     // The signed-upload endpoint requires the canonical MIME type.
     const contentType = path === "comics" ? "application/pdf" : /\.png$/i.test(file.name) ? "image/png" : /\.jpe?g$/i.test(file.name) ? "image/jpeg" : /\.webp$/i.test(file.name) ? "image/webp" : file.type;
-    if (path === "comics" && !/\.pdf$/i.test(file.name)) throw new Error("Selecione um arquivo PDF.");
+    if (path === "comics" && !/\.pdf$/i.test(file.name) && file.type !== "application/pdf") throw new Error("Selecione um arquivo PDF.");
     if (path !== "comics" && !["image/png", "image/jpeg", "image/webp"].includes(contentType)) throw new Error("Use uma capa JPG, PNG ou WebP.");
     const { uploadUrl, fileKey } = await this.createPresignedUploadUrl(file.name, contentType);
     await new Promise<void>((resolve, reject) => {
       const request = new XMLHttpRequest();
       request.open("PUT", uploadUrl);
+      request.timeout = 180000;
       request.setRequestHeader("Content-Type", contentType);
       request.upload.onprogress = (event) => { if (event.lengthComputable) onProgress?.(Math.round(event.loaded / event.total * 100)); };
-      request.onload = () => request.status >= 200 && request.status < 300 ? resolve() : reject(new Error("O R2 recusou o upload do arquivo."));
-      request.onerror = () => reject(new Error("Falha de rede durante o envio ao R2."));
+      request.onload = () => request.status >= 200 && request.status < 300 ? resolve() : reject(new Error(`O R2 recusou o arquivo (HTTP ${request.status}). Verifique a conexão e tente novamente.`));
+      request.onerror = () => reject(new Error("Falha de rede no envio ao R2. No celular, confira a conexão e tente novamente."));
+      request.ontimeout = () => reject(new Error("O envio demorou demais. Tente novamente em uma conexão estável."));
       request.send(file);
     });
     onProgress?.(100);
