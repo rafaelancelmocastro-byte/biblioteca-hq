@@ -126,8 +126,8 @@ export const CoverPlaceholder: React.FC<CoverPlaceholderProps> = ({
           {title.replace(`${seriesTitle}: `, "")}
         </p>
         <div className="mt-1.5 flex items-center justify-between text-[9px] text-white/40">
-          <span className="font-mono">PDF DIGITAL ARCHIVE</span>
-          <span className="uppercase tracking-widest font-semibold text-amber-400/80">COL. #0{issueNumber}</span>
+          <span className="font-mono">Biblioteca HQ</span>
+          <span className="uppercase tracking-widest font-semibold text-amber-400/80">Ed. #{issueNumber}</span>
         </div>
       </div>
     </div>

@@ -54,8 +54,8 @@ export class R2StorageProvider implements StorageProvider {
       request.timeout = path === "comics" ? 30 * 60 * 1000 : 180000;
       request.setRequestHeader("Content-Type", contentType);
       request.upload.onprogress = (event) => { if (event.lengthComputable) onProgress?.(Math.round(event.loaded / event.total * 100)); };
-      request.onload = () => request.status >= 200 && request.status < 300 ? resolve() : reject(new Error(`O R2 recusou o arquivo (HTTP ${request.status}). Verifique a conexão e tente novamente.`));
-      request.onerror = () => reject(new Error("Falha de rede no envio ao R2. No celular, confira a conexão e tente novamente."));
+      request.onload = () => request.status >= 200 && request.status < 300 ? resolve() : reject(new Error(`Não foi possível enviar o arquivo (erro ${request.status}). Verifique a conexão e tente novamente.`));
+      request.onerror = () => reject(new Error("Falha de conexão durante o envio. Confira sua internet e tente novamente."));
       request.ontimeout = () => reject(new Error("O envio demorou demais. Tente novamente em uma conexão estável."));
       request.send(file);
     });

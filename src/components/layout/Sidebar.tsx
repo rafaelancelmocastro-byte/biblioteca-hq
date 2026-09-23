@@ -46,7 +46,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       path: "/continuar",
       icon: Clock,
     },
-    { label: "Lançamentos 2026", path: "/lancamentos", icon: Star },
+    { label: "Edições de 2026", path: "/lancamentos", icon: Star },
     { label: "Salvos offline", path: "/offline", icon: HardDriveDownload },
     {
       label: "Coleções",
@@ -174,7 +174,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span className="text-[11px] font-medium text-slate-300 truncate">
               {userName}
             </span>
-            <span className="text-[10px] text-slate-500 font-mono">{isOwner ? "Master & Curador" : "Leitor"}</span>
+            <span className="text-[10px] text-slate-500 font-mono">{isOwner ? "Proprietário" : "Leitor"}</span>
           </div>
         )}
         <button

@@ -120,14 +120,14 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
       {!searchQuery && <RecommendationRoulette comics={allComics} onOpenReader={onOpenReader} onOpenDetails={setSelectedComic} />}
       {!searchQuery && <ReadingInsights comics={allComics} />}
 
-      {!searchQuery && launches.length > 0 && <section className="streaming-section" aria-labelledby="launches-2026-title"><div className="flex flex-wrap items-center justify-between gap-2 mb-4"><div><span className="text-[11px] font-black tracking-[.2em] text-amber-300">2026 EDITION</span><h2 id="launches-2026-title" className="streaming-heading">Destaques 2026</h2></div><a href="/lancamentos" className="text-xs text-amber-300 hover:underline">Ver todos →</a></div><div className="streaming-rail">{launches.map((comic) => <div key={comic.id} className="relative"><span className="absolute z-10 top-2 left-2 rounded bg-[#b91c1c] px-2 py-1 text-[9px] font-bold text-white">RECÉM-CHEGADO</span><ComicCard comic={comic} density="compact" onOpenReader={onOpenReader} onToggleFavorite={toggleFavorite} onOpenDetails={setSelectedComic} onOpenProgressModal={setComicForProgress} onMarkCompleted={(id, total) => setStatus(id, "completed", total)} onResetProgress={(id) => setStatus(id, "not_started", 10)} /></div>)}</div></section>}
+      {!searchQuery && launches.length > 0 && <section className="streaming-section" aria-labelledby="launches-2026-title"><div className="flex flex-wrap items-center justify-between gap-2 mb-4"><div><span className="text-[11px] font-black tracking-[.2em] text-amber-300">Publicadas em 2026</span><h2 id="launches-2026-title" className="streaming-heading">Edições de 2026</h2></div><a href="/lancamentos" className="text-xs text-amber-300 hover:underline">Ver todos →</a></div><div className="streaming-rail">{launches.map((comic) => <div key={comic.id} className="relative"><span className="absolute z-10 top-2 left-2 rounded bg-[#b91c1c] px-2 py-1 text-[9px] font-bold text-white">2026</span><ComicCard comic={comic} density="compact" onOpenReader={onOpenReader} onToggleFavorite={toggleFavorite} onOpenDetails={setSelectedComic} onOpenProgressModal={setComicForProgress} onMarkCompleted={(id, total) => setStatus(id, "completed", total)} onResetProgress={(id) => setStatus(id, "not_started", 10)} /></div>)}</div></section>}
 
       {!isLoading && allComics.length > 0 && (
         <div className="catalog-summary">
           <LibraryBig />
           <span><strong>{allComics.length}</strong> títulos no acervo</span>
           <span className="catalog-summary-dot" />
-          <span>PDFs e capas protegidos no Cloudflare R2</span>
+          <span>Encontre uma história para começar ou continuar</span>
         </div>
       )}
 
