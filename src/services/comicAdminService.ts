@@ -66,6 +66,13 @@ export async function updateComicRecord(comicId: string, input: Partial<ComicReg
   await ownerRequest("/api/comics/update", { id: comicId, ...input }, "PATCH");
 }
 
+export type SelectedComicPatch = Partial<Pick<ComicRegistration, "title" | "year" | "synopsis" | "writers" | "pencillers" | "colorists" | "tags" | "contentType" | "readingDirection">> & { seriesId?: string };
+
+export async function updateSelectedComics(ids: string[], fields: SelectedComicPatch): Promise<number> {
+  const payload = await ownerRequest("/api/comics/bulk-update", { ids, fields }, "PATCH");
+  return Number(payload.updated || 0);
+}
+
 export async function updateCollectionComics(
   seriesId: string,
   input: Pick<ComicRegistration, "synopsis" | "writers" | "pencillers" | "colorists" | "tags">,

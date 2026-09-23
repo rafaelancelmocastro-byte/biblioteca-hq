@@ -37,9 +37,10 @@ interface Props {
   existingComics: Comic[];
   onComplete: () => Promise<unknown>;
   onClear: () => void;
+  onFeedback: (message: string, type: "success" | "error" | "info") => void;
 }
 
-export const BatchImport: React.FC<Props> = ({ files, covers, series, existingComics, onComplete, onClear }) => {
+export const BatchImport: React.FC<Props> = ({ files, covers, series, existingComics, onComplete, onClear, onFeedback }) => {
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [publishing, setPublishing] = useState(false);
   const [groupPublisher, setGroupPublisher] = useState("");
@@ -62,13 +63,14 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
   }, [files, series]);
 
   const createSuggestedGroup = async () => {
-    if (!proposedGroup || !groupPublisher.trim() || !/^\d{4}$/.test(groupYear)) { setGroupError("Confirme editora e ano inicial para criar o agrupamento."); return; }
+    if (!proposedGroup || !groupPublisher.trim() || !/^\d{4}$/.test(groupYear)) { setGroupError("Confirme editora e ano inicial para criar o agrupamento."); onFeedback("Confirme editora e ano inicial para criar o agrupamento.", "error"); return; }
     setPublishing(true); setGroupError("");
     try {
       const id = await saveSeriesRecord({ title: proposedGroup.title, publisher: groupPublisher.trim(), startYear: Number(groupYear), description: "", bannerTone: groupKind });
       setDrafts((current) => current.map((draft) => normalize(draft.file.name).startsWith(normalize(proposedGroup.title)) ? { ...draft, seriesId: id } : draft));
       await onComplete();
-    } catch (error) { setGroupError(error instanceof Error ? error.message : "Não foi possível criar o agrupamento."); }
+      onFeedback(`Coleção “${proposedGroup.title}” criada e associada aos arquivos.`, "success");
+    } catch (error) { const message = error instanceof Error ? error.message : "Não foi possível criar o agrupamento."; setGroupError(message); onFeedback(message, "error"); }
     finally { setPublishing(false); }
   };
 
@@ -96,9 +98,9 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
   const update = (index: number, patch: Partial<Draft>) => setDrafts((current) => current.map((draft, position) => position === index ? { ...draft, ...patch } : draft));
   const updateMeta = (index: number, key: keyof PdfInspection, value: string) => setDrafts((current) => current.map((draft, position) => position === index && draft.meta ? { ...draft, meta: { ...draft.meta, [key]: value }, status: "ready" } : draft));
   const applyShared = () => {
-    if (!sharedEnabled.length) { setSharedMessage("Marque os campos que deseja repetir."); return; }
+    if (!sharedEnabled.length) { setSharedMessage("Marque os campos que deseja repetir."); onFeedback("Marque os campos que deseja repetir.", "error"); return; }
     const selected = sharedEnabled.filter((field) => sharedValues[field].trim());
-    if (!selected.length) { setSharedMessage("Preencha ao menos um campo marcado."); return; }
+    if (!selected.length) { setSharedMessage("Preencha ao menos um campo marcado."); onFeedback("Preencha ao menos um campo marcado.", "error"); return; }
     const changed = drafts.filter((draft) => draft.meta && !["published", "uploading", "cancelled"].includes(draft.status)).length;
     setDrafts((current) => current.map((draft) => {
       if (!draft.meta || ["published", "uploading", "cancelled"].includes(draft.status)) return draft;
@@ -111,6 +113,7 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
       return { ...draft, meta, seriesId, status: "ready", message: "Campos comuns aplicados. Confira a ficha individual antes de publicar." };
     }));
     setSharedMessage(`Campos comuns aplicados às ${changed} fichas disponíveis. Cada arquivo ainda pode ser editado abaixo.`);
+    onFeedback(`Campos comuns aplicados às ${changed} fichas. Confira os dados individuais antes de publicar.`, "success");
   };
 
   const publish = async (forceIndex?: number, replaceExisting = false, metadataOnly = false) => {
@@ -157,11 +160,12 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
         update(index, { status: typed.code === "SAME_FILE" || typed.code === "POSSIBLE_DUPLICATE" ? "duplicate" : "error", message: typed.message, existingId: typed.existing?.id });
       }
     }
-    if (published) await onComplete();
+    if (published) { await onComplete(); onFeedback(`${published} arquivo(s) publicado(s) com sucesso.`, "success"); }
+    else onFeedback("Nenhum arquivo foi publicado. Revise as fichas sinalizadas na fila.", "error");
     setPublishing(false);
   };
 
-  return <section className="batch-review" aria-label="Revisão da importação em lote">
+  return <section id="batch-review" className="batch-review" aria-label="Revisão da importação em lote">
     <div className="batch-review-header"><div><strong>Revisar lote</strong><span>Cada PDF mantém sua própria ficha. Campos sem evidência ficam vazios.</span></div><button type="button" onClick={onClear} disabled={publishing}>Fechar fila</button></div>
     <div className="batch-shared-panel"><strong>Dados comuns a todos os PDFs desta fila</strong><p>Marque somente o que se repete. O restante, como número da edição, páginas e capa, continua individual.</p><div className="batch-shared-grid">{sharedFields.map((field) => <label key={field} className={field === "synopsis" ? "wide" : ""}><span><input type="checkbox" checked={sharedEnabled.includes(field)} onChange={(event) => setSharedEnabled((current) => event.target.checked ? [...current, field] : current.filter((item) => item !== field))} /> Aplicar {sharedLabels[field]} a todos</span>{field === "seriesId" ? <select value={sharedValues.seriesId} onChange={(event) => setSharedValues((current) => ({ ...current, seriesId: event.target.value }))}><option value="">Selecione a coleção</option>{series.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select> : field === "synopsis" ? <textarea rows={2} value={sharedValues.synopsis} onChange={(event) => setSharedValues((current) => ({ ...current, synopsis: event.target.value }))} /> : <input type={field === "year" ? "number" : "text"} min={field === "year" ? 1800 : undefined} max={field === "year" ? 2200 : undefined} value={sharedValues[field]} onChange={(event) => setSharedValues((current) => ({ ...current, [field]: event.target.value }))} />}</label>)}</div><button type="button" className="studio-primary" disabled={publishing || drafts.some((draft) => draft.status === "analyzing")} onClick={applyShared}>Aplicar campos marcados à fila</button>{sharedMessage && <p role="status">{sharedMessage}</p>}</div>
     {proposedGroup && <div className="batch-group-suggestion"><strong>{proposedGroup.count} arquivos sugerem a coleção “{proposedGroup.title}”</strong><span>Confirme os dados editoriais antes de criar; o personagem sozinho não define uma coleção.</span><div><label>Editora<input value={groupPublisher} onChange={(event) => setGroupPublisher(event.target.value)} /></label><label>Ano inicial<input type="number" min="1800" max="2200" value={groupYear} onChange={(event) => setGroupYear(event.target.value)} /></label><label>Tipo<select value={groupKind} onChange={(event) => setGroupKind(event.target.value)}><option value="collection">Coleção</option><option value="saga">Saga</option></select></label><button type="button" onClick={() => void createSuggestedGroup()} disabled={publishing}>Criar agrupamento e associar</button></div>{groupError && <p role="alert">{groupError}</p>}</div>}
