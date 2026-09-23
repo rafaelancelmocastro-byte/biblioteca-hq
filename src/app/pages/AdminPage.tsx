@@ -2,11 +2,11 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, BookCopy, CheckCircle2, Cloud, Database, Edit3, FileImage, FileUp, LibraryBig, Plus, Save, Shield, UploadCloud, X } from "lucide-react";
 import { useLibrary } from "../../hooks/useLibrary";
 import { storageProvider } from "../../services/storageProvider";
-import { checkComicDuplicate, checkStorageStatuses, createComicRecord, deleteComicRecords, deleteSeriesRecord, saveSeriesRecord, updateCollectionComics, updateComicRecord, updateSelectedComics, type SelectedComicPatch } from "../../services/comicAdminService";
+import { checkComicDuplicate, checkStorageStatuses, createComicRecord, deleteComicRecords, deleteSeriesRecord, regenerateComicCover, saveSeriesRecord, updateCollectionComics, updateComicRecord, updateSelectedComics, type SelectedComicPatch } from "../../services/comicAdminService";
 import type { Comic, Series } from "../../types/comic";
 import { formatFileSize } from "../../lib/formatters";
 import { BatchImport } from "../../components/admin/BatchImport";
-import { makeImageThumbnail } from "../../services/pdfImport";
+import { extractPdfCover, makeImageThumbnail } from "../../services/pdfImport";
 import { inspectPublication, manualPublicationInspection } from "../../services/publicationImport";
 import { PUBLICATION_ACCEPT, publicationFormat } from "../../services/publicationFormats";
 import { UsersPanel } from "../../components/admin/UsersPanel";
@@ -15,6 +15,7 @@ import { clearSharedPdfs, takeSharedPdfs } from "../../services/sharedPdfImport"
 import { loadPendingImport, savePendingImport } from "../../services/pendingImport";
 import { supabase } from "../../services/supabaseClient";
 import { isPhaseTitle, suggestIssueSeries, suggestParentSeries } from "../../services/seriesHierarchy";
+import { runLimited } from "../../services/runLimited";
 
 type Tab = "catalog" | "collections" | "users" | "status";
 const splitList = (value: string) => value.split(",").map((item) => item.trim()).filter(Boolean);
@@ -95,6 +96,7 @@ export const AdminPage: React.FC = () => {
   const [managerSort, setManagerSort] = useState("recent");
   const [managerPage, setManagerPage] = useState(1);
   const [storageStatuses, setStorageStatuses] = useState<Record<string, "present" | "pending" | "error">>({});
+  const [coverRepair, setCoverRepair] = useState<{ done: number; total: number; fixed: number } | null>(null);
 
   useEffect(() => { if (!toast) return; const timer = window.setTimeout(() => setToast(null), toast.type === "error" ? 9000 : 6000); return () => window.clearTimeout(timer); }, [toast]);
   useEffect(() => { if (batchPdfs.length) window.setTimeout(() => document.getElementById("batch-review")?.scrollIntoView({ behavior: "smooth", block: "start" }), 100); }, [batchPdfs]);
@@ -108,6 +110,25 @@ export const AdminPage: React.FC = () => {
   }).sort((a, b) => managerSort === "az" ? a.title.localeCompare(b.title, "pt-BR") : managerSort === "za" ? b.title.localeCompare(a.title, "pt-BR") : managerSort === "size" ? b.fileSizeMb - a.fileSizeMb : b.addedAt.localeCompare(a.addedAt)), [allComics, debouncedSearch, managerFormat, managerPublisher, managerSeries, managerYear, managerStorage, managerSort, storageStatuses]);
   const pageCount = Math.max(1, Math.ceil(managedComics.length / 20));
   const visibleComics = managedComics.slice((Math.min(managerPage, pageCount) - 1) * 20, Math.min(managerPage, pageCount) * 20);
+  const missingPdfCovers = managedComics.filter((comic) => !comic.coverUrl && publicationFormat(comic.fileName) === "pdf" && (!selectedIds.length || selectedIds.includes(comic.id)));
+  const repairMissingCovers = async () => {
+    const targets = missingPdfCovers;
+    if (!targets.length) return;
+    setCoverRepair({ done: 0, total: targets.length, fixed: 0 });
+    let done = 0, fixed = 0;
+    const failed: string[] = [];
+    try {
+      await runLimited(targets, window.matchMedia("(pointer: coarse)").matches ? 1 : 2, async (comic) => {
+        try {
+          await regenerateComicCover(comic.id);
+          fixed++;
+        } catch (error) { failed.push(`${comic.fileName || comic.title}: ${error instanceof Error ? error.message : "erro desconhecido"}`); }
+        finally { done++; setCoverRepair({ done, total: targets.length, fixed }); }
+      });
+      await reloadData(true);
+      feedback(failed.length ? `${fixed} capa(s) recuperada(s); ${failed.length} falharam: ${failed.slice(0, 3).join(", ")}. Tente novamente para as restantes.` : `${fixed} capa(s) recuperada(s) da primeira página dos PDFs.`, failed.length ? "error" : "success");
+    } finally { setCoverRepair(null); }
+  };
   useEffect(() => setManagerPage(1), [debouncedSearch, managerFormat, managerPublisher, managerSeries, managerYear, managerStorage, managerSort]);
 
   const totalMb = useMemo(() => allComics.reduce((sum, item) => sum + item.fileSizeMb, 0), [allComics]);
@@ -221,9 +242,11 @@ export const AdminPage: React.FC = () => {
         if (check.code !== "UNIQUE") { feedback(`${check.message} Use “Revisar como lote” para comparar e escolher entre manter, substituir ou cancelar.`, "error"); return; }
       }
       setNotice("Enviando arquivo e capa...");
+      const automaticCover = !cover && pdf && publicationFormat(pdf.name) === "pdf" ? await extractPdfCover(pdf, pdf.name) : null;
       const uploadedPdf = pdf ? await storageProvider.uploadFile(pdf, "comics", (percent) => setNotice(`Enviando arquivo: ${percent}%`)) : null;
-      const uploadedCover = cover ? await storageProvider.uploadFile(cover, "covers") : null;
-      const thumbnail = coverThumbnail || (cover ? await makeImageThumbnail(cover) : null);
+      const finalCover = cover || automaticCover?.cover;
+      const uploadedCover = finalCover ? await storageProvider.uploadFile(finalCover, "covers") : null;
+      const thumbnail = coverThumbnail || automaticCover?.thumbnail || (cover ? await makeImageThumbnail(cover) : null);
       const uploadedThumb = thumbnail ? await storageProvider.uploadFile(thumbnail, "covers") : null;
       const payload = { title: form.title.trim(), contentType: (pdf && ["epub", "azw3"].includes(publicationFormat(pdf.name) || "") ? "book" : form.contentType) as Comic["contentType"], readingDirection: form.readingDirection as Comic["readingDirection"], issueNumber: Number(form.issue), year: Number(form.year), totalPages: Number(form.pages), fileName: pdf?.name || editing?.fileName || "", fileSizeMb: uploadedPdf?.fileSizeMb ?? editing?.fileSizeMb ?? 0, pdfKey: uploadedPdf?.fileKey || "", coverKey: uploadedCover?.fileKey, coverThumbKey: uploadedThumb?.fileKey, fileSha256: pdfHash, synopsis: form.synopsis.trim(), writers: splitList(form.writers), pencillers: splitList(form.pencillers), colorists: splitList(form.colorists), tags: splitList(form.tags), characters: splitList(form.characters), volume: form.volume ? Number(form.volume) : undefined, series };
       setNotice("Salvando os dados da publicação...");
@@ -356,6 +379,7 @@ export const AdminPage: React.FC = () => {
           <label>Ordenar<select className={fieldClass} value={managerSort} onChange={(event) => setManagerSort(event.target.value)}><option value="recent">Recentes</option><option value="az">Título A–Z</option><option value="za">Título Z–A</option><option value="size">Tamanho do arquivo</option></select></label>
         </div>
         {selectedIds.length > 0 && <div className="manager-selection-actions"><strong>{selectedIds.length} edição(ões) selecionada(s)</strong><button type="button" className="studio-primary" onClick={() => setBulkOpen((open) => !open)}><Edit3 /> {bulkOpen ? "Fechar edição em bloco" : "Editar selecionadas em bloco"}</button><button type="button" className="admin-delete-action" onClick={() => setDeleteTarget({ type: "comics", ids: selectedIds })}>Excluir selecionadas</button><button type="button" onClick={() => { setSelectedIds([]); setBulkOpen(false); }}>Limpar seleção</button></div>}
+        {missingPdfCovers.length > 0 && <div className="manager-selection-actions"><button type="button" className="studio-primary" disabled={!!coverRepair} onClick={() => void repairMissingCovers()}><FileImage /> {coverRepair ? `Recuperando capas: ${coverRepair.done}/${coverRepair.total}` : `Gerar capas ausentes ${selectedIds.length ? "nas selecionadas" : "nos resultados"} (${missingPdfCovers.length})`}</button><span>{coverRepair ? `${coverRepair.fixed} recuperada(s)` : "Usa a primeira página de cada PDF já publicado; não é preciso reenviar os arquivos."}</span></div>}
         {bulkOpen && selectedIds.length > 0 && <form className="manager-bulk-editor" onSubmit={(event) => void submitBulkEdit(event)}><h3>Editar {selectedIds.length} edições em bloco</h3><p>Marque apenas os campos que devem mudar. Os demais dados, PDFs e capas permanecem individuais. Valores vazios nos campos marcados limpam esse campo.</p><div className="manager-bulk-grid">{bulkFields.map((field) => <label key={field} className={field === "synopsis" ? "wide" : ""}><span><input type="checkbox" checked={bulkEnabled.includes(field)} onChange={(event) => setBulkEnabled((current) => event.target.checked ? [...current, field] : current.filter((item) => item !== field))} /> {bulkLabels[field]}</span>{field === "seriesId" ? <select value={bulkValues.seriesId} onChange={(event) => setBulkValues((current) => ({ ...current, seriesId: event.target.value }))}><option value="">Sem coleção</option>{seriesList.map((series) => <option key={series.id} value={series.id}>{seriesPath(series, seriesList)}</option>)}</select> : field === "contentType" ? <select value={bulkValues.contentType} onChange={(event) => setBulkValues((current) => ({ ...current, contentType: event.target.value }))}><option value="comic">HQ ocidental</option><option value="graphic_novel">Graphic novel</option><option value="manga">Mangá</option><option value="manhwa">Manhwa</option><option value="book">Livro</option></select> : field === "readingDirection" ? <select value={bulkValues.readingDirection} onChange={(event) => setBulkValues((current) => ({ ...current, readingDirection: event.target.value }))}><option value="ltr">Esquerda → direita</option><option value="rtl">Direita → esquerda</option></select> : field === "synopsis" ? <textarea rows={3} value={bulkValues.synopsis} onChange={(event) => setBulkValues((current) => ({ ...current, synopsis: event.target.value }))} /> : <input type={field === "year" ? "number" : "text"} min={field === "year" ? 1800 : undefined} max={field === "year" ? 2200 : undefined} placeholder={["characters", "writers", "pencillers", "colorists", "tags"].includes(field) ? "Separe por vírgulas" : undefined} value={bulkValues[field]} onChange={(event) => setBulkValues((current) => ({ ...current, [field]: event.target.value }))} />}</label>)}</div><button type="submit" className="studio-primary" disabled={busy || !bulkEnabled.length}>{busy ? "Salvando..." : `Aplicar ${bulkEnabled.length} campo(s) às ${selectedIds.length} edições`}</button></form>}
         <div className="catalog-manager-list">{visibleComics.map((comic) => <article key={comic.id}><input type="checkbox" aria-label={`Selecionar ${comic.title}`} checked={selectedIds.includes(comic.id)} onChange={(event) => setSelectedIds((current) => event.target.checked ? [...current, comic.id] : current.filter((id) => id !== comic.id))} /><img src={comic.coverUrl} alt="" loading="lazy" /><div><strong>{comic.title}</strong><span>{comic.seriesTitle || "Sem coleção"} · #{comic.issueNumber}</span><small>{comic.year} · {comic.totalPages} páginas · {formatFileSize(comic.fileSizeMb)} · {storageStatuses[comic.id] === "present" ? "Disponível" : storageStatuses[comic.id] === "pending" ? "Pendente" : storageStatuses[comic.id] === "error" ? "Erro no arquivo" : "Verificando…"}</small></div><details className="manager-row-menu"><summary aria-label={`Ações de ${comic.title}`}>Ações</summary><div><button type="button" onClick={(event) => { closeRowMenu(event); startEditing(comic); feedback(`Editor de “${comic.title}” aberto.`, "info"); }}><Edit3 /> Editar metadados</button><button type="button" onClick={(event) => { closeRowMenu(event); startEditing(comic); window.setTimeout(() => document.querySelector<HTMLInputElement>('.comic-editor input[type="file"][accept*="image"]')?.click(), 0); }}><FileImage /> Alterar capa</button><button type="button" onClick={(event) => { closeRowMenu(event); startEditing(comic); window.setTimeout(() => document.querySelector<HTMLInputElement>('.comic-editor input[type="file"][accept*="pdf"]')?.click(), 0); }}><FileUp /> Substituir arquivo</button><button type="button" className="admin-delete-action" onClick={(event) => { closeRowMenu(event); setDeleteTarget({ type: "comics", ids: [comic.id] }); }}>Excluir</button></div></details></article>)}</div>
         {!managedComics.length && <p className="manager-empty">Nenhuma edição corresponde aos filtros.</p>}

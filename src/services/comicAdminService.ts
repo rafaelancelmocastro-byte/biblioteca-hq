@@ -66,6 +66,10 @@ export async function updateComicRecord(comicId: string, input: Partial<ComicReg
   await ownerRequest("/api/comics/update", { id: comicId, ...input }, "PATCH");
 }
 
+export async function regenerateComicCover(comicId: string): Promise<void> {
+  await ownerRequest("/api/comics/cover", { id: comicId });
+}
+
 export type SelectedComicPatch = Partial<Pick<ComicRegistration, "title" | "year" | "synopsis" | "writers" | "pencillers" | "colorists" | "tags" | "characters" | "contentType" | "readingDirection">> & { seriesId?: string };
 
 export async function updateSelectedComics(ids: string[], fields: SelectedComicPatch): Promise<number> {

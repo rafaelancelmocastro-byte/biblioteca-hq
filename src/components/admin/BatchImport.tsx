@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { Comic, Series } from "../../types/comic";
-import { makeImageThumbnail, type PdfInspection } from "../../services/pdfImport";
+import { extractPdfCover, makeImageThumbnail, type PdfInspection } from "../../services/pdfImport";
 import { inspectPublication, manualPublicationInspection } from "../../services/publicationImport";
 import { publicationFormat } from "../../services/publicationFormats";
 import { checkComicDuplicate, createComicRecord, saveSeriesRecord, updateComicRecord, type ComicRegistration } from "../../services/comicAdminService";
@@ -208,7 +208,14 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
           const check = await checkComicDuplicate({ title: meta.title.trim(), issueNumber: Number(meta.issueNumber), year: Number(meta.year), fileSha256: meta.fileSha256, series: chosen });
           if (check.code !== "UNIQUE") { update(index, { status: "duplicate", message: check.message || "Possível duplicidade.", existingId: check.existing?.id }); return; }
         }
-        update(index, { status: "uploading", message: "Enviando arquivo e capa..." });
+        update(index, { status: "uploading", message: "Preparando capa e arquivo..." });
+        let coverFile = draft.coverOverride || meta.cover;
+        let thumbnail = !metadataOnly && draft.coverOverride ? await makeImageThumbnail(draft.coverOverride) : meta.thumbnail;
+        if (!metadataOnly && !coverFile && publicationFormat(draft.file.name) === "pdf") {
+          const extracted = await extractPdfCover(draft.file, draft.file.name);
+          coverFile = extracted.cover;
+          thumbnail = extracted.thumbnail;
+        }
         let lastPercent = -10;
         const uploadStartedAt = performance.now();
         const pdfUpload = metadataOnly ? null : await storageProvider.uploadFile(draft.file, "comics", (percent) => {
@@ -216,8 +223,6 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
         });
         stageMs.upload += performance.now() - uploadStartedAt;
         const coverStartedAt = performance.now();
-        const coverFile = draft.coverOverride || meta.cover;
-        const thumbnail = !metadataOnly && draft.coverOverride ? await makeImageThumbnail(draft.coverOverride) : meta.thumbnail;
         update(index, { message: "Finalizando capa e cadastro..." });
         const [coverUpload, thumbUpload] = await Promise.all([
           !metadataOnly && coverFile ? storageProvider.uploadFile(coverFile, "covers") : null,

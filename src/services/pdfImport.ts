@@ -41,6 +41,23 @@ async function renderCover(page: Awaited<ReturnType<Awaited<ReturnType<typeof ge
   return new File([blob], `${clean(file.name)}-${width}.webp`, { type: "image/webp" });
 }
 
+export async function extractPdfCover(source: File | string, name: string): Promise<{ cover: File; thumbnail: File }> {
+  const blobUrl = source instanceof File ? URL.createObjectURL(source) : undefined;
+  const task = getDocument({ url: blobUrl || source as string, disableAutoFetch: true, disableStream: false });
+  try {
+    const pdf = await task.promise;
+    const page = await pdf.getPage(1);
+    const namedFile = new File([], name, { type: "application/pdf" });
+    const cover = await renderCover(page, namedFile, matchMedia("(pointer: coarse)").matches ? 800 : 1200);
+    const thumbnail = await renderCover(page, namedFile, 420);
+    page.cleanup();
+    return { cover, thumbnail };
+  } finally {
+    await task.destroy().catch(() => {});
+    if (blobUrl) URL.revokeObjectURL(blobUrl);
+  }
+}
+
 export async function makeImageThumbnail(file: File): Promise<File> {
   let source: ImageBitmap | HTMLImageElement;
   let objectUrl: string | undefined;
