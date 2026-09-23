@@ -6,19 +6,19 @@
 import React, { useEffect, useState } from "react";
 import { AppLayout } from "./components/layout/AppLayout";
 import { LibraryPage } from "./app/pages/LibraryPage";
-import { ContinuePage } from "./app/pages/ContinuePage";
-import { SeriesPage } from "./app/pages/SeriesPage";
-import { IndieMangaPage } from "./app/pages/IndieMangaPage";
-import { FavoritesPage } from "./app/pages/FavoritesPage";
 import { LoginPage } from "./app/pages/LoginPage";
 import { useNavigation } from "./hooks/useNavigation";
 import { useAuth } from "./hooks/useAuth";
 import { CheckoutPage } from "./app/pages/CheckoutPage";
-import { LaunchesPage } from "./app/pages/LaunchesPage";
-import { OfflinePage } from "./app/pages/OfflinePage";
-import { ReadingGuidePage } from "./app/pages/ReadingGuidePage";
 import { flushReadingProgress } from "./services/offlineProgress";
 
+const ContinuePage = React.lazy(() => import("./app/pages/ContinuePage").then((module) => ({ default: module.ContinuePage })));
+const SeriesPage = React.lazy(() => import("./app/pages/SeriesPage").then((module) => ({ default: module.SeriesPage })));
+const IndieMangaPage = React.lazy(() => import("./app/pages/IndieMangaPage").then((module) => ({ default: module.IndieMangaPage })));
+const FavoritesPage = React.lazy(() => import("./app/pages/FavoritesPage").then((module) => ({ default: module.FavoritesPage })));
+const LaunchesPage = React.lazy(() => import("./app/pages/LaunchesPage").then((module) => ({ default: module.LaunchesPage })));
+const OfflinePage = React.lazy(() => import("./app/pages/OfflinePage").then((module) => ({ default: module.OfflinePage })));
+const ReadingGuidePage = React.lazy(() => import("./app/pages/ReadingGuidePage").then((module) => ({ default: module.ReadingGuidePage })));
 const ReaderPage = React.lazy(() =>
   import("./app/pages/ReaderPage").then((module) => ({ default: module.ReaderPage }))
 );
@@ -90,6 +90,7 @@ export default function App() {
       userName={isOwner ? "Rafael Castro" : profile?.email?.split("@")[0] || "Leitor"}
     >
       {restrictedNotice && <div role="alert" className="fixed top-20 right-4 z-50 rounded-xl bg-[#2c1d18] border border-amber-400/40 px-4 py-3 text-sm text-amber-200 shadow-xl" onClick={() => setRestrictedNotice(false)}>Acesso restrito</div>}
+      <React.Suspense fallback={<div className="studio-panel" role="status">Carregando página...</div>}>
       {activeRoute === "/biblioteca" && (
         <LibraryPage
           onOpenReader={openReader}
@@ -120,7 +121,8 @@ export default function App() {
         />
       )}
 
-      {(activeRoute === "/admin" || activeRoute === "/configuracoes") && (isOwner || !isSupabaseConfigured) && <React.Suspense fallback={<div className="studio-panel">Preparando o estúdio do acervo...</div>}><AdminPage /></React.Suspense>}
+      {(activeRoute === "/admin" || activeRoute === "/configuracoes") && (isOwner || !isSupabaseConfigured) && <AdminPage />}
+      </React.Suspense>
     </AppLayout>
   );
 }

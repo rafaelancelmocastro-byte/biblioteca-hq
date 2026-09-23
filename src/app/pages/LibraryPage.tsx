@@ -159,7 +159,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
               Catálogo completo
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              Encontre sua próxima leitura por série, ano ou progresso
+              Encontre sua próxima leitura por coleção, ano ou progresso
             </p>
           </div>
         </div>
