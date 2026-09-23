@@ -5,6 +5,7 @@ import { inspectPublication, manualPublicationInspection } from "../../services/
 import { publicationFormat } from "../../services/publicationFormats";
 import { checkComicDuplicate, createComicRecord, saveSeriesRecord, updateComicRecord, type ComicRegistration } from "../../services/comicAdminService";
 import { storageProvider } from "../../services/storageProvider";
+import { runLimited } from "../../services/runLimited";
 
 type Draft = {
   file: File;
@@ -55,6 +56,9 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const savedDrafts = useRef<Record<string, Partial<Draft>>>(readSavedDrafts());
   const [publishing, setPublishing] = useState(false);
+  const [batchProgress, setBatchProgress] = useState<{ done: number; total: number; published: number } | null>(null);
+  const [batchTiming, setBatchTiming] = useState<string>("");
+  const [analysisTiming, setAnalysisTiming] = useState<string>("");
   const [groupPublisher, setGroupPublisher] = useState("");
   const [groupYear, setGroupYear] = useState("");
   const [groupKind, setGroupKind] = useState("collection");
@@ -71,8 +75,11 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
       meta: draft.meta ? { ...draft.meta, cover: undefined, thumbnail: undefined } : null,
       seriesId: draft.seriesId, status: draft.status, message: draft.message, existingId: draft.existingId,
     }]));
-    localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(record));
-    savedDrafts.current = record;
+    const timer = window.setTimeout(() => {
+      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(record));
+      savedDrafts.current = record;
+    }, 300);
+    return () => window.clearTimeout(timer);
   }, [drafts]);
   const proposedGroup = useMemo(() => {
     const counts = new Map<string, { title: string; count: number }>();
@@ -110,16 +117,18 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
 
   useEffect(() => {
     let active = true;
+    setAnalysisTiming("");
     setDrafts(files.map((file) => ({ file, meta: null, seriesId: "", status: "analyzing", message: "Arquivo recebido. Preparando a ficha..." })));
     const inspect = async () => {
-      for (const [index, file] of files.entries()) {
+      const startedAt = performance.now();
+      await runLimited(files, window.matchMedia("(pointer: coarse)").matches ? 1 : 2, async (file, index) => {
         try {
           const meta = await inspectPublication(file, window.matchMedia("(pointer: coarse)").matches);
           if (!active) return;
           const exact = suggestSeries(file.name, series);
           const matchedCover = covers.find((item) => normalize(item.name) === normalize(file.name));
           const saved = savedDrafts.current[draftKey(file)];
-          setDrafts((current) => current.map((draft, position) => position === index ? { ...draft, meta: saved?.meta || meta, seriesId: saved?.seriesId || exact?.id || "", coverOverride: matchedCover, status: saved?.status === "published" ? "published" : meta.totalPages ? "ready" : "incomplete", message: saved?.message || meta.warning || (exact ? `Caminho sugerido: ${seriesPath(exact, series)}. Confirme ou corrija antes de publicar.` : "Selecione a coleção ou saga; campos sem evidência permanecem vazios.") } : draft));
+          setDrafts((current) => current.map((draft, position) => position === index ? { ...draft, meta: saved?.meta || meta, seriesId: saved?.seriesId || exact?.id || "", coverOverride: matchedCover, status: saved?.status === "published" ? "published" : meta.totalPages ? "ready" : "incomplete", message: saved?.status === "published" ? saved.message || "Publicado." : meta.warning || (exact ? `Caminho sugerido: ${seriesPath(exact, series)}. Confirme ou corrija antes de publicar.` : "Selecione a coleção ou saga; campos sem evidência permanecem vazios.") } : draft));
         } catch (error) {
           if (!active) return;
           try {
@@ -133,7 +142,8 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
             setDrafts((current) => current.map((draft, position) => position === index ? { ...draft, status: "error", message: fallbackError instanceof Error ? fallbackError.message : "Falha ao analisar o arquivo." } : draft));
           }
         }
-      }
+      });
+      if (active && files.length) setAnalysisTiming(`Análise de ${files.length} arquivo(s): ${((performance.now() - startedAt) / 1000).toFixed(1)}s.`);
     };
     void inspect();
     return () => { active = false; };
@@ -162,32 +172,56 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
 
   const publish = async (forceIndex?: number, replaceExisting = false, metadataOnly = false) => {
     setPublishing(true);
+    setBatchTiming("");
+    const startedAt = performance.now();
+    const stageMs = { upload: 0, covers: 0, record: 0 };
+    const jobs = drafts.map((draft, index) => ({ draft, index })).filter(({ draft, index }) => forceIndex !== undefined ? index === forceIndex : ["ready", "incomplete", "error"].includes(draft.status));
+    setBatchProgress({ done: 0, total: jobs.length, published: 0 });
     let published = 0;
-    for (const [index, draft] of drafts.entries()) {
-      if (forceIndex !== undefined && index !== forceIndex) continue;
-      if (forceIndex === undefined && !["ready", "incomplete", "error"].includes(draft.status)) continue;
+    let done = 0;
+    const completed = new Set<number>();
+    const seenIssues = new Set<string>();
+    try {
+    await runLimited(jobs, window.matchMedia("(pointer: coarse)").matches ? 2 : 3, async ({ draft, index }) => {
+      try {
       const meta = draft.meta;
       const chosen = series.find((item) => item.id === draft.seriesId);
       if (!meta || !chosen || !meta.title.trim() || !Number(meta.issueNumber) || !Number(meta.year) || !Number(meta.totalPages)) {
         update(index, { status: "incomplete", message: "Complete título, edição, ano, páginas e coleção antes de publicar." });
-        continue;
+        return;
       }
+      const issueKey = `${chosen.id}:${Number(meta.issueNumber)}:${Number(meta.year)}:${normalize(meta.title)}`;
+      if (forceIndex === undefined && seenIssues.has(issueKey)) {
+        update(index, { status: "incomplete", message: `Esta mesma edição já aparece neste lote para “${chosen.title}”. Confira título, ano e número antes de publicar.` });
+        return;
+      }
+      seenIssues.add(issueKey);
       const duplicate = existingComics.find((comic) => comic.seriesId === chosen.id && comic.issueNumber === Number(meta.issueNumber) && comic.year === Number(meta.year) && normalize(comic.title) === normalize(meta.title));
       if (duplicate && forceIndex !== index) {
         update(index, { status: "duplicate", message: `Possível duplicidade de “${duplicate.title}”. Revise antes de decidir.`, existingId: duplicate.id });
-        continue;
+        return;
       }
       try {
         if (forceIndex !== index && !replaceExisting && !metadataOnly) {
           const check = await checkComicDuplicate({ title: meta.title.trim(), issueNumber: Number(meta.issueNumber), year: Number(meta.year), fileSha256: meta.fileSha256, series: chosen });
-          if (check.code !== "UNIQUE") { update(index, { status: "duplicate", message: check.message || "Possível duplicidade.", existingId: check.existing?.id }); continue; }
+          if (check.code !== "UNIQUE") { update(index, { status: "duplicate", message: check.message || "Possível duplicidade.", existingId: check.existing?.id }); return; }
         }
         update(index, { status: "uploading", message: "Enviando arquivo e capa ao R2..." });
-        const pdfUpload = metadataOnly ? null : await storageProvider.uploadFile(draft.file, "comics", (percent) => update(index, { message: `Enviando arquivo ao R2: ${percent}%` }));
+        let lastPercent = -10;
+        const uploadStartedAt = performance.now();
+        const pdfUpload = metadataOnly ? null : await storageProvider.uploadFile(draft.file, "comics", (percent) => {
+          if (percent === 100 || percent - lastPercent >= 10) { lastPercent = percent; update(index, { message: `Enviando arquivo ao R2: ${percent}%` }); }
+        });
+        stageMs.upload += performance.now() - uploadStartedAt;
+        const coverStartedAt = performance.now();
         const coverFile = draft.coverOverride || meta.cover;
-        const coverUpload = !metadataOnly && coverFile ? await storageProvider.uploadFile(coverFile, "covers") : null;
-        const thumbnail = draft.coverOverride ? await makeImageThumbnail(draft.coverOverride) : meta.thumbnail;
-        const thumbUpload = !metadataOnly && thumbnail ? await storageProvider.uploadFile(thumbnail, "covers") : null;
+        const thumbnail = !metadataOnly && draft.coverOverride ? await makeImageThumbnail(draft.coverOverride) : meta.thumbnail;
+        update(index, { message: "Finalizando capa e cadastro..." });
+        const [coverUpload, thumbUpload] = await Promise.all([
+          !metadataOnly && coverFile ? storageProvider.uploadFile(coverFile, "covers") : null,
+          !metadataOnly && thumbnail ? storageProvider.uploadFile(thumbnail, "covers") : null,
+        ]);
+        stageMs.covers += performance.now() - coverStartedAt;
         const payload: ComicRegistration = {
           title: meta.title.trim(), contentType: ["epub", "azw3"].includes(publicationFormat(draft.file.name) || "") ? "book" : "comic", issueNumber: Number(meta.issueNumber), year: Number(meta.year), totalPages: Number(meta.totalPages),
           fileName: draft.file.name, fileSizeMb: pdfUpload?.fileSizeMb ?? 0, pdfKey: pdfUpload?.fileKey ?? "",
@@ -195,18 +229,29 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
           synopsis: meta.synopsis, writers: split(meta.writers), pencillers: split(meta.pencillers), colorists: split(meta.colorists), tags: split(meta.tags), characters: split(meta.characters), series: chosen,
           allowDuplicate: forceIndex === index && !replaceExisting,
         };
+        const recordStartedAt = performance.now();
         if ((replaceExisting || metadataOnly) && draft.existingId) await updateComicRecord(draft.existingId, metadataOnly ? { ...payload, fileName: "", fileSizeMb: 0, fileSha256: undefined } : payload);
         else await createComicRecord(payload);
+        stageMs.record += performance.now() - recordStartedAt;
         published++;
+        completed.add(index);
         update(index, { status: "published", message: metadataOnly ? "Metadados atualizados; Arquivo existente preservado." : replaceExisting ? "Arquivo e ficha da edição existente atualizados." : "Publicado com ficha e arquivo individuais." });
       } catch (error) {
         const typed = error as Error & { code?: string; existing?: { id: string } };
-        update(index, { status: typed.code === "SAME_FILE" || typed.code === "POSSIBLE_DUPLICATE" ? "duplicate" : "error", message: typed.message, existingId: typed.existing?.id });
+        update(index, { status: typed.code === "SAME_FILE" || typed.code === "POSSIBLE_DUPLICATE" ? "duplicate" : "error", message: typed.message || "Falha ao publicar este arquivo.", existingId: typed.existing?.id });
       }
-    }
-    if (published) { await onComplete(); onFeedback(`${published} arquivo(s) publicado(s) com sucesso.`, "success"); if (forceIndex === undefined && published === drafts.length) discard(); }
-    else onFeedback("Nenhum arquivo foi publicado. Revise as fichas sinalizadas na fila.", "error");
-    setPublishing(false);
+      } finally {
+        done++;
+        setBatchProgress({ done, total: jobs.length, published });
+      }
+    });
+      const elapsed = ((performance.now() - startedAt) / 1000).toFixed(1);
+      setBatchTiming(`Lote: ${elapsed}s no total. Soma por arquivo: envio ${Math.round(stageMs.upload / 1000)}s, capas ${Math.round(stageMs.covers / 1000)}s, cadastro ${Math.round(stageMs.record / 1000)}s. As etapas ocorrem em paralelo.`);
+      if (published) { await onComplete(); onFeedback(`${published} arquivo(s) publicado(s) em ${elapsed}s.`, "success"); if (forceIndex === undefined && drafts.every((draft, index) => draft.status === "published" || completed.has(index))) discard(); }
+      else onFeedback("Nenhum arquivo foi publicado. Revise as fichas sinalizadas na fila.", "error");
+    } catch (error) {
+      onFeedback(error instanceof Error ? error.message : "Não foi possível concluir a fila.", "error");
+    } finally { setPublishing(false); }
   };
 
   return <section id="batch-review" className="batch-review" aria-label="Revisão da importação em lote">
@@ -233,6 +278,9 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
       </div>}
       {draft.status === "duplicate" && <div className="batch-duplicate-actions"><button type="button" onClick={() => void publish(index)} disabled={publishing}>Manter ambos</button>{draft.existingId && <><button type="button" onClick={() => void publish(index, true)} disabled={publishing}>Substituir arquivo existente</button><button type="button" onClick={() => void publish(index, false, true)} disabled={publishing}>Atualizar só metadados</button></>}<button type="button" onClick={() => update(index, { status: "cancelled", message: "Importação cancelada pelo proprietário." })}>Cancelar este arquivo</button></div>}
     </details>)}
+    {batchProgress && publishing && <p className="batch-progress" role="status">{batchProgress.done} de {batchProgress.total} processados · {batchProgress.published} publicados. Até {window.matchMedia("(pointer: coarse)").matches ? 2 : 3} arquivos são enviados em paralelo.</p>}
+    {analysisTiming && !publishing && <p className="batch-progress">{analysisTiming}</p>}
+    {batchTiming && !publishing && <p className="batch-progress" role="status">{batchTiming}</p>}
     <button type="button" className="studio-primary" disabled={publishing || drafts.some((draft) => draft.status === "analyzing")} onClick={() => void publish()}>{publishing ? "Processando fila..." : "Publicar arquivos revisados"}</button>
   </section>;
 };

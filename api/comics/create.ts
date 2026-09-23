@@ -136,10 +136,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(duplicate ? 409 : 400).json({ code: duplicate ? "DUPLICATE_KEY" : "INVALID_METADATA", error: duplicate ? "Este mesmo arquivo já está cadastrado." : `Não foi possível cadastrar a HQ: ${createdComic.error.message}` });
   }
 
-  for (const name of [...new Set((body.characters ?? []).map((item) => item.trim()).filter(Boolean))]) {
-    const existing = await admin.from("characters").select("id").eq("name", name).eq("publisher", body.series.publisher.trim()).maybeSingle();
-    const character = existing.data ?? (await admin.from("characters").insert({ name, publisher: body.series.publisher.trim() }).select("id").single()).data;
-    if (character) await admin.from("comic_characters").insert({ comic_id: createdComic.data.id, character_id: character.id });
+  const names = [...new Set((body.characters ?? []).map((item) => item.trim()).filter(Boolean))].sort();
+  if (names.length) {
+    const { data: characters, error: characterError } = await admin.from("characters")
+      .upsert(names.map((name) => ({ name, publisher: body.series!.publisher!.trim() })), { onConflict: "name,publisher" })
+      .select("id");
+    if (characterError) console.warn("Não foi possível associar personagens à edição", { comicId: createdComic.data.id, error: characterError.message });
+    else if (characters?.length) {
+      const { error: linkError } = await admin.from("comic_characters").upsert(
+        characters.map((character) => ({ comic_id: createdComic.data.id, character_id: character.id })),
+        { onConflict: "comic_id,character_id", ignoreDuplicates: true },
+      );
+      if (linkError) console.warn("Não foi possível vincular personagens à edição", { comicId: createdComic.data.id, error: linkError.message });
+    }
   }
 
   return res.status(201).json({ id: createdComic.data.id });

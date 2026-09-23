@@ -1,5 +1,4 @@
-import { createExtractorFromData } from "node-unrar-js";
-import unrarWasmUrl from "node-unrar-js/esm/js/unrar.wasm?url";
+import { unrar, type RarEntry } from "unrarit";
 import { publicationFormat } from "./publicationFormats";
 
 export type PublicationBook = {
@@ -11,16 +10,6 @@ export type PublicationBook = {
 };
 
 const imagePattern = /\.(jpe?g|png|gif|webp|bmp|avif)$/i;
-let wasmBytes: Promise<ArrayBuffer> | null = null;
-
-async function rarExtractor(file: Blob) {
-  wasmBytes ??= fetch(unrarWasmUrl).then((response) => {
-    if (!response.ok) throw new Error("Não foi possível carregar o decodificador CBR.");
-    return response.arrayBuffer();
-  });
-  const [wasmBinary, data] = await Promise.all([wasmBytes, file.arrayBuffer()]);
-  return createExtractorFromData({ wasmBinary, data });
-}
 
 export async function openPublicationBook(file: File): Promise<PublicationBook> {
   if (publicationFormat(file.name) !== "cbr") {
@@ -28,27 +17,33 @@ export async function openPublicationBook(file: File): Promise<PublicationBook> 
     return makeBook(file) as Promise<PublicationBook>;
   }
 
-  const extractor = await rarExtractor(file);
-  const entries = [...extractor.getFileList().fileHeaders]
-    .filter((header) => !header.flags.directory && imagePattern.test(header.name))
+  const { rar, entries: archiveEntries } = await unrar(file);
+  const entries = Object.values(archiveEntries)
+    .filter((entry) => !entry.isDirectory && imagePattern.test(entry.name))
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-  if (!entries.length) throw new Error("O CBR não contém páginas de imagem legíveis.");
-  if (entries.some((header) => header.flags.encrypted)) throw new Error("CBR protegido por senha não pode ser lido.");
-  const names = new Map(entries.map((header, index) => [`page-${String(index).padStart(6, "0")}.jpg`, header]));
+  if (!entries.length) { rar.dispose(); throw new Error("O CBR não contém páginas de imagem legíveis."); }
+  if (entries.some((entry) => entry.encrypted)) { rar.dispose(); throw new Error("CBR protegido por senha não pode ser lido."); }
+
+  const names = new Map(entries.map((entry, index) => [`page-${String(index).padStart(6, "0")}.jpg`, entry]));
+  const mime = (entry: RarEntry) => {
+    const extension = entry.name.split(".").pop()?.toLowerCase();
+    return extension === "png" ? "image/png" : extension === "webp" ? "image/webp" : extension === "gif" ? "image/gif" : extension === "bmp" ? "image/bmp" : extension === "avif" ? "image/avif" : "image/jpeg";
+  };
   const loader = {
     entries: [...names.keys()].map((filename) => ({ filename })),
-    getSize: (name: string) => names.get(name)?.unpSize || 0,
-    getComment: () => "",
+    getSize: (name: string) => names.get(name)?.size || 0,
+    getComment: () => rar.comment || "",
     loadBlob: (name: string) => {
-      const original = names.get(name);
-      if (!original) throw new Error("Página não encontrada no CBR.");
-      const entry = [...extractor.extract({ files: [original.name] }).files].find((item) => item.fileHeader.name === original.name);
-      if (!entry?.extraction) throw new Error("Não foi possível extrair uma página do CBR.");
-      const extension = original.name.split(".").pop()?.toLowerCase();
-      const type = extension === "png" ? "image/png" : extension === "webp" ? "image/webp" : extension === "gif" ? "image/gif" : extension === "bmp" ? "image/bmp" : extension === "avif" ? "image/avif" : "image/jpeg";
-      return new Blob([new Uint8Array(entry.extraction)], { type });
+      const entry = names.get(name);
+      if (!entry) throw new Error("Página não encontrada no CBR.");
+      return entry.blob(mime(entry));
     },
   };
-  const { makeComicBook } = await import("foliate-js/comic-book.js");
-  return makeComicBook(loader, file) as Promise<PublicationBook>;
+  try {
+    const { makeComicBook } = await import("foliate-js/comic-book.js");
+    const book = await makeComicBook(loader, file) as PublicationBook;
+    const destroy = book.destroy?.bind(book);
+    book.destroy = () => { destroy?.(); rar.dispose(); };
+    return book;
+  } catch (error) { rar.dispose(); throw error; }
 }
