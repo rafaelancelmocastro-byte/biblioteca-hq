@@ -43,6 +43,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       update.reading_direction = fields.readingDirection;
     }
     if (!Object.keys(update).length && !Object.hasOwn(fields, "seriesId") && !Object.hasOwn(fields, "characters")) return res.status(400).json({ error: "Marque ao menos um campo para editar." });
+    const characterNames = Object.hasOwn(fields, "characters") ? fields.characters : null;
+    if (characterNames !== null && (!Array.isArray(characterNames) || characterNames.some((value: unknown) => typeof value !== "string"))) return res.status(400).json({ error: "Personagens inválidos." });
     const url = process.env.VITE_SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!url || !key) return res.status(503).json({ error: "Banco de dados indisponível." });
@@ -56,9 +58,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         update.publisher = series.data.publisher;
       } else update.series_id = null;
     }
-    if (Object.hasOwn(fields, "characters")) return res.status(400).json({ error: "Personagens devem ser editados individualmente por enquanto." });
-    const result = await admin.from("comics").update(update).in("id", ids).select("id");
+    const result = Object.keys(update).length ? await admin.from("comics").update(update).in("id", ids).select("id") : await admin.from("comics").select("id").in("id", ids);
     if (result.error) return res.status(409).json({ error: `Não foi possível atualizar as edições: ${result.error.message}` });
+    if (characterNames !== null && result.data?.length) {
+      const comics = await admin.from("comics").select("id,publisher").in("id", result.data.map((item) => item.id));
+      if (comics.error) return res.status(409).json({ error: `Metadados salvos, mas não foi possível consultar os personagens: ${comics.error.message}` });
+      const names = [...new Set((characterNames as string[]).map((value) => value.trim()).filter(Boolean))];
+      const characterIds = new Map<string, string>();
+      for (const publisher of [...new Set((comics.data ?? []).map((comic) => comic.publisher))]) {
+        for (const name of names) {
+          const existing = await admin.from("characters").select("id").eq("name", name).eq("publisher", publisher).maybeSingle();
+          if (existing.error) return res.status(409).json({ error: `Não foi possível consultar “${name}”: ${existing.error.message}` });
+          const created = existing.data ? null : await admin.from("characters").insert({ name, publisher }).select("id").single();
+          if (created?.error) return res.status(409).json({ error: `Não foi possível cadastrar “${name}”: ${created.error.message}` });
+          characterIds.set(`${publisher}\0${name}`, (existing.data ?? created?.data)?.id);
+        }
+      }
+      const cleared = await admin.from("comic_characters").delete().in("comic_id", result.data.map((item) => item.id));
+      if (cleared.error) return res.status(409).json({ error: `Não foi possível atualizar os personagens: ${cleared.error.message}` });
+      const links = (comics.data ?? []).flatMap((comic) => names.map((name) => ({ comic_id: comic.id, character_id: characterIds.get(`${comic.publisher}\0${name}`) }))).filter((link) => link.character_id);
+      if (links.length) {
+        const linked = await admin.from("comic_characters").insert(links);
+        if (linked.error) return res.status(409).json({ error: `Não foi possível associar os personagens: ${linked.error.message}` });
+      }
+    }
     return res.status(200).json({ updated: result.data?.length ?? 0 });
   }
   if (typeof body.seriesId !== "string" || !body.seriesId.trim()) {
