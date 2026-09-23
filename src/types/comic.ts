@@ -27,6 +27,7 @@ export interface Character {
 
 export interface Series {
   id: string;
+  parentSeriesId?: string;
   title: string;
   publisher: string;
   startYear: number;

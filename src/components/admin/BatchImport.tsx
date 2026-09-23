@@ -28,6 +28,10 @@ const CoverPreview: React.FC<{ file: File; alt: string }> = ({ file, alt }) => {
 };
 
 const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+const seriesPath = (item: Series, series: Series[]) => `${item.publisher} → ${item.parentSeriesId ? `${series.find((parent) => parent.id === item.parentSeriesId)?.title || "Coleção"} → ` : ""}${item.title}`;
+const suggestSeries = (fileName: string, series: Series[]) => series
+  .filter((item) => normalize(item.title).length > 3 && normalize(fileName).includes(normalize(item.title)))
+  .sort((a, b) => normalize(b.title).length - normalize(a.title).length)[0];
 const split = (value: string) => value.split(",").map((item) => item.trim()).filter(Boolean);
 
 interface Props {
@@ -46,6 +50,7 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
   const [groupPublisher, setGroupPublisher] = useState("");
   const [groupYear, setGroupYear] = useState("");
   const [groupKind, setGroupKind] = useState("collection");
+  const [groupParentId, setGroupParentId] = useState("");
   const [groupError, setGroupError] = useState("");
   const [sharedValues, setSharedValues] = useState<Record<SharedField, string>>({ title: "", year: "", characters: "", writers: "", pencillers: "", colorists: "", tags: "", synopsis: "", seriesId: "" });
   const [sharedEnabled, setSharedEnabled] = useState<SharedField[]>([]);
@@ -62,14 +67,20 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
     return [...counts.values()].find((entry) => entry.count >= 2 && !series.some((item) => normalize(item.title) === normalize(entry.title)));
   }, [files, series]);
 
+  useEffect(() => {
+    if (!proposedGroup) return;
+    const parent = series.filter((item) => item.bannerTone !== "saga" && files.some((file) => normalize(file.name).includes(normalize(item.title)))).sort((a, b) => b.title.length - a.title.length)[0];
+    if (parent) { setGroupKind("saga"); setGroupParentId(parent.id); setGroupPublisher(parent.publisher); }
+  }, [proposedGroup, files, series]);
+
   const createSuggestedGroup = async () => {
     if (!proposedGroup || !groupPublisher.trim() || !/^\d{4}$/.test(groupYear)) { setGroupError("Confirme editora e ano inicial para criar o agrupamento."); onFeedback("Confirme editora e ano inicial para criar o agrupamento.", "error"); return; }
     setPublishing(true); setGroupError("");
     try {
-      const id = await saveSeriesRecord({ title: proposedGroup.title, publisher: groupPublisher.trim(), startYear: Number(groupYear), description: "", bannerTone: groupKind });
+      const id = await saveSeriesRecord({ title: proposedGroup.title, publisher: groupPublisher.trim(), startYear: Number(groupYear), description: "", bannerTone: groupKind, parentSeriesId: groupKind === "saga" ? groupParentId || undefined : undefined });
       setDrafts((current) => current.map((draft) => normalize(draft.file.name).startsWith(normalize(proposedGroup.title)) ? { ...draft, seriesId: id } : draft));
       await onComplete();
-      onFeedback(`Coleção “${proposedGroup.title}” criada e associada aos arquivos.`, "success");
+      onFeedback(`${groupKind === "saga" ? "Saga" : "Coleção"} “${proposedGroup.title}” criada e associada aos arquivos.`, "success");
     } catch (error) { const message = error instanceof Error ? error.message : "Não foi possível criar o agrupamento."; setGroupError(message); onFeedback(message, "error"); }
     finally { setPublishing(false); }
   };
@@ -82,9 +93,9 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
         try {
           const meta = window.matchMedia("(pointer: coarse)").matches ? await manualPdfInspection(file) : await inspectPdf(file);
           if (!active) return;
-          const exact = series.find((item) => normalize(file.name).includes(normalize(item.title)) && normalize(item.title).length > 3);
+          const exact = suggestSeries(file.name, series);
           const matchedCover = covers.find((item) => normalize(item.name) === normalize(file.name));
-          setDrafts((current) => current.map((draft, position) => position === index ? { ...draft, meta, seriesId: exact?.id || "", coverOverride: matchedCover, status: meta.totalPages ? "ready" : "incomplete", message: meta.warning || (exact ? `Coleção “${exact.title}” sugerida pelo nome do arquivo; confirme antes de publicar.` : "Selecione a coleção; campos sem evidência permanecem vazios.") } : draft));
+          setDrafts((current) => current.map((draft, position) => position === index ? { ...draft, meta, seriesId: exact?.id || "", coverOverride: matchedCover, status: meta.totalPages ? "ready" : "incomplete", message: meta.warning || (exact ? `Caminho sugerido: ${seriesPath(exact, series)}. Confirme ou corrija antes de publicar.` : "Selecione a coleção ou saga; campos sem evidência permanecem vazios.") } : draft));
         } catch (error) {
           if (!active) return;
           try {
@@ -175,8 +186,8 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
 
   return <section id="batch-review" className="batch-review" aria-label="Revisão da importação em lote">
     <div className="batch-review-header"><div><strong>Revisar lote</strong><span>Cada PDF mantém sua própria ficha. Campos sem evidência ficam vazios.</span></div><button type="button" onClick={onClear} disabled={publishing}>Fechar fila</button></div>
-    <div className="batch-shared-panel"><strong>Dados comuns a todos os PDFs desta fila</strong><p>Marque somente o que se repete. O restante, como número da edição, páginas e capa, continua individual.</p><div className="batch-shared-grid">{sharedFields.map((field) => <label key={field} className={field === "synopsis" ? "wide" : ""}><span><input type="checkbox" checked={sharedEnabled.includes(field)} onChange={(event) => setSharedEnabled((current) => event.target.checked ? [...current, field] : current.filter((item) => item !== field))} /> Aplicar {sharedLabels[field]} a todos</span>{field === "seriesId" ? <select value={sharedValues.seriesId} onChange={(event) => setSharedValues((current) => ({ ...current, seriesId: event.target.value }))}><option value="">Selecione a coleção</option>{series.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select> : field === "synopsis" ? <textarea rows={2} value={sharedValues.synopsis} onChange={(event) => setSharedValues((current) => ({ ...current, synopsis: event.target.value }))} /> : <input type={field === "year" ? "number" : "text"} min={field === "year" ? 1800 : undefined} max={field === "year" ? 2200 : undefined} value={sharedValues[field]} onChange={(event) => setSharedValues((current) => ({ ...current, [field]: event.target.value }))} />}</label>)}</div><button type="button" className="studio-primary" disabled={publishing || drafts.some((draft) => draft.status === "analyzing")} onClick={applyShared}>Aplicar campos marcados à fila</button>{sharedMessage && <p role="status">{sharedMessage}</p>}</div>
-    {proposedGroup && <div className="batch-group-suggestion"><strong>{proposedGroup.count} arquivos sugerem a coleção “{proposedGroup.title}”</strong><span>Confirme os dados editoriais antes de criar; o personagem sozinho não define uma coleção.</span><div><label>Editora<input value={groupPublisher} onChange={(event) => setGroupPublisher(event.target.value)} /></label><label>Ano inicial<input type="number" min="1800" max="2200" value={groupYear} onChange={(event) => setGroupYear(event.target.value)} /></label><label>Tipo<select value={groupKind} onChange={(event) => setGroupKind(event.target.value)}><option value="collection">Coleção</option><option value="saga">Saga</option></select></label><button type="button" onClick={() => void createSuggestedGroup()} disabled={publishing}>Criar agrupamento e associar</button></div>{groupError && <p role="alert">{groupError}</p>}</div>}
+    <div className="batch-shared-panel"><strong>Dados comuns a todos os PDFs desta fila</strong><p>Marque somente o que se repete. O restante, como número da edição, páginas e capa, continua individual.</p><div className="batch-shared-grid">{sharedFields.map((field) => <label key={field} className={field === "synopsis" ? "wide" : ""}><span><input type="checkbox" checked={sharedEnabled.includes(field)} onChange={(event) => setSharedEnabled((current) => event.target.checked ? [...current, field] : current.filter((item) => item !== field))} /> Aplicar {sharedLabels[field]} a todos</span>{field === "seriesId" ? <select value={sharedValues.seriesId} onChange={(event) => setSharedValues((current) => ({ ...current, seriesId: event.target.value }))}><option value="">Selecione a coleção</option>{series.map((item) => <option key={item.id} value={item.id}>{seriesPath(item, series)}</option>)}</select> : field === "synopsis" ? <textarea rows={2} value={sharedValues.synopsis} onChange={(event) => setSharedValues((current) => ({ ...current, synopsis: event.target.value }))} /> : <input type={field === "year" ? "number" : "text"} min={field === "year" ? 1800 : undefined} max={field === "year" ? 2200 : undefined} value={sharedValues[field]} onChange={(event) => setSharedValues((current) => ({ ...current, [field]: event.target.value }))} />}</label>)}</div><button type="button" className="studio-primary" disabled={publishing || drafts.some((draft) => draft.status === "analyzing")} onClick={applyShared}>Aplicar campos marcados à fila</button>{sharedMessage && <p role="status">{sharedMessage}</p>}</div>
+    {proposedGroup && <div className="batch-group-suggestion"><strong>{proposedGroup.count} arquivo(s) sugerem o agrupamento “{proposedGroup.title}”</strong><span>Revise o tipo e a coleção principal. A sugestão vem dos nomes dos PDFs e pode ser corrigida.</span><div><label>Editora<input value={groupPublisher} onChange={(event) => setGroupPublisher(event.target.value)} /></label><label>Ano inicial<input type="number" min="1800" max="2200" value={groupYear} onChange={(event) => setGroupYear(event.target.value)} /></label><label>Tipo<select value={groupKind} onChange={(event) => setGroupKind(event.target.value)}><option value="collection">Coleção</option><option value="saga">Saga</option></select></label>{groupKind === "saga" && <label>Coleção principal<select value={groupParentId} onChange={(event) => { setGroupParentId(event.target.value); const parent = series.find((item) => item.id === event.target.value); if (parent) setGroupPublisher(parent.publisher); }}><option value="">Saga independente</option>{series.filter((item) => item.bannerTone !== "saga").map((item) => <option key={item.id} value={item.id}>{item.publisher} → {item.title}</option>)}</select></label>}<button type="button" onClick={() => void createSuggestedGroup()} disabled={publishing}>Criar agrupamento e associar</button></div>{groupError && <p role="alert">{groupError}</p>}</div>}
     {drafts.map((draft, index) => <details key={`${draft.file.name}-${draft.file.lastModified}`} className="batch-review-item" open={index === 0}>
       <summary><strong>{draft.file.name}</strong><span className={`batch-status ${draft.status}`}>{draft.status === "analyzing" ? "Analisando" : draft.status === "ready" ? "Revisar" : draft.status === "uploading" ? "Enviando" : draft.status === "published" ? "Publicado" : draft.status === "incomplete" ? "Incompleto" : draft.status === "duplicate" ? "Possível duplicado" : draft.status === "cancelled" ? "Cancelado" : "Erro"}</span></summary>
       <p role="status">{draft.message}</p>
@@ -185,7 +196,7 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
         <label>Edição<input type="number" min="1" value={draft.meta.issueNumber} onChange={(event) => updateMeta(index, "issueNumber", event.target.value)} /></label>
         <label>Ano<input type="number" min="1800" max="2200" value={draft.meta.year} onChange={(event) => updateMeta(index, "year", event.target.value)} /></label>
         <label>Páginas<input type="number" min="1" value={draft.meta.totalPages} onChange={(event) => updateMeta(index, "totalPages", event.target.value)} /></label>
-        <label>Coleção / saga<select value={draft.seriesId} onChange={(event) => update(index, { seriesId: event.target.value })}><option value="">Selecione uma coleção confirmada</option>{series.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label>
+        <label>Coleção / saga<select value={draft.seriesId} onChange={(event) => update(index, { seriesId: event.target.value })}><option value="">Selecione uma coleção confirmada</option>{series.map((item) => <option key={item.id} value={item.id}>{seriesPath(item, series)}</option>)}</select></label>
         <label>Personagem / grupo<input value={draft.meta.characters} onChange={(event) => updateMeta(index, "characters", event.target.value)} /></label>
         <label>Roteiro<input value={draft.meta.writers} onChange={(event) => updateMeta(index, "writers", event.target.value)} /></label>
         <label>Arte e desenho<input value={draft.meta.pencillers} onChange={(event) => updateMeta(index, "pencillers", event.target.value)} /></label>

@@ -11,6 +11,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return res.status(503).json({ error: "Banco indisponível." });
   const admin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { count: childCount, error: childError } = await admin.from("series").select("id", { count: "exact", head: true }).eq("parent_series_id", id).is("deleted_at", null);
+  if (childError) return res.status(400).json({ error: childError.message });
+  if (childCount) return res.status(409).json({ error: `Esta coleção contém ${childCount} saga(s). Mova ou exclua as sagas antes de excluir a coleção.` });
   const stamp = new Date().toISOString();
   const affected = deleteContents
     ? await admin.from("comics").update({ deleted_at: stamp }).eq("series_id", id).is("deleted_at", null)

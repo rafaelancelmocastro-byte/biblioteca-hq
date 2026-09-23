@@ -11,11 +11,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return res.status(503).json({ error: "Banco de dados indisponível." });
   const admin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  const parentId = body.bannerTone === "saga" && body.parentSeriesId ? String(body.parentSeriesId) : null;
+  if (parentId) {
+    if (parentId === body.id) return res.status(400).json({ error: "Uma saga não pode pertencer a si mesma." });
+    const { data: parent, error: parentError } = await admin.from("series").select("id,publisher,banner_tone").eq("id", parentId).is("deleted_at", null).maybeSingle();
+    if (parentError || !parent || parent.banner_tone === "saga" || parent.publisher.trim().toLowerCase() !== body.publisher.trim().toLowerCase()) return res.status(400).json({ error: "Selecione uma coleção válida da mesma editora para a saga." });
+  }
   const record = {
     title: body.title.trim(), publisher: body.publisher.trim(), start_year: Number(body.startYear),
     end_year: body.endYear ? Number(body.endYear) : null,
     total_issues_expected: body.totalIssuesExpected ? Number(body.totalIssuesExpected) : null,
     description: body.description?.trim() ?? "", banner_tone: body.bannerTone ?? null,
+    parent_series_id: parentId,
     ...(body.coverKey !== undefined ? { cover_key: body.coverKey || null } : {}),
   };
   const normalize = (value: string) => value.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLocaleLowerCase("pt-BR").replace(/[^a-z0-9]+/g, " ").trim();
