@@ -1,10 +1,14 @@
 import { createClient } from "@supabase/supabase-js";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { requireOwner } from "../_lib/auth.js";
+import { repairComicCover } from "../_lib/coverRepair.js";
+
+export const config = { maxDuration: 60 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== "PATCH") { res.setHeader("Allow", "PATCH"); return res.status(405).json({ error: "Method Not Allowed" }); }
+  if (req.method !== "PATCH" && req.method !== "POST") { res.setHeader("Allow", "PATCH, POST"); return res.status(405).json({ error: "Method Not Allowed" }); }
   if (!(await requireOwner(req, res))) return;
+  if (req.method === "POST") return req.body?.action === "regenerate-cover" ? repairComicCover(req, res) : res.status(400).json({ error: "Ação inválida." });
   const body = req.body ?? {};
   if (body.contentType && !["comic", "graphic_novel", "manga", "manhwa", "book"].includes(body.contentType) || body.readingDirection && !["ltr", "rtl"].includes(body.readingDirection)) return res.status(400).json({ error: "Formato ou direção de leitura inválidos." });
   if (body.pdfKey && !/^comics\/[a-f0-9-]+\.(pdf|cbr|epub|azw3)$/i.test(body.pdfKey)) return res.status(400).json({ error: "Arquivo inválido." });

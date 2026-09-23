@@ -3,14 +3,9 @@ import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { createCanvas } from "@napi-rs/canvas";
 import { randomUUID } from "node:crypto";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { requireOwner } from "../_lib/auth.js";
-import { createR2Client, getR2Config } from "../_lib/r2.js";
+import { createR2Client, getR2Config } from "./r2.js";
 
-export const config = { maxDuration: 60 };
-
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== "POST") { res.setHeader("Allow", "POST"); return res.status(405).json({ error: "Método não permitido." }); }
-  if (!(await requireOwner(req, res))) return;
+export async function repairComicCover(req: VercelRequest, res: VercelResponse) {
     const id = req.body?.id;
     if (typeof id !== "string" || !/^[a-f0-9-]{36}$/i.test(id)) return res.status(400).json({ error: "Edição inválida." });
     const config = getR2Config();
