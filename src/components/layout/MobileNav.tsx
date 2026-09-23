@@ -27,6 +27,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ currentPath, onNavigate, i
       icon: Layers,
     },
     { label: "Indie", path: "/multiverso", icon: Compass },
+    { label: "Guia", path: "/guia", icon: Compass },
     {
       label: "Favoritos",
       path: "/favoritos",

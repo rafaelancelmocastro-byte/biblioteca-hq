@@ -38,14 +38,11 @@ export function useLibrary() {
     getLocalStorageItem<"compact" | "comfortable">(DENSITY_STORAGE_KEY, "comfortable")
   );
 
-  const [version, setVersion] = useState<number>(0);
-
   const reloadData = useCallback(async (fresh = false) => {
     if (fresh) invalidateCatalogCache();
     setIsLoading(true);
     try {
-      const { comics, series, characters, publishers: pubs, years: yrs } = await getSupabaseCatalog();
-      const remoteState = await getSupabaseLibraryState();
+      const [{ comics, series, characters, publishers: pubs, years: yrs }, remoteState] = await Promise.all([getSupabaseCatalog(), getSupabaseLibraryState()]);
       const hydrated = remoteState ? applySupabaseLibraryState(comics, remoteState) : comics;
       setAllComics(hydrated);
       setSeriesList(series);
@@ -62,7 +59,7 @@ export function useLibrary() {
 
   useEffect(() => {
     reloadData();
-  }, [reloadData, version]);
+  }, [reloadData]);
 
   const setGridDensity = useCallback((density: "compact" | "comfortable") => {
     setGridDensityState(density);
@@ -76,7 +73,6 @@ export function useLibrary() {
     try {
       const savedRemotely = await toggleSupabaseFavorite(comicId, isFavorite);
       if (!savedRemotely) await localFavoriteRepository.toggleFavorite(comicId);
-      setVersion((v) => v + 1);
       return nextFavorite;
     } catch (error) {
       setAllComics((current) => current.map((comic) => comic.id === comicId ? { ...comic, isFavorite } : comic));
@@ -88,7 +84,8 @@ export function useLibrary() {
     async (comicId: string, currentPage: number, totalPages: number) => {
       const savedRemotely = await saveSupabaseProgress(comicId, currentPage, totalPages);
       if (!savedRemotely) await localProgressRepository.saveProgress(comicId, currentPage, totalPages);
-      setVersion((v) => v + 1);
+      const now = new Date().toISOString();
+      setAllComics((current) => current.map((comic) => comic.id === comicId ? { ...comic, progress: { comicId, currentPage, totalPages, percentage: Math.round(currentPage / Math.max(totalPages, 1) * 100), status: currentPage >= totalPages ? "completed" : "reading", lastReadAt: now, updatedAt: now } } : comic));
     },
     []
   );
@@ -98,7 +95,8 @@ export function useLibrary() {
       const currentPage = allComics.find((comic) => comic.id === comicId)?.progress?.currentPage;
       const savedRemotely = await setSupabaseProgressStatus(comicId, status, totalPages, currentPage);
       if (!savedRemotely) await localProgressRepository.updateStatus(comicId, status, totalPages);
-      setVersion((v) => v + 1);
+      const now = new Date().toISOString();
+      setAllComics((current) => current.map((comic) => comic.id === comicId ? { ...comic, progress: { comicId, currentPage: status === "completed" ? totalPages : status === "not_started" ? 0 : currentPage || 1, totalPages, percentage: status === "completed" ? 100 : status === "not_started" ? 0 : Math.round((currentPage || 1) / Math.max(totalPages, 1) * 100), status, lastReadAt: now, updatedAt: now } } : comic));
     },
     [allComics]
   );

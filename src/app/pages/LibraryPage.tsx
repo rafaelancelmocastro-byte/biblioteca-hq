@@ -10,7 +10,7 @@ import { RecommendationRoulette } from "../../components/library/RecommendationR
 import { CoverFlow } from "../../components/library/CoverFlow";
 import { ComicCard } from "../../components/library/ComicCard";
 import { useLibrary } from "../../hooks/useLibrary";
-import { BookOpen, Info, LibraryBig, ShieldCheck } from "lucide-react";
+import { BookOpen, Compass, Info, LibraryBig } from "lucide-react";
 
 interface LibraryPageProps {
   onOpenReader: (comicId: string) => void;
@@ -18,6 +18,7 @@ interface LibraryPageProps {
   onSearchChange: (query: string) => void;
   isFilterDrawerOpen?: boolean;
   onCloseFilterDrawer?: () => void;
+  onOpenGuide?: () => void;
 }
 
 export const LibraryPage: React.FC<LibraryPageProps> = ({
@@ -26,6 +27,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
   onSearchChange,
   isFilterDrawerOpen,
   onCloseFilterDrawer,
+  onOpenGuide,
 }) => {
   const {
     filteredComics,
@@ -88,7 +90,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
           )}
           <div className="catalog-hero-vignette" />
           <div className="catalog-hero-content">
-            <div className="catalog-eyebrow"><ShieldCheck /> Acervo privado sincronizado</div>
+            <div className="catalog-eyebrow"><BookOpen /> Sua próxima história começa aqui</div>
             <p className="catalog-kicker">{featuredComic.seriesTitle} · edição {featuredComic.issueNumber}</p>
             <h1>{featuredComic.title}</h1>
             <p className="catalog-hero-copy">
@@ -107,6 +109,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
               <button onClick={() => setSelectedComic(featuredComic)} className="catalog-secondary-action">
                 <Info /> Detalhes
               </button>
+              {onOpenGuide && <button onClick={onOpenGuide} className="catalog-secondary-action"><Compass /> Por onde começar?</button>}
             </div>
           </div>
           <div className="catalog-hero-flow-slot"><CoverFlow items={featuredCandidates.map((comic) => ({ id: comic.id, title: comic.title, image: comic.coverUrl, subtitle: `${comic.year} · ${comic.totalPages} páginas` }))} activeIndex={featuredIndex} onChange={setFeaturedIndex} onActivate={(item) => setSelectedComic(featuredCandidates.find((comic) => comic.id === item.id) || null)} label="HQs recomendadas" /></div>

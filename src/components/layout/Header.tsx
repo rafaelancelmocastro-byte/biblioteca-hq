@@ -81,7 +81,7 @@ export const Header: React.FC<HeaderProps> = ({
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Buscar por HQ, série, personagem ou autor..."
+            placeholder="Buscar HQ, coleção, personagem ou autor..."
             className="app-search w-full h-10 pl-9 pr-8 text-[#f5eee9] placeholder-[#8d9585] text-xs sm:text-sm rounded-full focus:outline-none transition-colors"
             aria-label="Buscar na biblioteca"
           />
@@ -127,7 +127,7 @@ export const Header: React.FC<HeaderProps> = ({
             id="user-profile-button"
             onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
             className="w-9 h-9 rounded-full bg-gradient-to-tr from-slate-800 to-slate-700 border border-slate-600 hover:border-amber-400 flex items-center justify-center text-slate-200 transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-amber-400 shadow-sm"
-            aria-label="Menu do proprietário"
+            aria-label="Menu da conta"
             aria-expanded={isUserMenuOpen}
           >
             <User className="w-4 h-4 text-amber-400" />
@@ -138,14 +138,14 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="px-4 py-2.5 border-b border-slate-800/80">
                 <div className="flex items-center gap-2">
                   <div className="w-7 h-7 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xs">
-                    RC
+                    {userName.slice(0, 2).toUpperCase()}
                   </div>
                   <div className="overflow-hidden">
                     <p className="text-xs font-bold text-white truncate">
-                      {APP_CONFIG.ownerName}
+                      {userName}
                     </p>
                     <p className="text-[10px] text-slate-400 truncate">
-                      {APP_CONFIG.ownerEmail}
+                      {isOwner ? APP_CONFIG.ownerEmail : "Minha conta"}
                     </p>
                   </div>
                 </div>
@@ -178,13 +178,13 @@ export const Header: React.FC<HeaderProps> = ({
                   className="w-full text-left px-4 py-2 text-xs flex items-center gap-2.5 text-slate-400 hover:text-white hover:bg-slate-800/60 cursor-pointer"
                 >
                   <LogOut className="w-4 h-4" />
-                  <span>Bloquear / Tela de Login</span>
+                  <span>Sair da conta</span>
                 </button>
               </div>
 
               <div className="px-4 pt-2 pb-1 border-t border-slate-800/80 text-[10px] text-slate-500 font-mono flex justify-between">
                 <span>Versão {APP_CONFIG.version}</span>
-                <span className="text-amber-500/80">Privado</span>
+                <span className="text-amber-500/80">Biblioteca HQ</span>
               </div>
             </div>
           )}

@@ -16,6 +16,7 @@ import { useAuth } from "./hooks/useAuth";
 import { CheckoutPage } from "./app/pages/CheckoutPage";
 import { LaunchesPage } from "./app/pages/LaunchesPage";
 import { OfflinePage } from "./app/pages/OfflinePage";
+import { ReadingGuidePage } from "./app/pages/ReadingGuidePage";
 import { flushReadingProgress } from "./services/offlineProgress";
 
 const ReaderPage = React.lazy(() =>
@@ -79,8 +80,8 @@ export default function App() {
       currentPath={pathname}
       onNavigate={navigate}
       searchQuery={globalSearch}
-      onSearchChange={setGlobalSearch}
-      onToggleFilters={() => setIsFilterDrawerOpen(!isFilterDrawerOpen)}
+      onSearchChange={(query) => { setGlobalSearch(query); if (query && activeRoute !== "/biblioteca") navigate("/biblioteca"); }}
+      onToggleFilters={activeRoute === "/biblioteca" ? () => setIsFilterDrawerOpen(!isFilterDrawerOpen) : undefined}
       onLogout={async () => {
         await signOut();
         navigate("/login");
@@ -96,6 +97,7 @@ export default function App() {
           onSearchChange={setGlobalSearch}
           isFilterDrawerOpen={isFilterDrawerOpen}
           onCloseFilterDrawer={() => setIsFilterDrawerOpen(false)}
+          onOpenGuide={() => navigate("/guia")}
         />
       )}
 
@@ -106,6 +108,7 @@ export default function App() {
       {activeRoute === "/series" && (
         <SeriesPage onOpenReader={openReader} />
       )}
+      {activeRoute === "/guia" && <ReadingGuidePage onOpenReader={openReader} />}
       {activeRoute === "/lancamentos" && <LaunchesPage onOpenReader={openReader} />}
       {activeRoute === "/offline" && <OfflinePage userId={session?.user.id || ""} onOpenReader={openReader} />}
       {activeRoute === "/multiverso" && <IndieMangaPage onOpenReader={openReader} />}

@@ -54,6 +54,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: Layers,
     },
     { label: "Indie & Mangás", path: "/multiverso", icon: Compass },
+    { label: "Por onde começar?", path: "/guia", icon: Compass },
     {
       label: "Favoritos",
       path: "/favoritos",
@@ -91,7 +92,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {APP_CONFIG.name}
               </span>
               <span className="text-[10px] text-slate-400 tracking-wider font-semibold uppercase mt-0.5">
-                Acervo Privado
+                HQs, livros e mangás
               </span>
             </div>
           )}
@@ -153,15 +154,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
         })}
       </nav>
 
-      {/* Cloud & Archival Readiness Card */}
+      {/* Atalho de descoberta */}
       {!isCollapsed && (
         <div className="p-3 mx-3 mb-3 rounded-lg bg-[#141923] border border-slate-800/80">
           <div className="flex items-center gap-2 text-xs font-semibold text-amber-400">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Arquitetura Híbrida</span>
+            <span>Não sabe o que ler?</span>
           </div>
           <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
-            Supabase e Cloudflare R2 conectados ao acervo privado.
+            Encontre uma ordem de leitura no guia.
           </p>
         </div>
       )}

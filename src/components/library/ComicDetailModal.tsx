@@ -96,7 +96,7 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
               {percentage > 0 ? "Continuar Leitura" : "Iniciar Leitura"}
             </Button>
 
-            <Button variant="secondary" size="sm" onClick={() => void saveForOffline()} disabled={offlineBusy || savedOffline} className="w-full min-w-0 text-xs"><HardDriveDownload className="w-4 h-4 mr-2" />{savedOffline ? "Disponível offline" : offlineBusy ? "Salvando..." : "Disponibilizar Offline no App"}</Button>
+            <Button variant="secondary" size="sm" onClick={() => void saveForOffline()} disabled={offlineBusy || savedOffline} className="w-full min-w-0 text-xs"><HardDriveDownload className="w-4 h-4 mr-2" />{savedOffline ? "Disponível offline" : offlineBusy ? "Salvando..." : "Salvar para ler offline"}</Button>
             {offlineMessage && <p role="status" className="text-[11px] text-amber-200 break-words">{offlineMessage}</p>}
 
             <div className="comic-detail-actions flex flex-col gap-2">
@@ -118,7 +118,7 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
                 className="w-full min-w-0 text-xs"
               >
                 <Sliders className="w-3.5 h-3.5 mr-1.5 text-amber-400" />
-                Progresso
+                Editar progresso
               </Button>
             </div>
           </div>
@@ -128,7 +128,7 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
         <div className="flex-1 flex flex-col min-w-0">
           {/* Cabeçalho */}
           <div className="border-b border-slate-800 pb-3">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex flex-wrap items-center gap-2 mb-1">
               <Badge variant="amber">{comic.publisher}</Badge>
               <Badge variant="outline">{comic.year}</Badge>
               <Badge variant={isCompleted ? "emerald" : percentage > 0 ? "amber" : "default"}>
@@ -141,7 +141,7 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
             </h2>
 
             <p className="text-xs text-slate-400 font-semibold mt-1">
-              Série: <span className="text-amber-400">{comic.seriesTitle}</span> • Edição #{comic.issueNumber}
+              Coleção: <span className="text-amber-400">{comic.seriesTitle || "Sem coleção"}</span> • Edição #{comic.issueNumber}
             </p>
           </div>
 
