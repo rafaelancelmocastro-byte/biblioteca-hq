@@ -6,6 +6,7 @@ import { publicationFormat } from "../../services/publicationFormats";
 import { checkComicDuplicate, createComicRecord, saveSeriesRecord, updateComicRecord, type ComicRegistration } from "../../services/comicAdminService";
 import { storageProvider } from "../../services/storageProvider";
 import { runLimited } from "../../services/runLimited";
+import { isPhaseTitle, suggestIssueSeries } from "../../services/seriesHierarchy";
 
 type Draft = {
   file: File;
@@ -32,9 +33,6 @@ const CoverPreview: React.FC<{ file: File; alt: string }> = ({ file, alt }) => {
 
 const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "");
 const seriesPath = (item: Series, series: Series[]) => `${item.publisher} → ${item.parentSeriesId ? `${series.find((parent) => parent.id === item.parentSeriesId)?.title || "Coleção"} → ` : ""}${item.title}`;
-const suggestSeries = (fileName: string, series: Series[]) => series
-  .filter((item) => normalize(item.title).length > 3 && normalize(fileName).includes(normalize(item.title)))
-  .sort((a, b) => normalize(b.title).length - normalize(a.title).length)[0];
 const split = (value: string) => value.split(",").map((item) => item.trim()).filter(Boolean);
 const draftKey = (file: File) => `${file.name}:${file.size}:${file.lastModified}`;
 const DRAFT_STORAGE_KEY = "biblioteca-hq-batch-review-v1";
@@ -98,19 +96,19 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
     setGroupTitle(proposedGroup.title);
     const year = files.map((file) => file.name.match(/(?:19|20)\d{2}/)?.[0]).find(Boolean);
     if (year) setGroupYear(year);
-    const parent = series.filter((item) => item.bannerTone !== "saga" && item.bannerTone !== "one_shot" && files.some((file) => normalize(file.name).includes(normalize(item.title)))).sort((a, b) => b.title.length - a.title.length)[0];
-    if (parent) { setGroupKind(proposedGroup.count === 1 ? "one_shot" : "saga"); setGroupParentId(parent.id); setGroupPublisher(parent.publisher); }
+    const parent = series.filter((item) => !item.parentSeriesId && item.bannerTone !== "saga" && item.bannerTone !== "phase" && item.bannerTone !== "one_shot" && files.some((file) => normalize(file.name).includes(normalize(item.title)))).sort((a, b) => b.title.length - a.title.length)[0];
+    if (parent) { setGroupKind(isPhaseTitle(proposedGroup.title) ? "phase" : proposedGroup.count === 1 ? "one_shot" : "saga"); setGroupParentId(parent.id); setGroupPublisher(parent.publisher); }
   }, [proposedGroup, files, series]);
 
   const createSuggestedGroup = async () => {
     if (!proposedGroup || !groupTitle.trim() || !groupPublisher.trim() || !/^\d{4}$/.test(groupYear)) { setGroupError("Confirme nome, editora e ano inicial para criar o agrupamento."); onFeedback("Confirme nome, editora e ano inicial para criar o agrupamento.", "error"); return; }
-    if (groupKind === "one_shot" && !groupParentId) { setGroupError("Escolha a coleção principal da obra fechada."); return; }
+    if (["one_shot", "phase"].includes(groupKind) && !groupParentId) { setGroupError("Escolha a coleção principal desta fase ou obra fechada."); return; }
     setPublishing(true); setGroupError("");
     try {
       const id = await saveSeriesRecord({ title: groupTitle.trim(), publisher: groupPublisher.trim(), startYear: Number(groupYear), description: "", bannerTone: groupKind, parentSeriesId: groupKind !== "collection" ? groupParentId || undefined : undefined });
       setDrafts((current) => current.map((draft) => normalize(draft.file.name).startsWith(normalize(proposedGroup.title)) ? { ...draft, seriesId: id } : draft));
       await onComplete();
-      onFeedback(`${groupKind === "saga" ? "Saga" : groupKind === "one_shot" ? "Obra fechada" : "Coleção"} “${groupTitle}” criada e associada aos arquivos.`, "success");
+      onFeedback(`${groupKind === "saga" ? "Saga" : groupKind === "phase" ? "Fase" : groupKind === "one_shot" ? "Obra fechada" : "Coleção"} “${groupTitle}” criada e associada aos arquivos.`, "success");
     } catch (error) { const message = error instanceof Error ? error.message : "Não foi possível criar o agrupamento."; setGroupError(message); onFeedback(message, "error"); }
     finally { setPublishing(false); }
   };
@@ -125,7 +123,7 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
         try {
           const meta = await inspectPublication(file, window.matchMedia("(pointer: coarse)").matches);
           if (!active) return;
-          const exact = suggestSeries(file.name, series);
+          const exact = suggestIssueSeries(file.name, meta.title, series);
           const matchedCover = covers.find((item) => normalize(item.name) === normalize(file.name));
           const saved = savedDrafts.current[draftKey(file)];
           setDrafts((current) => current.map((draft, position) => position === index ? { ...draft, meta: saved?.meta || meta, seriesId: saved?.seriesId || exact?.id || "", coverOverride: matchedCover, status: saved?.status === "published" ? "published" : meta.totalPages ? "ready" : "incomplete", message: saved?.status === "published" ? saved.message || "Publicado." : meta.warning || (exact ? `Caminho sugerido: ${seriesPath(exact, series)}. Confirme ou corrija antes de publicar.` : "Selecione a coleção ou saga; campos sem evidência permanecem vazios.") } : draft));
@@ -188,6 +186,10 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
       const chosen = series.find((item) => item.id === draft.seriesId);
       if (!meta || !chosen || !meta.title.trim() || !Number(meta.issueNumber) || !Number(meta.year) || !Number(meta.totalPages)) {
         update(index, { status: "incomplete", message: "Complete título, edição, ano, páginas e coleção antes de publicar." });
+        return;
+      }
+      if (!chosen.parentSeriesId && isPhaseTitle(`${meta.title} ${draft.file.name}`) && series.some((item) => item.parentSeriesId === chosen.id && item.bannerTone === "phase")) {
+        update(index, { status: "incomplete", message: `Esta edição parece pertencer a uma fase de “${chosen.title}”. Selecione a fase no campo Coleção / saga antes de publicar.` });
         return;
       }
       const issueKey = `${chosen.id}:${Number(meta.issueNumber)}:${Number(meta.year)}:${normalize(meta.title)}`;
@@ -257,7 +259,7 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
   return <section id="batch-review" className="batch-review" aria-label="Revisão da importação em lote">
     <div className="batch-review-header"><div><strong>Revisar arquivos</strong><span>Cada arquivo tem seus próprios dados. Confira as sugestões antes de publicar. Esta lista fica salva neste dispositivo até você publicar ou descartar.</span></div><button type="button" onClick={discard} disabled={publishing}>Descartar fila</button></div>
     <div className="batch-shared-panel"><strong>Dados comuns a todos os arquivos desta fila</strong><p>Marque somente o que se repete. O restante, como número da edição, páginas e capa, continua individual.</p><div className="batch-shared-grid">{sharedFields.map((field) => <label key={field} className={field === "synopsis" ? "wide" : ""}><span><input type="checkbox" checked={sharedEnabled.includes(field)} onChange={(event) => setSharedEnabled((current) => event.target.checked ? [...current, field] : current.filter((item) => item !== field))} /> Aplicar {sharedLabels[field]} a todos</span>{field === "seriesId" ? <select value={sharedValues.seriesId} onChange={(event) => setSharedValues((current) => ({ ...current, seriesId: event.target.value }))}><option value="">Selecione a coleção</option>{series.map((item) => <option key={item.id} value={item.id}>{seriesPath(item, series)}</option>)}</select> : field === "synopsis" ? <textarea rows={2} value={sharedValues.synopsis} onChange={(event) => setSharedValues((current) => ({ ...current, synopsis: event.target.value }))} /> : <input type={field === "year" ? "number" : "text"} min={field === "year" ? 1800 : undefined} max={field === "year" ? 2200 : undefined} value={sharedValues[field]} onChange={(event) => setSharedValues((current) => ({ ...current, [field]: event.target.value }))} />}</label>)}</div><button type="button" className="studio-primary" disabled={publishing || drafts.some((draft) => draft.status === "analyzing")} onClick={applyShared}>Aplicar campos marcados à fila</button>{sharedMessage && <p role="status">{sharedMessage}</p>}</div>
-    {proposedGroup && <div className="batch-group-suggestion"><strong>{proposedGroup.count} arquivo(s) sugerem o agrupamento “{proposedGroup.title}”</strong><span>Revise o tipo e a coleção principal. A sugestão vem dos nomes dos arquivos e pode ser corrigida.</span><div><label>Nome do agrupamento<input value={groupTitle} onChange={(event) => setGroupTitle(event.target.value)} /></label><label>Editora<input value={groupPublisher} onChange={(event) => setGroupPublisher(event.target.value)} /></label><label>Ano inicial<input type="number" min="1800" max="2200" value={groupYear} onChange={(event) => setGroupYear(event.target.value)} /></label><label>Tipo<select value={groupKind} onChange={(event) => setGroupKind(event.target.value)}><option value="collection">Coleção</option><option value="saga">Saga</option><option value="one_shot">Obra fechada / volume único</option></select></label>{groupKind !== "collection" && <label>Coleção principal<select required={groupKind === "one_shot"} value={groupParentId} onChange={(event) => { setGroupParentId(event.target.value); const parent = series.find((item) => item.id === event.target.value); if (parent) setGroupPublisher(parent.publisher); }}><option value="">Sem coleção principal</option>{series.filter((item) => item.bannerTone !== "saga" && item.bannerTone !== "one_shot").map((item) => <option key={item.id} value={item.id}>{item.publisher} → {item.title}</option>)}</select></label>}<button type="button" onClick={() => void createSuggestedGroup()} disabled={publishing}>Criar agrupamento e associar</button></div>{groupError && <p role="alert">{groupError}</p>}</div>}
+    {proposedGroup && <div className="batch-group-suggestion"><strong>{proposedGroup.count} arquivo(s) sugerem o agrupamento “{proposedGroup.title}”</strong><span>Revise o tipo e a coleção principal. A sugestão vem dos nomes dos arquivos e pode ser corrigida.</span><div><label>Nome do agrupamento<input value={groupTitle} onChange={(event) => setGroupTitle(event.target.value)} /></label><label>Editora<input value={groupPublisher} onChange={(event) => setGroupPublisher(event.target.value)} /></label><label>Ano inicial<input type="number" min="1800" max="2200" value={groupYear} onChange={(event) => setGroupYear(event.target.value)} /></label><label>Tipo<select value={groupKind} onChange={(event) => setGroupKind(event.target.value)}><option value="collection">Coleção</option><option value="saga">Saga</option><option value="phase">Fase / linha editorial</option><option value="one_shot">Obra fechada / volume único</option></select></label>{groupKind !== "collection" && <label>Coleção principal<select required={["one_shot", "phase"].includes(groupKind)} value={groupParentId} onChange={(event) => { setGroupParentId(event.target.value); const parent = series.find((item) => item.id === event.target.value); if (parent) setGroupPublisher(parent.publisher); }}><option value="">Sem coleção principal</option>{series.filter((item) => !item.parentSeriesId && item.bannerTone !== "saga" && item.bannerTone !== "phase" && item.bannerTone !== "one_shot").map((item) => <option key={item.id} value={item.id}>{item.publisher} → {item.title}</option>)}</select></label>}<button type="button" onClick={() => void createSuggestedGroup()} disabled={publishing}>Criar agrupamento e associar</button></div>{groupError && <p role="alert">{groupError}</p>}</div>}
     {drafts.map((draft, index) => <details key={`${draft.file.name}-${draft.file.lastModified}`} className="batch-review-item" open={index === 0}>
       <summary><strong>{draft.file.name}</strong><span className={`batch-status ${draft.status}`}>{draft.status === "analyzing" ? "Analisando" : draft.status === "ready" ? "Revisar" : draft.status === "uploading" ? "Enviando" : draft.status === "published" ? "Publicado" : draft.status === "incomplete" ? "Incompleto" : draft.status === "duplicate" ? "Possível duplicado" : draft.status === "cancelled" ? "Cancelado" : "Erro"}</span></summary>
       <p role="status">{draft.message}</p>

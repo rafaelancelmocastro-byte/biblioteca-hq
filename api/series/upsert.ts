@@ -11,12 +11,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return res.status(503).json({ error: "Banco de dados indisponível." });
   const admin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
-  const parentId = ["saga", "one_shot"].includes(body.bannerTone) && body.parentSeriesId ? String(body.parentSeriesId) : null;
-  if (body.bannerTone === "one_shot" && !parentId) return res.status(400).json({ error: "Escolha a coleção principal desta obra fechada." });
+  const parentId = ["saga", "phase", "one_shot"].includes(body.bannerTone) && body.parentSeriesId ? String(body.parentSeriesId) : null;
+  if (["phase", "one_shot"].includes(body.bannerTone) && !parentId) return res.status(400).json({ error: "Escolha a coleção principal desta fase ou obra fechada." });
+  if (body.bannerTone === "collection" && /\bnovos?\s*52\b/i.test(body.title) && !parentId) return res.status(400).json({ error: "Os Novos 52 devem ser cadastrados como fase dentro da coleção do personagem ou equipe." });
   if (parentId) {
     if (parentId === body.id) return res.status(400).json({ error: "Uma saga não pode pertencer a si mesma." });
-    const { data: parent, error: parentError } = await admin.from("series").select("id,publisher,banner_tone").eq("id", parentId).is("deleted_at", null).maybeSingle();
-    if (parentError || !parent || ["saga", "one_shot"].includes(parent.banner_tone) || parent.publisher.trim().toLowerCase() !== body.publisher.trim().toLowerCase()) return res.status(400).json({ error: "Selecione uma coleção válida da mesma editora." });
+    const { data: parent, error: parentError } = await admin.from("series").select("id,publisher,banner_tone,parent_series_id").eq("id", parentId).is("deleted_at", null).maybeSingle();
+    if (parentError || !parent || parent.parent_series_id || ["saga", "phase", "one_shot"].includes(parent.banner_tone) || parent.publisher.trim().toLowerCase() !== body.publisher.trim().toLowerCase()) return res.status(400).json({ error: "Selecione uma coleção principal da mesma editora." });
   }
   const record = {
     title: body.title.trim(), publisher: body.publisher.trim(), start_year: Number(body.startYear),

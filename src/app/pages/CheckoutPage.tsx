@@ -10,7 +10,7 @@ export function CheckoutPage({ email, onBack }: { email: string; onBack: () => v
   const [copied, setCopied] = useState(false);
   useEffect(() => { void supabase?.from("app_settings").select("lifetime_price_cents,pix_key,pix_merchant_name,pix_merchant_city,whatsapp_number").eq("id", true).maybeSingle().then(({ data }) => setSettings(data as CheckoutSettings | null)); }, []);
   const code = settings ? makePixCode(settings) : "";
-  useEffect(() => { if (code) void QRCode.toDataURL(code, { width: 340, margin: 2, color: { dark: "#17120e", light: "#ffffff" } }).then(setQr); }, [code]);
+  useEffect(() => { if (code) void QRCode.toDataURL(code, { width: 340, margin: 2, color: { dark: "#101820", light: "#ffffff" } }).then(setQr); }, [code]);
   const whatsapp = settings?.whatsapp_number.replace(/\D/g, "") || "";
   const message = `Olá! Acabei de me cadastrar com o e-mail ${email} e gostaria de enviar o comprovante do PIX para liberar meu acesso vitalício à Biblioteca HQ.`;
   return <div className="min-h-dvh bg-[#0f0f11] text-white px-4 py-8 flex justify-center items-start"><div className="w-full max-w-xl rounded-3xl border border-white/10 bg-[#1d1714] p-5 sm:p-8 shadow-2xl">

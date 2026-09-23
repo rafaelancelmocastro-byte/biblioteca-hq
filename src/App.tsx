@@ -58,7 +58,7 @@ export default function App() {
   if (activeRoute === "/ler" && comicId) {
     if (!canRead && isSupabaseConfigured) return <CheckoutPage email={session?.user.email || ""} onBack={() => navigate("/biblioteca")} />;
     return (
-      <React.Suspense fallback={<div className="min-h-screen bg-[#080706] flex items-center justify-center"><div className="w-10 h-10 border-2 border-[#d95e32] border-t-transparent rounded-full animate-spin" /></div>}>
+      <React.Suspense fallback={<div className="min-h-screen bg-[#05090f] flex items-center justify-center"><div className="w-10 h-10 border-2 border-[#526d8a] border-t-transparent rounded-full animate-spin" /></div>}>
         <ReaderPage comicId={comicId} onBack={() => navigate("/biblioteca")} />
       </React.Suspense>
     );
@@ -90,7 +90,7 @@ export default function App() {
       userName={isOwner ? "Rafael Castro" : profile?.email?.split("@")[0] || "Leitor"}
       userId={session?.user.id}
     >
-      {restrictedNotice && <div role="alert" className="fixed top-20 right-4 z-50 rounded-xl bg-[#2c1d18] border border-amber-400/40 px-4 py-3 text-sm text-amber-200 shadow-xl" onClick={() => setRestrictedNotice(false)}>Acesso restrito</div>}
+      {restrictedNotice && <div role="alert" className="fixed top-20 right-4 z-50 rounded-xl bg-[#1d2835] border border-amber-400/40 px-4 py-3 text-sm text-amber-200 shadow-xl" onClick={() => setRestrictedNotice(false)}>Acesso restrito</div>}
       <React.Suspense fallback={<div className="studio-panel" role="status">Carregando página...</div>}>
       {activeRoute === "/biblioteca" && (
         <LibraryPage

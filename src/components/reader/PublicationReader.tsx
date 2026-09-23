@@ -88,7 +88,7 @@ export const PublicationReader: React.FC<{
     return () => window.removeEventListener("keydown", key);
   }, [comic.readingDirection]);
 
-  return <div className="reader-shell publication-shell fixed inset-0 z-50 flex flex-col text-[#f4eee9]">
+  return <div className="reader-shell publication-shell fixed inset-0 z-50 flex flex-col text-[#e9edf2]">
     <header className="reader-topbar"><button className="reader-icon-button" onClick={onBack} aria-label="Voltar para a biblioteca"><ArrowLeft /></button><div className="min-w-0 flex-1"><strong className="block truncate">{comic.title}</strong><small className="text-white/60">{format?.toUpperCase()} · {comic.publisher}</small></div>{isBook && <button className="publication-mode" onClick={() => setScrolled((value) => !value)}>{scrolled ? <><Square /> Páginas</> : <><Rows3 /> Rolagem</>}</button>}</header>
     <main className="publication-stage" ref={holderRef} aria-label={`Leitor de ${comic.title}`}>
       {loading && <p className="publication-message">Preparando {format?.toUpperCase()}...</p>}

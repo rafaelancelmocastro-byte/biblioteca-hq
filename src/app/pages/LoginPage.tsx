@@ -89,7 +89,7 @@ export const LoginPage: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) =>
     <div className="login-orbit login-orbit-one" /><div className="login-orbit login-orbit-two" />
     <div className="login-card relative w-full max-w-md rounded-[2rem] p-6 sm:p-8">
       <div className="text-center mb-6"><BrandLogo showTagline className="login-brand" /><p className="login-kicker">Seu universo de leitura</p></div>
-      <div className="mb-5 p-3 rounded-xl bg-white/[.035] border border-white/10 flex items-start gap-2.5 text-xs text-[#c8c0b9]"><ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" /><span>Explore o acervo. Após o cadastro, libere a leitura com acesso vitalício.</span></div>
+      <div className="mb-5 p-3 rounded-xl bg-white/[.035] border border-white/10 flex items-start gap-2.5 text-xs text-[#b8c2cd]"><ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" /><span>Explore o acervo. Após o cadastro, libere a leitura com acesso vitalício.</span></div>
       {linkError && <p role="alert" className="mb-4 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-100">O link de confirmação expirou ou já foi usado. Informe o e-mail cadastrado e peça um novo link abaixo.</p>}
       <form onSubmit={submit} className="space-y-4">
         {!isRecoveryLink && <label className="block text-xs font-semibold text-slate-300">E-mail<input className="admin-field mt-1" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>}

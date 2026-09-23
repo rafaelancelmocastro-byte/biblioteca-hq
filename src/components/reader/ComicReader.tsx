@@ -401,7 +401,7 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, pdfData
   };
 
   return (
-    <div ref={shellRef} className="reader-shell fixed inset-0 z-50 flex flex-col text-[#f4eee9]">
+    <div ref={shellRef} className="reader-shell fixed inset-0 z-50 flex flex-col text-[#e9edf2]">
       <header className="reader-topbar">
         <button onClick={onBack} className="reader-icon-button" aria-label="Voltar para a biblioteca">
           <ArrowLeft className="w-5 h-5" />

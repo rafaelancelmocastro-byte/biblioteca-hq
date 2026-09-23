@@ -63,8 +63,8 @@ export const Header: React.FC<HeaderProps> = ({
         </button>
 
         <div className="hidden sm:flex flex-col">
-          <span className="text-xs text-[#c2bbb4] font-medium">
-            {getGreeting()}, <strong className="text-[#f5eee9] font-semibold">{userName}</strong>
+          <span className="text-xs text-[#b6c0ca] font-medium">
+            {getGreeting()}, <strong className="text-[#edf1f6] font-semibold">{userName}</strong>
           </span>
           <span className="text-[10px] text-slate-500 font-mono">
             {APP_CONFIG.tagline}
@@ -82,7 +82,7 @@ export const Header: React.FC<HeaderProps> = ({
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Buscar HQ, coleção, personagem ou autor..."
-            className="app-search w-full h-10 pl-9 pr-8 text-[#f5eee9] placeholder-[#8d9585] text-xs sm:text-sm rounded-full focus:outline-none transition-colors"
+            className="app-search w-full h-10 pl-9 pr-8 text-[#edf1f6] placeholder-[#8a96a4] text-xs sm:text-sm rounded-full focus:outline-none transition-colors"
             aria-label="Buscar na biblioteca"
           />
           {searchQuery && (
