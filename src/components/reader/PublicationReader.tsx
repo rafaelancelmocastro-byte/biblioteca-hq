@@ -19,8 +19,9 @@ export const PublicationReader: React.FC<{
   fileUrl?: string;
   fileData?: Uint8Array;
   onBack: () => void;
+  onNextChapter?: () => void;
   onUpdateProgress: (id: string, section: number, total: number) => void;
-}> = ({ comic, fileUrl, fileData, onBack, onUpdateProgress }) => {
+}> = ({ comic, fileUrl, fileData, onBack, onNextChapter, onUpdateProgress }) => {
   const holderRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<FoliateView | null>(null);
   const progressRef = useRef(onUpdateProgress);
@@ -94,6 +95,7 @@ export const PublicationReader: React.FC<{
       {loading && <p className="publication-message">Preparando {format?.toUpperCase()}...</p>}
       {error && <div role="alert" className="publication-message"><p>{error}</p><button onClick={onBack}>Voltar ao acervo</button></div>}
     </main>
+    {onNextChapter && section >= total && <button className="reader-next-chapter" onClick={onNextChapter}>Ler o próximo capítulo <ChevronRight /></button>}
     <footer className="reader-dock publication-dock"><button onClick={() => void (comic.readingDirection === "rtl" ? viewRef.current?.next() : viewRef.current?.prev())} aria-label="Página anterior"><ChevronLeft /></button><label className="reader-page-control"><input type="range" min="1" max={total} value={section} onChange={(event) => void viewRef.current?.goTo(isBook ? { fraction: Number(event.target.value) / 100 } : Number(event.target.value) - 1)} aria-label="Progresso da leitura" /><span>{isBook ? `${section}%` : `Página ${section} / ${total}`}</span></label><button onClick={() => void (comic.readingDirection === "rtl" ? viewRef.current?.prev() : viewRef.current?.next())} aria-label="Próxima página"><ChevronRight /></button></footer>
   </div>;
 };

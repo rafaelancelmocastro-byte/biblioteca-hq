@@ -29,6 +29,7 @@ interface ComicReaderProps {
   pdfUrl?: string;
   pdfData?: Uint8Array;
   onBack: () => void;
+  onNextChapter?: () => void;
   onUpdateProgress: (comicId: string, page: number, totalPages: number) => void;
 }
 
@@ -91,7 +92,7 @@ const ContinuousPdfPage: React.FC<{
   );
 };
 
-export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, pdfData, onBack, onUpdateProgress }) => {
+export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, pdfData, onBack, onNextChapter, onUpdateProgress }) => {
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [currentPage, setCurrentPage] = useState(() => Math.max(1, comic.progress?.currentPage || 1));
   const [zoom, setZoom] = useState(1);
@@ -507,6 +508,8 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, pdfData
         {isRendering && readerMode !== "continuous" && <div className="reader-loading"><span /></div>}
         {error && <div className="reader-error">{error}</div>}
       </main>
+
+      {onNextChapter && currentPage >= totalPages && <button className="reader-next-chapter" onClick={onNextChapter}>Ler o próximo capítulo <ChevronRight /></button>}
 
       <footer className="reader-dock">
         <button onClick={readingDirection === "rtl" ? next : previous} disabled={readingDirection === "rtl" ? currentPage >= totalPages || (readerMode === "spread" && currentPage > 1 && currentPage + 1 >= totalPages) : currentPage <= 1} aria-label={readingDirection === "rtl" ? "Próxima página" : "Página anterior"}><ChevronLeft /></button>

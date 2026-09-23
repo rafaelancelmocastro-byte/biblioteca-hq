@@ -59,7 +59,7 @@ export default function App() {
     if (!canRead && isSupabaseConfigured) return <CheckoutPage email={session?.user.email || ""} onBack={() => navigate("/biblioteca")} />;
     return (
       <React.Suspense fallback={<div className="min-h-screen bg-[#05090f] flex items-center justify-center"><div className="w-10 h-10 border-2 border-[#526d8a] border-t-transparent rounded-full animate-spin" /></div>}>
-        <ReaderPage comicId={comicId} onBack={() => navigate("/biblioteca")} />
+        <ReaderPage comicId={comicId} onBack={() => navigate("/biblioteca")} onOpenReader={openReader} />
       </React.Suspense>
     );
   }

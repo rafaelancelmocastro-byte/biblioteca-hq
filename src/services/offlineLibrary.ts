@@ -98,8 +98,23 @@ export async function readOffline(userId: string, comicId: string): Promise<{ co
       const decrypted = new Uint8Array(await crypto.subtle.decrypt({ name: "AES-GCM", iv: chunk.iv as BufferSource }, key, chunk.data));
       data.set(decrypted, offset); offset += decrypted.byteLength;
     }
+    if (!edition.size || offset !== edition.size) throw new Error("Arquivo offline incompleto. Salve a edição novamente.");
     return { comic: edition.comic, data };
   } finally { db.close(); }
+}
+export async function verifyOffline(userId: string, comicId: string): Promise<number> {
+  const saved = await readOffline(userId, comicId);
+  if (!saved) throw new Error("Edição não encontrada neste dispositivo.");
+  const bytes = saved.data;
+  const name = saved.comic.fileName.toLowerCase();
+  const prefix = new TextDecoder().decode(bytes.subarray(0, 8));
+  if (name.endsWith(".pdf") && !prefix.startsWith("%PDF-") ||
+      name.endsWith(".cbr") && !prefix.startsWith("Rar!") ||
+      name.endsWith(".epub") && !(bytes[0] === 0x50 && bytes[1] === 0x4b) ||
+      name.endsWith(".azw3") && new TextDecoder().decode(bytes.subarray(60, 68)) !== "BOOKMOBI") {
+    throw new Error("Arquivo offline inválido. Remova a cópia e salve novamente.");
+  }
+  return bytes.byteLength;
 }
 export async function removeOffline(userId: string, comicId: string): Promise<void> {
   const db = await database();

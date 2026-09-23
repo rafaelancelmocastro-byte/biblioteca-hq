@@ -81,7 +81,7 @@ export const Header: React.FC<HeaderProps> = ({
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Buscar HQ, coleção, personagem ou autor..."
+            placeholder="Buscar série, ano ou edição (ex.: Batman 2011 #0)..."
             className="app-search w-full h-10 pl-9 pr-8 text-[#edf1f6] placeholder-[#8a96a4] text-xs sm:text-sm rounded-full focus:outline-none transition-colors"
             aria-label="Buscar na biblioteca"
           />

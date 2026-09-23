@@ -1,27 +1,52 @@
 import React, { useState, useEffect } from "react";
 import { Comic } from "../../types/comic";
-import { getSupabaseComicById } from "../../services/supabaseCatalogRepository";
+import { getSupabaseCatalog, getSupabaseComicById } from "../../services/supabaseCatalogRepository";
 import { getComicReadUrl } from "../../services/comicRead";
 import { ComicReader } from "../../components/reader/ComicReader";
 import { PublicationReader } from "../../components/reader/PublicationReader";
+import { CbrReader } from "../../components/reader/CbrReader";
 import { publicationFormat } from "../../services/publicationFormats";
 import { getQueuedProgress, saveReadingProgress } from "../../services/offlineProgress";
 import { Button } from "../../components/ui/Button";
 import { ArrowLeft, BookX } from "lucide-react";
-import { readOffline } from "../../services/offlineLibrary";
+import { listOffline, readOffline } from "../../services/offlineLibrary";
 import { supabase } from "../../services/supabaseClient";
 
 interface ReaderPageProps {
   comicId: string;
   onBack: () => void;
+  onOpenReader: (id: string) => void;
 }
 
-export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack }) => {
+export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack, onOpenReader }) => {
   const [comic, setComic] = useState<Comic | null>(null);
   const [pdfUrl, setPdfUrl] = useState("");
   const [pdfData, setPdfData] = useState<Uint8Array | undefined>();
   const [userId, setUserId] = useState("");
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [nextComic, setNextComic] = useState<Comic | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const findNext = async () => {
+      let comics: Comic[] = [];
+      if (navigator.onLine) {
+        try { comics = (await getSupabaseCatalog()).comics; } catch { /* Offline copies may still be available. */ }
+      }
+      if (!comics.length) {
+        const session = (await supabase?.auth.getSession())?.data.session;
+        if (session) comics = (await listOffline(session.user.id)).map((item) => item.comic);
+      }
+      const current = comics.find((item) => item.id === comicId);
+      if (!current || !active) return;
+      const ordered = comics.filter((item) => item.seriesId === current.seriesId)
+        .sort((a, b) => (a.volume || 0) - (b.volume || 0) || a.issueNumber - b.issueNumber || a.year - b.year);
+      setNextComic(ordered[ordered.findIndex((item) => item.id === comicId) + 1] || null);
+    };
+    setNextComic(null);
+    void findNext();
+    return () => { active = false; };
+  }, [comicId]);
 
   useEffect(() => {
     let isMounted = true;
@@ -74,7 +99,8 @@ export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack }) => {
     );
   }
 
-  if (publicationFormat(comic.fileName) && publicationFormat(comic.fileName) !== "pdf") return <PublicationReader comic={comic} fileUrl={pdfUrl} fileData={pdfData} onBack={onBack} onUpdateProgress={(id, page, total) => { void saveReadingProgress(userId, id, page, total); }} />;
+  if (publicationFormat(comic.fileName) === "cbr") return <CbrReader comic={comic} fileUrl={pdfUrl} fileData={pdfData} onBack={onBack} onNextChapter={nextComic ? () => onOpenReader(nextComic.id) : undefined} onUpdateProgress={(id, page, total) => { void saveReadingProgress(userId, id, page, total); }} />;
+  if (publicationFormat(comic.fileName) && publicationFormat(comic.fileName) !== "pdf") return <PublicationReader comic={comic} fileUrl={pdfUrl} fileData={pdfData} onBack={onBack} onNextChapter={nextComic ? () => onOpenReader(nextComic.id) : undefined} onUpdateProgress={(id, page, total) => { void saveReadingProgress(userId, id, page, total); }} />;
 
   return (
     <ComicReader
@@ -82,6 +108,7 @@ export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack }) => {
       pdfUrl={pdfUrl}
       pdfData={pdfData}
       onBack={onBack}
+      onNextChapter={nextComic ? () => onOpenReader(nextComic.id) : undefined}
       onUpdateProgress={(id, page, total) => { void saveReadingProgress(userId, id, page, total); }}
     />
   );

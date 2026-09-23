@@ -6,6 +6,7 @@ export type PublicationBook = {
   metadata?: { title?: string | Record<string, string>; author?: unknown };
   dir?: string;
   getCover?: () => Promise<Blob> | Blob;
+  getPageBlob?: (index: number) => Promise<Blob>;
   destroy?: () => void;
 };
 
@@ -42,6 +43,11 @@ export async function openPublicationBook(file: File): Promise<PublicationBook> 
   try {
     const { makeComicBook } = await import("foliate-js/comic-book.js");
     const book = await makeComicBook(loader, file) as PublicationBook;
+    book.getPageBlob = (index: number) => {
+      const entry = entries[index];
+      if (!entry) throw new Error("Página não encontrada no CBR.");
+      return entry.blob(mime(entry));
+    };
     const destroy = book.destroy?.bind(book);
     book.destroy = () => { destroy?.(); rar.dispose(); };
     return book;

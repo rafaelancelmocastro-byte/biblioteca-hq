@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { ArrowRight, BookOpen, Compass, Search } from "lucide-react";
 import { useLibrary } from "../../hooks/useLibrary";
 import type { Comic } from "../../types/comic";
+import { matchesComicSearch } from "../../lib/librarySearch";
 
 const fold = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
 const orderIssues = (a: Comic, b: Comic) => (a.volume || 0) - (b.volume || 0) || a.issueNumber - b.issueNumber || a.year - b.year;
@@ -14,7 +15,7 @@ export const ReadingGuidePage: React.FC<{ onOpenReader: (id: string) => void }> 
   const paths = useMemo(() => seriesList.map((series) => {
     const issues = allComics.filter((comic) => comic.seriesId === series.id).sort(orderIssues);
     return { series, issues, next: issues.find((comic) => comic.progress?.status !== "completed") || issues[0] };
-  }).filter((path) => path.issues.length && (!needle || [path.series.title, path.series.publisher, ...path.issues.flatMap((comic) => [comic.title, ...comic.characters, ...comic.tags])].some((value) => fold(value).includes(needle)))).sort((a, b) => Number(fold(b.series.title).includes(needle)) - Number(fold(a.series.title).includes(needle)) || a.series.title.localeCompare(b.series.title, "pt-BR")), [allComics, seriesList, needle]);
+  }).filter((path) => path.issues.length && (!needle || [path.series.title, path.series.publisher].some((value) => fold(value).includes(needle)) || path.issues.some((comic) => matchesComicSearch(comic, query)))).sort((a, b) => Number(fold(b.series.title).includes(needle)) - Number(fold(a.series.title).includes(needle)) || a.series.title.localeCompare(b.series.title, "pt-BR")), [allComics, seriesList, needle, query]);
   const selected = paths.find((path) => path.series.id === selectedSeriesId) || paths[0];
 
   return <div className="streaming-page reading-guide-page">

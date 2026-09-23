@@ -126,7 +126,7 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
           const exact = suggestIssueSeries(file.name, meta.title, series);
           const matchedCover = covers.find((item) => normalize(item.name) === normalize(file.name));
           const saved = savedDrafts.current[draftKey(file)];
-          setDrafts((current) => current.map((draft, position) => position === index ? { ...draft, meta: saved?.meta || meta, seriesId: saved?.seriesId || exact?.id || "", coverOverride: matchedCover, status: saved?.status === "published" ? "published" : meta.totalPages ? "ready" : "incomplete", message: saved?.status === "published" ? saved.message || "Publicado." : meta.warning || (exact ? `Caminho sugerido: ${seriesPath(exact, series)}. Confirme ou corrija antes de publicar.` : "Selecione a coleção ou saga; campos sem evidência permanecem vazios.") } : draft));
+          setDrafts((current) => current.map((draft, position) => position === index ? { ...draft, meta: saved?.meta ? { ...meta, ...saved.meta, cover: meta.cover, thumbnail: meta.thumbnail } : meta, seriesId: saved?.seriesId || exact?.id || "", coverOverride: matchedCover, status: saved?.status === "published" ? "published" : meta.totalPages ? "ready" : "incomplete", message: saved?.status === "published" ? saved.message || "Publicado." : meta.warning || (exact ? `Caminho sugerido: ${seriesPath(exact, series)}. Confirme ou corrija antes de publicar.` : "Selecione a coleção ou saga; campos sem evidência permanecem vazios.") } : draft));
         } catch (error) {
           if (!active) return;
           try {
@@ -211,10 +211,11 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
         update(index, { status: "uploading", message: "Preparando capa e arquivo..." });
         let coverFile = draft.coverOverride || meta.cover;
         let thumbnail = !metadataOnly && draft.coverOverride ? await makeImageThumbnail(draft.coverOverride) : meta.thumbnail;
-        if (!metadataOnly && !coverFile && publicationFormat(draft.file.name) === "pdf") {
-          const extracted = await extractPdfCover(draft.file, draft.file.name);
-          coverFile = extracted.cover;
-          thumbnail = extracted.thumbnail;
+        if (!metadataOnly && !coverFile) {
+          const extracted = publicationFormat(draft.file.name) === "pdf" ? await extractPdfCover(draft.file, draft.file.name) : publicationFormat(draft.file.name) === "cbr" ? await inspectPublication(draft.file) : null;
+          coverFile = extracted?.cover;
+          thumbnail = extracted?.thumbnail;
+          if (publicationFormat(draft.file.name) === "cbr" && !coverFile) throw new Error("Não foi possível extrair a primeira imagem do CBR. Confira o arquivo antes de publicar.");
         }
         let lastPercent = -10;
         const uploadStartedAt = performance.now();

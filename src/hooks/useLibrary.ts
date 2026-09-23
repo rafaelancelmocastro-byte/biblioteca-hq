@@ -4,6 +4,7 @@ import { localFavoriteRepository } from "../services/localFavoriteRepository";
 import { localProgressRepository } from "../services/localProgressRepository";
 import { getCoverUrls, getSupabaseCatalog, invalidateCatalogCache } from "../services/supabaseCatalogRepository";
 import { getLocalStorageItem, setLocalStorageItem } from "../lib/utils";
+import { matchesComicSearch } from "../lib/librarySearch";
 import {
   applySupabaseLibraryState,
   getSupabaseLibraryState,
@@ -148,17 +149,7 @@ export function useLibrary() {
   const filteredComics = useMemo(() => {
     let result = [...allComics];
 
-    if (filters.searchQuery.trim()) {
-      const q = filters.searchQuery.toLowerCase().trim();
-      result = result.filter(
-        (c) =>
-          c.title.toLowerCase().includes(q) ||
-          c.seriesTitle.toLowerCase().includes(q) ||
-          c.characters.some((char) => char.toLowerCase().includes(q)) ||
-          c.writers.some((w) => w.toLowerCase().includes(q)) ||
-          c.tags.some((t) => t.toLowerCase().includes(q))
-      );
-    }
+    if (filters.searchQuery.trim()) result = result.filter((comic) => matchesComicSearch(comic, filters.searchQuery));
 
     if (filters.series !== "all") {
       result = result.filter((c) => c.seriesId === filters.series);
