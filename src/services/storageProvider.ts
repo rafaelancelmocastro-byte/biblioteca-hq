@@ -50,7 +50,7 @@ export class R2StorageProvider implements StorageProvider {
     await new Promise<void>((resolve, reject) => {
       const request = new XMLHttpRequest();
       request.open("PUT", uploadUrl);
-      request.timeout = 180000;
+      request.timeout = path === "comics" ? 30 * 60 * 1000 : 180000;
       request.setRequestHeader("Content-Type", contentType);
       request.upload.onprogress = (event) => { if (event.lengthComputable) onProgress?.(Math.round(event.loaded / event.total * 100)); };
       request.onload = () => request.status >= 200 && request.status < 300 ? resolve() : reject(new Error(`O R2 recusou o arquivo (HTTP ${request.status}). Verifique a conexão e tente novamente.`));

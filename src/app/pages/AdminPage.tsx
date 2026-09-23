@@ -9,11 +9,14 @@ import { BatchImport } from "../../components/admin/BatchImport";
 import { inspectPdf, makeImageThumbnail, manualPdfInspection } from "../../services/pdfImport";
 import { UsersPanel } from "../../components/admin/UsersPanel";
 import { AssetsPanel } from "../../components/admin/AssetsPanel";
-import { takeSharedPdfs } from "../../services/sharedPdfImport";
+import { clearSharedPdfs, takeSharedPdfs } from "../../services/sharedPdfImport";
+import { loadPendingImport, savePendingImport } from "../../services/pendingImport";
+import { supabase } from "../../services/supabaseClient";
 
 type Tab = "catalog" | "collections" | "users" | "status";
 const splitList = (value: string) => value.split(",").map((item) => item.trim()).filter(Boolean);
 const normalizeName = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+const mergeFiles = (files: File[]) => [...new Map(files.map((file) => [`${file.name}:${file.size}:${file.lastModified}`, file])).values()];
 const seriesPath = (series: Series, all: Series[]) => `${series.publisher} → ${series.parentSeriesId ? `${all.find((item) => item.id === series.parentSeriesId)?.title || "Coleção"} → ` : ""}${series.title}`;
 const fieldClass = "admin-field";
 type BulkField = "title" | "year" | "synopsis" | "characters" | "writers" | "pencillers" | "colorists" | "tags" | "seriesId" | "contentType" | "readingDirection";
@@ -35,6 +38,9 @@ export const AdminPage: React.FC = () => {
   const [pdfHash, setPdfHash] = useState<string | undefined>();
   const [batchPdfs, setBatchPdfs] = useState<File[]>([]);
   const [batchCovers, setBatchCovers] = useState<File[]>([]);
+  const [draftUserId, setDraftUserId] = useState("");
+  const [draftHydrated, setDraftHydrated] = useState(false);
+  const [draftSaveState, setDraftSaveState] = useState<"saving" | "saved" | "error" | "idle">("idle");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
@@ -45,6 +51,37 @@ export const AdminPage: React.FC = () => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<{ type: "comics"; ids: string[] } | { type: "series"; id: string } | null>(null);
   const [form, setForm] = useState({ title: "", seriesId: "", issue: "", year: "", pages: "", synopsis: "", writers: "", pencillers: "", colorists: "", tags: "", characters: "", volume: "", contentType: "comic", readingDirection: "ltr" });
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      const userId = (await supabase?.auth.getSession())?.data.session?.user.id;
+      if (!active) return;
+      if (!userId) { setDraftHydrated(true); return; }
+      try {
+        const saved = await loadPendingImport<typeof form>(userId);
+        if (!active) return;
+        if (saved) {
+          setPdf(saved.pdf); setBatchPdfs(saved.batchPdfs); setCover(saved.cover); setBatchCovers(saved.batchCovers);
+          const recentForm = localStorage.getItem(`biblioteca-hq-import-form:${userId}`);
+          setForm(recentForm ? JSON.parse(recentForm) : saved.form);
+          setNotice(`${saved.batchPdfs.length + (saved.pdf ? 1 : 0)} PDF(s) pendente(s) recuperado(s) neste dispositivo.`);
+        }
+      } catch { setNotice("Não foi possível recuperar o rascunho local neste dispositivo."); }
+      setDraftUserId(userId);
+      setDraftHydrated(true);
+    })();
+    return () => { active = false; };
+  }, []);
+  useEffect(() => {
+    if (!draftHydrated || !draftUserId) return;
+    const draft = pdf || batchPdfs.length || cover || batchCovers.length ? { pdf, batchPdfs, cover, batchCovers, form, savedAt: Date.now() } : null;
+    let active = true;
+    setDraftSaveState(draft ? "saving" : "idle");
+    void savePendingImport(draftUserId, draft).then(() => { if (active && draft) setDraftSaveState("saved"); }).catch(() => { if (active) { setDraftSaveState("error"); feedback("O dispositivo não conseguiu guardar a fila localmente. Mantenha esta tela aberta até publicar.", "error"); } });
+    if (!draft) localStorage.removeItem(`biblioteca-hq-import-form:${draftUserId}`);
+    return () => { active = false; };
+  }, [draftHydrated, draftUserId, pdf, batchPdfs, cover, batchCovers]);
+  useEffect(() => { if (draftUserId && (pdf || batchPdfs.length)) localStorage.setItem(`biblioteca-hq-import-form:${draftUserId}`, JSON.stringify(form)); }, [draftUserId, form, pdf, batchPdfs.length]);
   const [seriesForm, setSeriesForm] = useState({ id: "", kind: "collection", parentSeriesId: "", title: "", publisher: "", startYear: "", endYear: "", expected: "", description: "", coverKey: "" });
   const [managerSearch, setManagerSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -74,7 +111,7 @@ export const AdminPage: React.FC = () => {
   const totalMb = useMemo(() => allComics.reduce((sum, item) => sum + item.fileSizeMb, 0), [allComics]);
   const totalPages = useMemo(() => allComics.reduce((sum, item) => sum + item.totalPages, 0), [allComics]);
   const resetComicForm = () => {
-    setEditing(null); setPdf(null); setCover(null); setCoverThumbnail(null); setPdfHash(undefined); setBatchPdfs([]); setBatchCovers([]); setNotice(""); setApplyToCollection(false);
+    setEditing(null); setPdf(null); setCover(null); setCoverThumbnail(null); setPdfHash(undefined); setNotice(""); setApplyToCollection(false);
     setForm({ title: "", seriesId: "", issue: "", year: "", pages: "", synopsis: "", writers: "", pencillers: "", colorists: "", tags: "", characters: "", volume: "", contentType: "comic", readingDirection: "ltr" });
   };
   const startEditing = (comic: Comic) => {
@@ -84,11 +121,11 @@ export const AdminPage: React.FC = () => {
   };
   const selectPdfs = async (files: File[]) => {
     if (!files.length) return;
-    if (mobilePdfPicker && !editing && files.length === 1 && (pdf || batchPdfs.length)) {
-      const next = [...batchPdfs, ...(pdf ? [pdf] : []), files[0]];
-      setBatchPdfs(next);
-      setPdf(null);
-      feedback(`${next.length} PDFs na fila. Você pode adicionar mais um ou revisar o lote.`, "info");
+    void navigator.storage?.persist?.().catch(() => {});
+    if (mobilePdfPicker && !editing) {
+      const next = mergeFiles([...batchPdfs, ...(pdf ? [pdf] : []), ...files]);
+      setBatchPdfs(next); setPdf(null);
+      feedback(`${next.length} PDF(s) na fila. Revise os dados antes de publicar.`, "info");
       return;
     }
     if (files.length > 1) { setBatchPdfs(files); setPdf(null); feedback(`${files.length} PDFs recebidos. Revise a fila abaixo antes de publicar.`, "info"); return; }
@@ -97,15 +134,6 @@ export const AdminPage: React.FC = () => {
     setPdfHash(undefined); setCoverThumbnail(null);
     feedback(`Arquivo selecionado: ${files[0].name}.`, "info");
     if (!files[0] || editing) return;
-    if (window.matchMedia("(pointer: coarse)").matches) {
-      try {
-        const meta = await manualPdfInspection(files[0]);
-        const match = [...seriesList].filter((item) => normalizeName(item.title).length > 3 && normalizeName(files[0].name).includes(normalizeName(item.title))).sort((a, b) => b.title.length - a.title.length)[0];
-        setForm((current) => ({ ...current, title: meta.title, seriesId: match?.id || "", issue: meta.issueNumber, year: meta.year, pages: "" }));
-        setNotice("PDF recebido. Complete a ficha e toque em Cadastrar e publicar para enviar.");
-      } catch (error) { feedback(error instanceof Error ? error.message : "PDF inválido.", "error"); }
-      return;
-    }
     setNotice("Analisando a primeira página e os metadados do PDF...");
     try {
       const meta = await inspectPdf(files[0]);
@@ -140,7 +168,7 @@ export const AdminPage: React.FC = () => {
   const handlePdfSelection = (event: React.FormEvent<HTMLInputElement>) => processPdfInput(event.currentTarget);
   useEffect(() => {
     const started = Number(sessionStorage.getItem("biblioteca-pdf-picker-open") || 0);
-    if (started && Date.now() - started < 120_000) feedback("A tela foi reiniciada enquanto o Android abria o PDF. Use o seletor alternativo ou Compartilhar → Biblioteca HQ.", "error");
+    if (started && Date.now() - started < 120_000) feedback("O Android reiniciou o app antes de devolver o PDF. Seus arquivos já salvos continuam na fila. Para este PDF, abra Arquivos e use Compartilhar → Biblioteca HQ.", "error");
     sessionStorage.removeItem("biblioteca-pdf-picker-open");
   }, []);
   const choosePdfWithSystemPicker = async () => {
@@ -153,16 +181,27 @@ export const AdminPage: React.FC = () => {
     } catch (error) { if ((error as Error).name !== "AbortError") feedback("O seletor alternativo não conseguiu abrir os PDFs.", "error"); }
   };
   useEffect(() => {
-    if (sharedImportLoaded.current || !new URLSearchParams(window.location.search).has("shared")) return;
+    if (!draftHydrated || sharedImportLoaded.current || !new URLSearchParams(window.location.search).has("shared")) return;
     sharedImportLoaded.current = true;
-    void takeSharedPdfs().then((files) => { if (files.length) void selectPdfs(files); else feedback("Nenhum PDF foi recebido do compartilhamento.", "error"); }).catch(() => feedback("Não foi possível ler os PDFs compartilhados.", "error"));
+    void (async () => {
+      try {
+        const files = await takeSharedPdfs();
+        if (!files.length) { feedback("Nenhum PDF foi recebido do compartilhamento.", "error"); return; }
+        const next = mergeFiles([...batchPdfs, ...(pdf ? [pdf] : []), ...files]);
+        if (!draftUserId) throw new Error("Entre como proprietário para guardar os PDFs compartilhados.");
+        await savePendingImport(draftUserId, { pdf: null, batchPdfs: next, cover, batchCovers, form, savedAt: Date.now() });
+        setBatchPdfs(next); setPdf(null);
+        await clearSharedPdfs();
+        feedback(`${files.length} PDF(s) recebidos e salvos para revisão.`, "success");
+      } catch (error) { feedback(error instanceof Error ? error.message : "Não foi possível guardar os PDFs compartilhados.", "error"); }
+    })();
     window.history.replaceState({}, "", window.location.pathname);
-  });
+  }, [draftHydrated]);
   useEffect(() => {
     const recoverPickerReturn = () => { if (document.visibilityState !== "visible") return; window.setTimeout(() => {
       if (!waitingForPdfPicker.current) return;
       if (pdfInputRef.current?.files?.length) processPdfInput(pdfInputRef.current);
-      else { waitingForPdfPicker.current = false; sessionStorage.removeItem("biblioteca-pdf-picker-open"); feedback("O Android não devolveu o PDF selecionado. Tente o seletor alternativo ou Compartilhar → Biblioteca HQ.", "error"); }
+      else { waitingForPdfPicker.current = false; sessionStorage.removeItem("biblioteca-pdf-picker-open"); feedback("O Android não devolveu este PDF ao app. Abra-o em Arquivos e use Compartilhar → Biblioteca HQ; os PDFs anteriores continuam salvos.", "error"); }
     }, 650); };
     window.addEventListener("focus", recoverPickerReturn);
     document.addEventListener("visibilitychange", recoverPickerReturn);
@@ -207,11 +246,11 @@ export const AdminPage: React.FC = () => {
     } catch (error) { feedback(error instanceof Error ? error.message : "Não foi possível salvar.", "error"); }
     finally { setBusy(false); }
   };
-  const editSeries = (series?: Series) => { setSeriesForm(series ? { id: series.id, kind: series.bannerTone === "saga" ? "saga" : "collection", parentSeriesId: series.parentSeriesId || "", title: series.title, publisher: series.publisher, startYear: String(series.startYear), endYear: series.endYear ? String(series.endYear) : "", expected: series.totalIssuesExpected ? String(series.totalIssuesExpected) : "", description: series.description, coverKey: series.coverKey || "" } : { id: "", kind: "collection", parentSeriesId: "", title: "", publisher: "", startYear: "", endYear: "", expected: "", description: "", coverKey: "" }); };
+  const editSeries = (series?: Series) => { setSeriesForm(series ? { id: series.id, kind: series.bannerTone === "saga" ? "saga" : series.bannerTone === "one_shot" ? "one_shot" : "collection", parentSeriesId: series.parentSeriesId || "", title: series.title, publisher: series.publisher, startYear: String(series.startYear), endYear: series.endYear ? String(series.endYear) : "", expected: series.totalIssuesExpected ? String(series.totalIssuesExpected) : "", description: series.description, coverKey: series.coverKey || "" } : { id: "", kind: "collection", parentSeriesId: "", title: "", publisher: "", startYear: "", endYear: "", expected: "", description: "", coverKey: "" }); };
   const submitSeries = async (event: React.FormEvent) => {
     event.preventDefault(); setBusy(true); setNotice("Salvando coleção...");
     try {
-      const savedSeriesId = await saveSeriesRecord({ id: seriesForm.id || undefined, title: seriesForm.title, publisher: seriesForm.publisher, startYear: Number(seriesForm.startYear), endYear: seriesForm.endYear ? Number(seriesForm.endYear) : undefined, totalIssuesExpected: seriesForm.expected ? Number(seriesForm.expected) : undefined, description: seriesForm.description, bannerTone: seriesForm.kind, parentSeriesId: seriesForm.kind === "saga" ? seriesForm.parentSeriesId || undefined : undefined, coverKey: seriesForm.coverKey });
+      const savedSeriesId = await saveSeriesRecord({ id: seriesForm.id || undefined, title: seriesForm.title, publisher: seriesForm.publisher, startYear: Number(seriesForm.startYear), endYear: seriesForm.endYear ? Number(seriesForm.endYear) : undefined, totalIssuesExpected: seriesForm.expected ? Number(seriesForm.expected) : undefined, description: seriesForm.description, bannerTone: seriesForm.kind, parentSeriesId: seriesForm.kind !== "collection" ? seriesForm.parentSeriesId || undefined : undefined, coverKey: seriesForm.coverKey });
       await reloadData(true); setForm((current) => ({ ...current, seriesId: savedSeriesId })); editSeries(); feedback("Coleção salva e disponível no catálogo, mesmo antes de receber edições.");
     } catch (error) { feedback(error instanceof Error ? error.message : "Não foi possível salvar a coleção.", "error"); }
     finally { setBusy(false); }
@@ -267,7 +306,7 @@ export const AdminPage: React.FC = () => {
   return <div className="streaming-page admin-studio">
     <section className="page-spotlight admin-spotlight"><div><span className="page-kicker"><Shield /> Central do proprietário</span><h1>Estúdio do acervo</h1><p>Cadastre arquivos, capas, coleções e toda a ficha editorial sem sair da Biblioteca HQ.</p></div><div className="page-metrics"><span><strong>{allComics.length}</strong> títulos</span><span><strong>{seriesList.length}</strong> agrupamentos</span><span><strong>{formatFileSize(totalMb)}</strong> no R2</span></div></section>
     <div className="studio-tabs" role="tablist"><button className={tab === "catalog" ? "active" : ""} onClick={() => setTab("catalog")}><LibraryBig /> Acervo</button><button className={tab === "collections" ? "active" : ""} onClick={() => setTab("collections")}><BookCopy /> Coleções</button><button className={tab === "users" ? "active" : ""} onClick={() => setTab("users")}><Shield /> Usuários e PIX</button><button className={tab === "status" ? "active" : ""} onClick={() => setTab("status")}><Cloud /> Infraestrutura</button></div>
-    <details className="catalog-organization-guide"><summary>Como organizar editora, coleção, saga, volume e edição</summary><div><p><strong>Editora ou selo</strong> publica a HQ, como DC Comics ou Marvel. Você informa a editora ao criar o agrupamento.</p><p><strong>Coleção</strong> é o título contínuo, como Action Comics. Cadastre-a uma vez e associe suas edições.</p><p><strong>Saga</strong> é um arco ou evento com começo e fim, como uma história que pode aparecer em várias coleções. Vincule a saga à coleção principal. Se o evento atravessar coleções, escolha a coleção mais representativa para navegação e informe as demais em Categorias / tags.</p><p><strong>Volume</strong> identifica um tomo, encadernado ou fase quando essa divisão existe na publicação. Use apenas quando o material indicar um volume.</p><p><strong>Edição</strong> é a unidade publicada no arquivo, com número, ano, páginas e capa próprios. Para um livro único, use edição 1. Exemplo: Marvel → Vingadores → Dinastia Kang → edição 1.</p><p>Ordem sugerida: crie a coleção, selecione os PDFs, aplique os dados comuns ao lote e revise número, volume, páginas e capa de cada arquivo.</p></div></details>
+    <details className="catalog-organization-guide"><summary>Como organizar editora, coleção, saga, volume e edição</summary><div><p><strong>Editora ou selo</strong> publica a HQ, como DC Comics ou Marvel. Você informa a editora ao criar o agrupamento.</p><p><strong>Coleção</strong> reúne um título contínuo ou uma franquia de leitura, como Action Comics ou Superman. Cadastre-a uma vez e associe suas edições e obras fechadas.</p><p><strong>Saga</strong> é um arco ou evento com começo e fim, como uma história que pode aparecer em várias coleções. Vincule a saga à coleção principal. Se o evento atravessar coleções, escolha a coleção mais representativa para navegação e informe as demais em Categorias / tags.</p><p><strong>Obra fechada</strong> é um encadernado ou minissérie completa em um volume. Cadastre-a como filha da coleção do personagem e associe o PDF como uma edição única.</p><p><strong>Volume</strong> identifica um tomo, encadernado ou fase quando essa divisão existe na publicação. Use apenas quando o material indicar um volume.</p><p><strong>Edição</strong> é a unidade publicada no arquivo, com número, ano, páginas e capa próprios. Para um livro único, use edição 1. Exemplo: Marvel → Vingadores → Dinastia Kang → edição 1.</p><p>Ordem sugerida: crie a coleção, selecione os PDFs, aplique os dados comuns ao lote e revise número, volume, páginas e capa de cada arquivo.</p></div></details>
     {notice && <div className="studio-notice"><CheckCircle2 /> {notice}</div>}
     {toast && <div className={`admin-toast ${toast.type}`} role={toast.type === "error" ? "alert" : "status"}>{toast.type === "error" ? <AlertCircle /> : <CheckCircle2 />}<span>{toast.message}</span><button type="button" aria-label="Fechar aviso" onClick={() => setToast(null)}><X /></button></div>}
     {tab === "catalog" && <div className="studio-grid">
@@ -291,9 +330,9 @@ export const AdminPage: React.FC = () => {
           <label>Categorias / tags<input className={fieldClass} placeholder="X-Men, mutantes, aventura" value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} /></label>
         </div>
         {editing && <label className="bulk-edit-toggle"><input type="checkbox" checked={applyToCollection} onChange={(e) => setApplyToCollection(e.target.checked)} /><div><strong>Aplicar ficha editorial a toda a coleção</strong><span>Atualiza sinopse, roteiro, arte, cores e categorias nas {allComics.filter((comic) => comic.seriesId === form.seriesId).length} edições de “{seriesList.find((series) => series.id === form.seriesId)?.title || "esta coleção"}”. Título, número, ano, páginas, PDF e capa continuam individuais.</span></div></label>}
-        <div className="upload-grid"><div className="upload-tile"><FileUp /><strong>{batchPdfs.length ? `${batchPdfs.length} PDFs selecionados` : pdf?.name || (editing ? "Substituir PDF" : mobilePdfPicker ? "Adicionar PDF à fila" : "Selecionar um ou vários PDFs")}</strong><small>{pdf ? formatFileSize(pdf.size / 1024 / 1024) : editing?.fileName || (mobilePdfPicker ? "No celular, escolha um PDF por vez; repita para formar o lote" : "Envio direto ao R2 · até 5 GB por arquivo")}</small><input ref={pdfInputRef} type="file" aria-label={editing ? "Substituir PDF" : "Selecionar PDFs"} accept=".pdf,application/pdf" multiple={!editing && !mobilePdfPicker} onClick={() => { waitingForPdfPicker.current = true; sessionStorage.setItem("biblioteca-pdf-picker-open", String(Date.now())); }} onInput={handlePdfSelection} onChange={handlePdfSelection} /></div><label className="upload-tile"><FileImage /><strong>{batchCovers.length ? `${batchCovers.length} capas selecionadas` : cover?.name || (editing ? "Substituir capa" : "Adicionar uma ou várias capas")}</strong><small>JPG, PNG ou WebP · nomes iguais aos PDFs fazem a associação automática</small><input type="file" aria-label={editing ? "Substituir capa" : "Selecionar capas"} accept="image/jpeg,image/png,image/webp" multiple={!editing} onChange={(e) => { const files = Array.from(e.currentTarget.files || []); e.currentTarget.value = ""; if (files.length > 1) { setBatchCovers(files); setCover(null); } else { setCover(files[0] || null); setCoverThumbnail(null); setBatchCovers([]); } }} /></label></div>
-        {mobilePdfPicker && "showOpenFilePicker" in window && <button type="button" className="upload-clear" onClick={() => void choosePdfWithSystemPicker()}>Abrir seletor alternativo de PDFs</button>}
-        {mobilePdfPicker && <p className="mobile-upload-help">Se o seletor do Android voltar sem o arquivo, abra o PDF no app Arquivos e use Compartilhar → Biblioteca HQ. O arquivo entrará na mesma fila para revisão.</p>}
+        <div className="upload-grid"><div className="upload-tile"><FileUp /><strong>{batchPdfs.length ? `${batchPdfs.length} PDFs selecionados` : pdf?.name || (editing ? "Substituir PDF" : mobilePdfPicker ? "Adicionar PDF à fila" : "Selecionar um ou vários PDFs")}</strong><small>{pdf ? formatFileSize(pdf.size / 1024 / 1024) : editing?.fileName || (mobilePdfPicker ? "No celular, escolha um PDF por vez; a fila é salva neste dispositivo" : "Envio direto ao R2 · até 5 GB por arquivo")}</small><input ref={pdfInputRef} type="file" aria-label={editing ? "Substituir PDF" : "Selecionar PDFs"} accept=".pdf,application/pdf" multiple={!editing && !mobilePdfPicker} onClick={(event) => { if (mobilePdfPicker && !editing) { event.preventDefault(); window.location.assign("/mobile-upload.html"); return; } waitingForPdfPicker.current = true; sessionStorage.setItem("biblioteca-pdf-picker-open", String(Date.now())); }} onInput={handlePdfSelection} onChange={handlePdfSelection} /></div><label className="upload-tile"><FileImage /><strong>{batchCovers.length ? `${batchCovers.length} capas selecionadas` : cover?.name || (editing ? "Substituir capa" : "Adicionar uma ou várias capas")}</strong><small>JPG, PNG ou WebP · nomes iguais aos PDFs fazem a associação automática</small><input type="file" aria-label={editing ? "Substituir capa" : "Selecionar capas"} accept="image/jpeg,image/png,image/webp" multiple={!editing} onChange={(e) => { const files = Array.from(e.currentTarget.files || []); e.currentTarget.value = ""; if (files.length > 1) { setBatchCovers(files); setCover(null); } else { setCover(files[0] || null); setCoverThumbnail(null); setBatchCovers([]); } }} /></label></div>
+        {(pdf || batchPdfs.length > 0) && <p className="mobile-upload-help" role="status">{draftSaveState === "saving" ? "Salvando PDFs neste dispositivo..." : draftSaveState === "saved" ? "Fila salva neste dispositivo. Você pode sair e voltar para continuar." : draftSaveState === "error" ? "O armazenamento local falhou; não saia desta tela antes de publicar." : "Preparando rascunho..."}</p>}{mobilePdfPicker && "showOpenFilePicker" in window && <button type="button" className="upload-clear" onClick={() => void choosePdfWithSystemPicker()}>Abrir seletor alternativo de PDFs</button>}
+        {mobilePdfPicker && <p className="mobile-upload-help">A seleção abre em uma tela leve e volta para esta fila. Você também pode abrir o PDF em Arquivos e usar Compartilhar → Biblioteca HQ.</p>}
         {(pdf || batchPdfs.length > 0) && <button type="button" className="upload-clear" onClick={() => { setPdf(null); setBatchPdfs([]); setNotice("Seleção de PDFs limpa."); }}>Limpar PDFs selecionados</button>}
         {pdf && !editing && <button type="button" onClick={() => { setBatchPdfs([pdf]); setPdf(null); }}>Revisar como lote (opções para duplicados)</button>}
         {batchPdfs.length === 0 && <button className="studio-primary" disabled={busy}><UploadCloud /> {busy ? "Publicando..." : editing ? "Salvar alterações" : "Cadastrar e publicar"}</button>}
@@ -317,8 +356,8 @@ export const AdminPage: React.FC = () => {
       </section>
     </div>}
     {tab === "collections" && <div className="studio-grid collections-grid">
-      <form className="studio-panel" onSubmit={submitSeries}><div className="studio-panel-title"><div><span>{seriesForm.id ? "Editar agrupamento" : "Novo agrupamento"}</span><h2>Coleções e sagas</h2></div>{seriesForm.id && <button type="button" onClick={() => editSeries()}><Plus /></button>}</div><div className="form-grid"><label>Tipo<select className={fieldClass} value={seriesForm.kind} onChange={(e) => setSeriesForm({ ...seriesForm, kind: e.target.value })}><option value="collection">Coleção</option><option value="saga">Saga / arco narrativo</option></select></label><label>Nome<input className={fieldClass} value={seriesForm.title} onChange={(e) => setSeriesForm({ ...seriesForm, title: e.target.value })} required /></label><label>Editora<input className={fieldClass} value={seriesForm.publisher} onChange={(e) => setSeriesForm({ ...seriesForm, publisher: e.target.value })} required /></label>{seriesForm.kind === "saga" && <label>Coleção principal<select className={fieldClass} value={seriesForm.parentSeriesId} onChange={(e) => setSeriesForm({ ...seriesForm, parentSeriesId: e.target.value, publisher: seriesList.find((item) => item.id === e.target.value)?.publisher || seriesForm.publisher })}><option value="">Saga independente (sem coleção)</option>{seriesList.filter((item) => item.bannerTone !== "saga" && item.id !== seriesForm.id).map((item) => <option key={item.id} value={item.id}>{item.publisher} → {item.title}</option>)}</select></label>}<label>Ano inicial<input className={fieldClass} type="number" value={seriesForm.startYear} onChange={(e) => setSeriesForm({ ...seriesForm, startYear: e.target.value })} required /></label><label>Ano final<input className={fieldClass} type="number" value={seriesForm.endYear} onChange={(e) => setSeriesForm({ ...seriesForm, endYear: e.target.value })} /></label><label>Edições previstas<input className={fieldClass} type="number" value={seriesForm.expected} onChange={(e) => setSeriesForm({ ...seriesForm, expected: e.target.value })} /></label><label className="span-2">Descrição<textarea className={fieldClass} rows={5} value={seriesForm.description} onChange={(e) => setSeriesForm({ ...seriesForm, description: e.target.value })} /></label></div><button className="studio-primary" disabled={busy}><Save /> Salvar {seriesForm.kind === "saga" ? "saga" : "coleção"}</button></form>
-      <section className="studio-panel catalog-manager"><div className="studio-panel-title"><div><span>Organização</span><h2>Coleções e sagas cadastradas</h2></div><strong>{seriesList.length}</strong></div><div className="collection-list">{seriesList.map((series) => <div key={series.id} className="admin-series-row"><button type="button" onClick={() => editSeries(series)}><div><strong>{series.title}</strong><span>{series.bannerTone === "saga" ? "Saga" : "Coleção"} · {series.publisher}{series.parentSeriesId ? ` → ${seriesList.find((item) => item.id === series.parentSeriesId)?.title || "Coleção"}` : ""} · {series.startYear}</span><small>{allComics.filter((comic) => comic.seriesId === series.id).length} edições</small></div><Edit3 /></button><button type="button" className="admin-delete-action" onClick={() => setDeleteTarget({ type: "series", id: series.id })}>Excluir</button></div>)}</div></section>
+      <form className="studio-panel" onSubmit={submitSeries}><div className="studio-panel-title"><div><span>{seriesForm.id ? "Editar agrupamento" : "Novo agrupamento"}</span><h2>Coleções e sagas</h2></div>{seriesForm.id && <button type="button" onClick={() => editSeries()}><Plus /></button>}</div><div className="form-grid"><label>Tipo<select className={fieldClass} value={seriesForm.kind} onChange={(e) => setSeriesForm({ ...seriesForm, kind: e.target.value })}><option value="collection">Coleção</option><option value="saga">Saga / arco narrativo</option><option value="one_shot">Obra fechada / volume único</option></select></label><label>Nome<input className={fieldClass} value={seriesForm.title} onChange={(e) => setSeriesForm({ ...seriesForm, title: e.target.value })} required /></label><label>Editora<input className={fieldClass} value={seriesForm.publisher} onChange={(e) => setSeriesForm({ ...seriesForm, publisher: e.target.value })} required /></label>{seriesForm.kind !== "collection" && <label>Coleção principal<select className={fieldClass} required={seriesForm.kind === "one_shot"} value={seriesForm.parentSeriesId} onChange={(e) => setSeriesForm({ ...seriesForm, parentSeriesId: e.target.value, publisher: seriesList.find((item) => item.id === e.target.value)?.publisher || seriesForm.publisher })}><option value="">Sem coleção principal</option>{seriesList.filter((item) => item.bannerTone !== "saga" && item.bannerTone !== "one_shot" && item.id !== seriesForm.id).map((item) => <option key={item.id} value={item.id}>{item.publisher} → {item.title}</option>)}</select></label>}<label>Ano inicial<input className={fieldClass} type="number" value={seriesForm.startYear} onChange={(e) => setSeriesForm({ ...seriesForm, startYear: e.target.value })} required /></label><label>Ano final<input className={fieldClass} type="number" value={seriesForm.endYear} onChange={(e) => setSeriesForm({ ...seriesForm, endYear: e.target.value })} /></label><label>Edições previstas<input className={fieldClass} type="number" value={seriesForm.expected} onChange={(e) => setSeriesForm({ ...seriesForm, expected: e.target.value })} /></label><label className="span-2">Descrição<textarea className={fieldClass} rows={5} value={seriesForm.description} onChange={(e) => setSeriesForm({ ...seriesForm, description: e.target.value })} /></label></div><button className="studio-primary" disabled={busy}><Save /> Salvar {seriesForm.kind === "saga" ? "saga" : seriesForm.kind === "one_shot" ? "obra fechada" : "coleção"}</button></form>
+      <section className="studio-panel catalog-manager"><div className="studio-panel-title"><div><span>Organização</span><h2>Coleções e sagas cadastradas</h2></div><strong>{seriesList.length}</strong></div><div className="collection-list">{seriesList.map((series) => <div key={series.id} className="admin-series-row"><button type="button" onClick={() => editSeries(series)}><div><strong>{series.title}</strong><span>{series.bannerTone === "saga" ? "Saga" : series.bannerTone === "one_shot" ? "Obra fechada" : "Coleção"} · {series.publisher}{series.parentSeriesId ? ` → ${seriesList.find((item) => item.id === series.parentSeriesId)?.title || "Coleção"}` : ""} · {series.startYear}</span><small>{allComics.filter((comic) => comic.seriesId === series.id).length} edições</small></div><Edit3 /></button><button type="button" className="admin-delete-action" onClick={() => setDeleteTarget({ type: "series", id: series.id })}>Excluir</button></div>)}</div></section>
     </div>}
     {tab === "collections" && <AssetsPanel seriesList={seriesList} onSaved={() => reloadData(true)} />}
     {tab === "users" && <UsersPanel />}
