@@ -68,6 +68,16 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
   const [selectedComic, setSelectedComic] = useState<Comic | null>(null);
   const [comicForProgress, setComicForProgress] = useState<Comic | null>(null);
   const [featuredIndex, setFeaturedIndex] = useState(0);
+  const [catalogPage, setCatalogPage] = useState(1);
+  const catalogPageSize = 24;
+  const catalogPageCount = Math.max(1, Math.ceil(filteredComics.length / catalogPageSize));
+  const currentCatalogPage = Math.min(catalogPage, catalogPageCount);
+  const visibleComics = filteredComics.slice((currentCatalogPage - 1) * catalogPageSize, currentCatalogPage * catalogPageSize);
+  React.useEffect(() => setCatalogPage(1), [filters]);
+  const goToCatalogPage = (page: number) => {
+    setCatalogPage(page);
+    window.requestAnimationFrame(() => document.getElementById("catalogo-completo")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
   const featuredCandidates = React.useMemo(() => {
     const preferred = allComics.filter((comic) => comic.isFavorite || comic.progress?.status === "reading");
     const pool = [...preferred, ...recentlyAddedComics, ...allComics];
@@ -154,7 +164,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
       )}
 
       {/* Seção 3: Toda a Biblioteca com Filtros e Ordenação */}
-      <div>
+      <div id="catalogo-completo">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-xl font-extrabold text-white tracking-tight">
@@ -184,7 +194,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
 
         {/* Grid de Capas */}
         <LibraryGrid
-          comics={filteredComics}
+          comics={visibleComics}
           onOpenReader={onOpenReader}
           onToggleFavorite={toggleFavorite}
           onOpenDetails={(comic) => setSelectedComic(comic)}
@@ -194,6 +204,14 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
           density={gridDensity}
           onResetFilters={resetFilters}
         />
+        {filteredComics.length > catalogPageSize && <nav className="catalog-pagination" aria-label="Páginas do catálogo">
+          <span>Mostrando {(currentCatalogPage - 1) * catalogPageSize + 1}–{Math.min(currentCatalogPage * catalogPageSize, filteredComics.length)} de {filteredComics.length}</span>
+          <div className="catalog-pagination-actions">
+            <button type="button" disabled={currentCatalogPage === 1} onClick={() => goToCatalogPage(currentCatalogPage - 1)}>Anterior</button>
+            <span aria-live="polite">Página {currentCatalogPage} de {catalogPageCount}</span>
+            <button type="button" disabled={currentCatalogPage === catalogPageCount} onClick={() => goToCatalogPage(currentCatalogPage + 1)}>Próxima</button>
+          </div>
+        </nav>}
       </div>
 
       {/* Modal de Detalhes da HQ */}

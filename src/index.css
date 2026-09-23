@@ -352,6 +352,12 @@ button, input, select { font: inherit; }
 .catalog-summary svg { width: 1rem; color: #5f7896; }
 .catalog-summary strong { color: #d6dadf; }
 .catalog-summary-dot { width: .2rem; height: .2rem; border-radius: 50%; background: #43474d; }
+.catalog-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-top: 1.5rem; color: #a5a9b0; font-size: .8rem; }
+.catalog-pagination-actions { display: flex; align-items: center; gap: .75rem; }
+.catalog-pagination-actions button { min-height: 2.5rem; padding: .5rem .9rem; border: 1px solid var(--line); border-radius: .7rem; color: #e8e9eb; background: #1c1e21; }
+.catalog-pagination-actions button:hover:not(:disabled) { background: #2a2d31; }
+.catalog-pagination-actions button:disabled { opacity: .4; cursor: not-allowed; }
+@media (max-width: 640px) { .catalog-pagination { justify-content: center; text-align: center; }.catalog-pagination-actions { width: 100%; justify-content: space-between; gap: .35rem; }.catalog-pagination-actions button { padding-inline: .7rem; } }
 .streaming-heading { color: #ebeff4; font-size: 1.08rem; font-weight: 760; letter-spacing: -.02em; }
 .streaming-rail { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(9.5rem, 12.5rem); gap: 1rem; overflow-x: auto; padding: .35rem .25rem 1rem; scroll-snap-type: x proximity; }
 .streaming-rail > * { scroll-snap-align: start; }
