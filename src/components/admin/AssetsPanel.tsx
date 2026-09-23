@@ -44,7 +44,7 @@ export function AssetsPanel({ seriesList, onSaved }: { seriesList: Series[]; onS
   const request = async (body: Record<string, unknown>) => {
     const session = (await supabase?.auth.getSession())?.data.session;
     if (!session) throw new Error("Sua sessão expirou. Entre novamente.");
-    const response = await fetch("/api/publishers/manage", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` }, body: JSON.stringify(body) });
+    const response = await fetch("/api/series/upsert", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` }, body: JSON.stringify({ ...body, publisherAction: body.action }) });
     const result = await response.json().catch(() => null);
     if (!response.ok) throw new Error(result?.error || "Não foi possível salvar a editora.");
     return result;

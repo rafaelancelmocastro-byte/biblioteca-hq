@@ -1,8 +1,8 @@
 import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { createClient } from "@supabase/supabase-js";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { requireOwner } from "../_lib/auth.js";
-import { createR2Client, getR2Config } from "../_lib/r2.js";
+import { requireOwner } from "./auth.js";
+import { createR2Client, getR2Config } from "./r2.js";
 
 const validName = (value: unknown): value is string => typeof value === "string" && value.trim().length > 0 && value.trim().length <= 100;
 const validLogo = (value: unknown): value is string => typeof value === "string" && (value === "" || /^covers\/[a-f0-9-]+\.(?:jpe?g|png|webp)$/i.test(value));
@@ -10,7 +10,7 @@ const validLogo = (value: unknown): value is string => typeof value === "string"
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") { res.setHeader("Allow", "POST"); return res.status(405).json({ error: "Method Not Allowed" }); }
   if (!(await requireOwner(req, res))) return;
-  const { action, originalName, name, logoKey } = req.body ?? {};
+  const { publisherAction: action, originalName, name, logoKey } = req.body ?? {};
   if (!["create", "update", "delete"].includes(action) || (action !== "create" && !validName(originalName)) || (action !== "delete" && (!validName(name) || !validLogo(logoKey)))) return res.status(400).json({ error: "Dados da editora inválidos." });
   const url = process.env.VITE_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;

@@ -1,8 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { requireOwner } from "../_lib/auth.js";
+import managePublisher from "../_lib/publisherManagement.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.body?.publisherAction) return managePublisher(req, res);
   if (req.method !== "POST") { res.setHeader("Allow", "POST"); return res.status(405).json({ error: "Method Not Allowed" }); }
   if (!(await requireOwner(req, res))) return;
   const body = req.body ?? {};
