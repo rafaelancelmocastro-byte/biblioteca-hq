@@ -111,6 +111,7 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, pdfData
   const renderTaskRef = useRef<RenderTask | null>(null);
   const secondRenderTaskRef = useRef<RenderTask | null>(null);
   const didSwipeRef = useRef(false);
+  const lastWheelTurnRef = useRef(0);
   const pointersRef = useRef(new Map<number, { x: number; y: number }>());
   const pinchRef = useRef<{ distance: number; zoom: number } | null>(null);
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -314,15 +315,20 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, pdfData
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (["INPUT", "TEXTAREA", "SELECT"].includes((event.target as HTMLElement)?.tagName)) return;
-      if (event.key === "ArrowLeft") readingDirection === "rtl" ? next() : previous();
-      if (event.key === "ArrowRight") readingDirection === "rtl" ? previous() : next();
+      if (readerMode === "page") {
+        if (event.key === "ArrowDown") { event.preventDefault(); next(); }
+        if (event.key === "ArrowUp") { event.preventDefault(); previous(); }
+      } else {
+        if (event.key === "ArrowLeft") readingDirection === "rtl" ? next() : previous();
+        if (event.key === "ArrowRight") readingDirection === "rtl" ? previous() : next();
+      }
       if (event.key === "+" || event.key === "=") changeZoom(zoom + 0.1);
       if (event.key === "-") changeZoom(zoom - 0.1);
       if (event.key === "0") changeZoom(1);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [changeZoom, next, previous, readingDirection, zoom]);
+  }, [changeZoom, next, previous, readerMode, readingDirection, zoom]);
 
   useEffect(() => {
     const onFullscreenChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
@@ -378,7 +384,10 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, pdfData
     if (start && pointersRef.current.size === 1 && zoom <= 1.05 && readerMode !== "continuous") {
       const deltaX = event.clientX - start.x;
       const deltaY = event.clientY - start.y;
-      if (Math.abs(deltaX) > 70 && Math.abs(deltaX) > Math.abs(deltaY)) {
+      if (readerMode === "page" && Math.abs(deltaY) > 65 && Math.abs(deltaY) > Math.abs(deltaX)) {
+        didSwipeRef.current = true;
+        if (deltaY < 0) next(); else previous();
+      } else if (readerMode !== "page" && Math.abs(deltaX) > 70 && Math.abs(deltaX) > Math.abs(deltaY)) {
         didSwipeRef.current = true;
         if (deltaX < 0) readingDirection === "rtl" ? previous() : next();
         else readingDirection === "rtl" ? next() : previous();
@@ -434,7 +443,7 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, pdfData
             <span>Modo</span>
             <div className="reader-mode-options">
               <button onClick={() => setReaderMode("continuous")} className={readerMode === "continuous" ? "active" : ""} title="Rolagem vertical contínua"><Rows3 /> Vertical</button>
-              <button onClick={() => setReaderMode("page")} className={readerMode === "page" ? "active" : ""} title="Uma página por vez"><Square /> Página</button>
+              <button onClick={() => setReaderMode("page")} className={readerMode === "page" ? "active" : ""} title="Uma página por vez; deslize para cima ou para baixo"><Square /> Página vertical</button>
               <button onClick={() => setReaderMode("horizontal")} className={readerMode === "horizontal" ? "active" : ""} title="Folhear horizontalmente"><GalleryHorizontal /> Horizontal</button>
               <button onClick={() => setReaderMode("spread")} className={readerMode === "spread" ? "active" : ""} title="Páginas duplas como livro"><BookOpen /> Dupla</button>
             </div>
@@ -455,14 +464,28 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, pdfData
           if (didSwipeRef.current) { didSwipeRef.current = false; return; }
           if (readerMode === "continuous" || zoom > 1.05 || event.detail === 0) return;
           const rect = event.currentTarget.getBoundingClientRect();
-          const ratio = (event.clientX - rect.left) / rect.width;
-          if (ratio < .24) readingDirection === "rtl" ? next() : previous();
-          if (ratio > .76) readingDirection === "rtl" ? previous() : next();
+          if (readerMode === "page") {
+            const ratio = (event.clientY - rect.top) / rect.height;
+            if (ratio < .2) previous();
+            if (ratio > .8) next();
+          } else {
+            const ratio = (event.clientX - rect.left) / rect.width;
+            if (ratio < .24) readingDirection === "rtl" ? next() : previous();
+            if (ratio > .76) readingDirection === "rtl" ? previous() : next();
+          }
         }}
         onWheel={(event) => {
-          if (!event.ctrlKey) return;
+          if (event.ctrlKey) { event.preventDefault(); changeZoom(zoom + (event.deltaY < 0 ? 0.1 : -0.1), event.clientX, event.clientY); return; }
+          if (zoom > 1.05 || readerMode === "continuous" || Math.abs(event.deltaY) < 12 && Math.abs(event.deltaX) < 12) return;
+          const axis = readerMode === "page" ? event.deltaY : event.deltaX;
+          const crossAxis = readerMode === "page" ? event.deltaX : event.deltaY;
+          if (Math.abs(axis) <= Math.abs(crossAxis)) return;
           event.preventDefault();
-          changeZoom(zoom + (event.deltaY < 0 ? 0.1 : -0.1), event.clientX, event.clientY);
+          if (Date.now() - lastWheelTurnRef.current < 420) return;
+          lastWheelTurnRef.current = Date.now();
+          if (readerMode === "page") { if (axis > 0) next(); else previous(); }
+          else if (axis > 0) readingDirection === "rtl" ? previous() : next();
+          else readingDirection === "rtl" ? next() : previous();
         }}
       >
         {readerMode === "continuous" && pdf ? (

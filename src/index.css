@@ -119,7 +119,8 @@ button, input, select { font: inherit; }
   letter-spacing: -.055em;
   text-wrap: balance;
 }
-.catalog-hero-copy { max-width: 38rem; margin: 1.35rem 0 0; color: #c2bbb4; font-size: clamp(.82rem, 1.4vw, 1rem); line-height: 1.65; }
+.catalog-hero-copy { max-width: 38rem; min-width: 0; margin: 1.1rem 0 0; color: #c2bbb4; font-size: clamp(.78rem, 1.2vw, .92rem); line-height: 1.5; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.comic-detail-synopsis { max-height: min(14rem, 36dvh); overflow-y: auto; overflow-wrap: anywhere; font-size: clamp(.76rem, 1.25vw, .88rem); line-height: 1.55; scrollbar-width: thin; }
 .catalog-hero-meta { display: flex; align-items: center; flex-wrap: wrap; gap: .55rem; margin-top: 1rem; color: #8d9585; font-size: .72rem; }
 .catalog-hero-meta i { width: .22rem; height: .22rem; border-radius: 50%; background: #b35532; }
 .catalog-hero-actions { display: flex; gap: .7rem; margin-top: 1.7rem; }
@@ -230,6 +231,15 @@ button, input, select { font: inherit; }
 .batch-review-header div { display: grid; gap: .25rem; }
 .batch-review-header span, .batch-review-item p { color: #a9a09a; font-size: .82rem; }
 .batch-review-header button, .batch-duplicate-actions button { border: 1px solid #57443a; border-radius: .6rem; padding: .5rem .8rem; color: #f2e8df; }
+.batch-shared-panel { display: grid; gap: .8rem; padding: 1rem; margin-bottom: 1rem; border: 1px solid rgba(255,213,33,.3); border-radius: .8rem; background: rgba(255,213,33,.045); }
+.batch-shared-panel > p { margin: 0; color: #bdb0a6; font-size: .78rem; }
+.batch-shared-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: .7rem; }
+.batch-shared-grid label { display: grid; align-content: start; gap: .35rem; min-width: 0; color: #ded1c5; font-size: .75rem; }
+.batch-shared-grid label.wide { grid-column: 1 / -1; }
+.batch-shared-grid label span { display: flex; align-items: center; gap: .4rem; }
+.batch-shared-grid input[type="checkbox"] { width: 1rem; height: 1rem; accent-color: #ffd521; }
+.batch-shared-grid input:not([type="checkbox"]), .batch-shared-grid select, .batch-shared-grid textarea { width: 100%; min-width: 0; padding: .55rem; border: 1px solid #5d4b39; border-radius: .5rem; background: #211b18; color: white; }
+.batch-shared-panel .studio-primary { justify-self: start; }
 .batch-review-item { margin: .6rem 0; border: 1px solid rgba(255,255,255,.1); border-radius: .7rem; padding: .8rem; }
 .batch-review-item summary { display: flex; justify-content: space-between; gap: .7rem; cursor: pointer; overflow-wrap: anywhere; }
 .batch-status { flex: none; font-size: .72rem; text-transform: uppercase; color: #f3b759; }
@@ -344,6 +354,8 @@ button, input, select { font: inherit; }
 .reader-stage.reader-stage-zoomed:active { cursor: grabbing; }
 .reader-stage.mode-continuous { touch-action: pan-y; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scrollbar-gutter: stable; }
 .reader-stage.mode-continuous.reader-stage-zoomed { touch-action: none; }
+.reader-stage.mode-page:not(.reader-stage-zoomed) { overflow: hidden; touch-action: none; }
+.reader-stage.mode-horizontal:not(.reader-stage-zoomed), .reader-stage.mode-spread:not(.reader-stage-zoomed) { overflow: hidden; touch-action: none; }
 .reader-page { position: relative; flex: 0 0 auto; overflow: hidden; border-radius: .45rem; background: white; box-shadow: 0 30px 80px rgba(0,0,0,.65); transition: filter .2s ease; }
 .mode-page .reader-page { transform-origin: center bottom; animation: page-lift .32s cubic-bezier(.2,.75,.25,1); }
 .mode-horizontal .reader-page.turn-next { transform-origin: left center; animation: page-turn-next .38s cubic-bezier(.2,.75,.25,1); }
@@ -394,7 +406,8 @@ button, input, select { font: inherit; }
   .catalog-hero-content { width: 100%; min-height: 31rem; justify-content: flex-end; padding: 1.4rem; }
   .catalog-eyebrow { margin-bottom: 1rem; }
   .catalog-hero h1 { max-width: 11ch; font-size: clamp(2.3rem, 12vw, 3.6rem); }
-  .catalog-hero-copy { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .catalog-hero-copy { font-size: .78rem; line-height: 1.45; -webkit-line-clamp: 2; }
+  .comic-detail-synopsis { max-height: min(11rem, 28dvh); font-size: .78rem; }
   .catalog-cover-float { display: none; }
   .catalog-summary { overflow: hidden; white-space: nowrap; }
   .streaming-rail { grid-auto-columns: minmax(8.7rem, 42vw); margin-right: -1rem; }

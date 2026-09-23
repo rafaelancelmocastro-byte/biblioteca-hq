@@ -16,6 +16,7 @@ export function useAuth() {
     }
 
     let mounted = true;
+    let currentUserId = "";
     const loadProfile = async (userId: string) => {
       let data: AccessProfile | null = null;
       try {
@@ -30,18 +31,27 @@ export function useAuth() {
     supabase.auth.getSession().then(async ({ data }) => {
       if (!mounted) return;
       setSession(data.session);
-      if (data.session) await loadProfile(data.session.user.id);
+      currentUserId = data.session?.user.id || "";
+      if (currentUserId) await loadProfile(currentUserId);
       setIsLoading(false);
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
-      if (nextSession) { setIsLoading(true); void loadProfile(nextSession.user.id).finally(() => { if (mounted) setIsLoading(false); }); }
+      currentUserId = nextSession?.user.id || "";
+      if (currentUserId) { setIsLoading(true); void loadProfile(currentUserId).finally(() => { if (mounted) setIsLoading(false); }); }
       else { setProfile(null); setIsLoading(false); }
     });
+    const refreshAccess = () => { if (currentUserId && navigator.onLine) void loadProfile(currentUserId); };
+    window.addEventListener("focus", refreshAccess);
+    window.addEventListener("online", refreshAccess);
+    const refreshTimer = window.setInterval(refreshAccess, 15000);
 
     return () => {
       mounted = false;
+      window.clearInterval(refreshTimer);
+      window.removeEventListener("focus", refreshAccess);
+      window.removeEventListener("online", refreshAccess);
       listener.subscription.unsubscribe();
     };
   }, []);

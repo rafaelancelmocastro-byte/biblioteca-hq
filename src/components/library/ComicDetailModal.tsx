@@ -182,7 +182,7 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
               <FileText className="w-3.5 h-3.5 text-amber-400" />
               Sinopse
             </h4>
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+            <p className="comic-detail-synopsis text-slate-300">
               {comic.synopsis}
             </p>
           </div>

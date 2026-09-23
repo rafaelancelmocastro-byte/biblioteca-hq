@@ -13,6 +13,9 @@ type Draft = {
   coverOverride?: File;
   existingId?: string;
 };
+type SharedField = "title" | "year" | "characters" | "writers" | "pencillers" | "colorists" | "tags" | "synopsis" | "seriesId";
+const sharedLabels: Record<SharedField, string> = { title: "Título", year: "Ano", characters: "Personagem / grupo", writers: "Roteiro", pencillers: "Arte e desenho", colorists: "Cores", tags: "Tags", synopsis: "Sinopse", seriesId: "Coleção / saga" };
+const sharedFields: SharedField[] = ["title", "year", "characters", "writers", "pencillers", "colorists", "tags", "synopsis", "seriesId"];
 
 const CoverPreview: React.FC<{ file: File; alt: string }> = ({ file, alt }) => {
   const [url, setUrl] = useState("");
@@ -43,6 +46,9 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
   const [groupYear, setGroupYear] = useState("");
   const [groupKind, setGroupKind] = useState("collection");
   const [groupError, setGroupError] = useState("");
+  const [sharedValues, setSharedValues] = useState<Record<SharedField, string>>({ title: "", year: "", characters: "", writers: "", pencillers: "", colorists: "", tags: "", synopsis: "", seriesId: "" });
+  const [sharedEnabled, setSharedEnabled] = useState<SharedField[]>([]);
+  const [sharedMessage, setSharedMessage] = useState("");
   const proposedGroup = useMemo(() => {
     const counts = new Map<string, { title: string; count: number }>();
     for (const file of files) {
@@ -89,6 +95,23 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
 
   const update = (index: number, patch: Partial<Draft>) => setDrafts((current) => current.map((draft, position) => position === index ? { ...draft, ...patch } : draft));
   const updateMeta = (index: number, key: keyof PdfInspection, value: string) => setDrafts((current) => current.map((draft, position) => position === index && draft.meta ? { ...draft, meta: { ...draft.meta, [key]: value }, status: "ready" } : draft));
+  const applyShared = () => {
+    if (!sharedEnabled.length) { setSharedMessage("Marque os campos que deseja repetir."); return; }
+    const selected = sharedEnabled.filter((field) => sharedValues[field].trim());
+    if (!selected.length) { setSharedMessage("Preencha ao menos um campo marcado."); return; }
+    const changed = drafts.filter((draft) => draft.meta && !["published", "uploading", "cancelled"].includes(draft.status)).length;
+    setDrafts((current) => current.map((draft) => {
+      if (!draft.meta || ["published", "uploading", "cancelled"].includes(draft.status)) return draft;
+      const meta = { ...draft.meta };
+      let seriesId = draft.seriesId;
+      for (const field of selected) {
+        if (field === "seriesId") seriesId = sharedValues.seriesId;
+        else meta[field] = sharedValues[field];
+      }
+      return { ...draft, meta, seriesId, status: "ready", message: "Campos comuns aplicados. Confira a ficha individual antes de publicar." };
+    }));
+    setSharedMessage(`Campos comuns aplicados às ${changed} fichas disponíveis. Cada arquivo ainda pode ser editado abaixo.`);
+  };
 
   const publish = async (forceIndex?: number, replaceExisting = false, metadataOnly = false) => {
     setPublishing(true);
@@ -140,6 +163,7 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
 
   return <section className="batch-review" aria-label="Revisão da importação em lote">
     <div className="batch-review-header"><div><strong>Revisar lote</strong><span>Cada PDF mantém sua própria ficha. Campos sem evidência ficam vazios.</span></div><button type="button" onClick={onClear} disabled={publishing}>Fechar fila</button></div>
+    <div className="batch-shared-panel"><strong>Dados comuns a todos os PDFs desta fila</strong><p>Marque somente o que se repete. O restante, como número da edição, páginas e capa, continua individual.</p><div className="batch-shared-grid">{sharedFields.map((field) => <label key={field} className={field === "synopsis" ? "wide" : ""}><span><input type="checkbox" checked={sharedEnabled.includes(field)} onChange={(event) => setSharedEnabled((current) => event.target.checked ? [...current, field] : current.filter((item) => item !== field))} /> Aplicar {sharedLabels[field]} a todos</span>{field === "seriesId" ? <select value={sharedValues.seriesId} onChange={(event) => setSharedValues((current) => ({ ...current, seriesId: event.target.value }))}><option value="">Selecione a coleção</option>{series.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select> : field === "synopsis" ? <textarea rows={2} value={sharedValues.synopsis} onChange={(event) => setSharedValues((current) => ({ ...current, synopsis: event.target.value }))} /> : <input type={field === "year" ? "number" : "text"} min={field === "year" ? 1800 : undefined} max={field === "year" ? 2200 : undefined} value={sharedValues[field]} onChange={(event) => setSharedValues((current) => ({ ...current, [field]: event.target.value }))} />}</label>)}</div><button type="button" className="studio-primary" disabled={publishing || drafts.some((draft) => draft.status === "analyzing")} onClick={applyShared}>Aplicar campos marcados à fila</button>{sharedMessage && <p role="status">{sharedMessage}</p>}</div>
     {proposedGroup && <div className="batch-group-suggestion"><strong>{proposedGroup.count} arquivos sugerem a coleção “{proposedGroup.title}”</strong><span>Confirme os dados editoriais antes de criar; o personagem sozinho não define uma coleção.</span><div><label>Editora<input value={groupPublisher} onChange={(event) => setGroupPublisher(event.target.value)} /></label><label>Ano inicial<input type="number" min="1800" max="2200" value={groupYear} onChange={(event) => setGroupYear(event.target.value)} /></label><label>Tipo<select value={groupKind} onChange={(event) => setGroupKind(event.target.value)}><option value="collection">Coleção</option><option value="saga">Saga</option></select></label><button type="button" onClick={() => void createSuggestedGroup()} disabled={publishing}>Criar agrupamento e associar</button></div>{groupError && <p role="alert">{groupError}</p>}</div>}
     {drafts.map((draft, index) => <details key={`${draft.file.name}-${draft.file.lastModified}`} className="batch-review-item" open={index === 0}>
       <summary><strong>{draft.file.name}</strong><span className={`batch-status ${draft.status}`}>{draft.status === "analyzing" ? "Analisando" : draft.status === "ready" ? "Revisar" : draft.status === "uploading" ? "Enviando" : draft.status === "published" ? "Publicado" : draft.status === "incomplete" ? "Incompleto" : draft.status === "duplicate" ? "Possível duplicado" : draft.status === "cancelled" ? "Cancelado" : "Erro"}</span></summary>
