@@ -36,6 +36,9 @@ export async function repairComicCover(req: VercelRequest, res: VercelResponse) 
           return copy;
         };
       }
+      // Vercel traces only explicit imports; the PDF.js fake worker's computed
+      // import is otherwise omitted from the function bundle.
+      await import("pdfjs-dist/legacy/build/pdf.worker.mjs");
       const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
       const task = getDocument({ data: bytes, useSystemFonts: true });
       let full: Buffer, thumb: Buffer;
