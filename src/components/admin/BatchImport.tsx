@@ -82,7 +82,7 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
   const proposedGroup = useMemo(() => {
     const counts = new Map<string, { title: string; count: number }>();
     for (const file of files) {
-      const title = file.name.replace(/\.(pdf|cbr|epub|azw3)$/i, "").replace(/(?:\s*[#№]\s*\d+|\s+(?:edi[çc][ãa]o|issue)\s*\d+|\s+\d{1,4})(?:\s+(?:18|19|20)\d{2})?$/i, "").trim();
+      const title = file.name.replace(/\.(pdf|cbr|cbz|epub|azw3)$/i, "").replace(/(?:\s*[#№]\s*\d+|\s+(?:edi[çc][ãa]o|issue)\s*\d+|\s+\d{1,4})(?:\s+(?:18|19|20)\d{2})?$/i, "").trim();
       const key = normalize(title);
       if (key.length < 6 || ["superman", "batman", "vingadores", "xmen", "homemaranha", "ligadajustica"].includes(key)) continue;
       const entry = counts.get(key);
@@ -212,10 +212,10 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
         let coverFile = draft.coverOverride || meta.cover;
         let thumbnail = !metadataOnly && draft.coverOverride ? await makeImageThumbnail(draft.coverOverride) : meta.thumbnail;
         if (!metadataOnly && !coverFile) {
-          const extracted = publicationFormat(draft.file.name) === "pdf" ? await extractPdfCover(draft.file, draft.file.name) : publicationFormat(draft.file.name) === "cbr" ? await inspectPublication(draft.file) : null;
+          const extracted = publicationFormat(draft.file.name) === "pdf" ? await extractPdfCover(draft.file, draft.file.name) : ["cbr", "cbz"].includes(publicationFormat(draft.file.name) || "") ? await inspectPublication(draft.file) : null;
           coverFile = extracted?.cover;
           thumbnail = extracted?.thumbnail;
-          if (publicationFormat(draft.file.name) === "cbr" && !coverFile) throw new Error("Não foi possível extrair a primeira imagem do CBR. Confira o arquivo antes de publicar.");
+          if (["cbr", "cbz"].includes(publicationFormat(draft.file.name) || "") && !coverFile) throw new Error("Não foi possível extrair a primeira imagem do arquivo. Confira a HQ antes de publicar.");
         }
         let lastPercent = -10;
         const uploadStartedAt = performance.now();

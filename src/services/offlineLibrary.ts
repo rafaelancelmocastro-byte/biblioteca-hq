@@ -110,6 +110,7 @@ export async function verifyOffline(userId: string, comicId: string): Promise<nu
   const prefix = new TextDecoder().decode(bytes.subarray(0, 8));
   if (name.endsWith(".pdf") && !prefix.startsWith("%PDF-") ||
       name.endsWith(".cbr") && !prefix.startsWith("Rar!") ||
+      name.endsWith(".cbz") && !(bytes[0] === 0x50 && bytes[1] === 0x4b) ||
       name.endsWith(".epub") && !(bytes[0] === 0x50 && bytes[1] === 0x4b) ||
       name.endsWith(".azw3") && new TextDecoder().decode(bytes.subarray(60, 68)) !== "BOOKMOBI") {
     throw new Error("Arquivo offline inválido. Remova a cópia e salve novamente.");

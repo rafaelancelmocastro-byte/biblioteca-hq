@@ -25,7 +25,7 @@ self.addEventListener('fetch', (event) => {
     event.respondWith((async () => {
       try {
         const form = await request.formData();
-        const files = form.getAll('pdfs').filter((item) => item instanceof File && /\.(pdf|cbr|epub|azw3)$/i.test(item.name));
+        const files = form.getAll('pdfs').filter((item) => item instanceof File && /\.(pdf|cbr|cbz|epub|azw3)$/i.test(item.name));
         if (!files.length) return Response.redirect(new URL('/configuracoes?share_error=1', self.location.origin).href, 303);
         const db = await new Promise((resolve, reject) => {
           const open = indexedDB.open('biblioteca-hq-shared-import-v1', 1);

@@ -99,7 +99,7 @@ export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack, onOpenR
     );
   }
 
-  if (publicationFormat(comic.fileName) === "cbr") return <CbrReader comic={comic} fileUrl={pdfUrl} fileData={pdfData} onBack={onBack} onNextChapter={nextComic ? () => onOpenReader(nextComic.id) : undefined} onUpdateProgress={(id, page, total) => { void saveReadingProgress(userId, id, page, total); }} />;
+  if (["cbr", "cbz"].includes(publicationFormat(comic.fileName) || "")) return <CbrReader comic={comic} fileUrl={pdfUrl} fileData={pdfData} onBack={onBack} onNextChapter={nextComic ? () => onOpenReader(nextComic.id) : undefined} onUpdateProgress={(id, page, total) => { void saveReadingProgress(userId, id, page, total); }} />;
   if (publicationFormat(comic.fileName) && publicationFormat(comic.fileName) !== "pdf") return <PublicationReader comic={comic} fileUrl={pdfUrl} fileData={pdfData} onBack={onBack} onNextChapter={nextComic ? () => onOpenReader(nextComic.id) : undefined} onUpdateProgress={(id, page, total) => { void saveReadingProgress(userId, id, page, total); }} />;
 
   return (

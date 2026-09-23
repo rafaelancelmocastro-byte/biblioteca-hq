@@ -5,7 +5,7 @@ import { requireOwner } from "../_lib/auth.js";
 import { createR2Client, getR2Config } from "../_lib/r2.js";
 
 function isAllowedKey(value: unknown): value is string {
-  return typeof value === "string" && /^(?:comics\/[a-f0-9-]+\.(?:pdf|cbr|epub|azw3)|covers\/[a-f0-9-]+\.(?:jpeg|jpg|png|webp))$/i.test(value);
+  return typeof value === "string" && /^(?:comics\/[a-f0-9-]+\.(?:pdf|cbr|cbz|epub|azw3)|covers\/[a-f0-9-]+\.(?:jpeg|jpg|png|webp))$/i.test(value);
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

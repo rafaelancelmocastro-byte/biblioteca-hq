@@ -46,7 +46,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (
     !body.title?.trim() ||
     !body.fileName?.trim() ||
-    !/^comics\/[a-f0-9-]+\.(pdf|cbr|epub|azw3)$/i.test(body.pdfKey || "") ||
+    !/^comics\/[a-f0-9-]+\.(pdf|cbr|cbz|epub|azw3)$/i.test(body.pdfKey || "") ||
     !body.series?.id && !body.series?.title?.trim() ||
     !body.series?.publisher?.trim() ||
     !Number.isInteger(body.issueNumber) ||

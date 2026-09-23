@@ -13,9 +13,44 @@ export type PublicationBook = {
 const imagePattern = /\.(jpe?g|png|gif|webp|bmp|avif)$/i;
 
 export async function openPublicationBook(file: File): Promise<PublicationBook> {
-  if (publicationFormat(file.name) !== "cbr") {
+  const format = publicationFormat(file.name);
+  if (format !== "cbr" && format !== "cbz") {
     const { makeBook } = await import("foliate-js/view.js");
     return makeBook(file) as Promise<PublicationBook>;
+  }
+
+  if (format === "cbz") {
+    const { BlobReader, BlobWriter, ZipReader, configure } = await import("@zip.js/zip.js");
+    configure({ useWebWorkers: false });
+    const archive = new ZipReader(new BlobReader(file));
+    try {
+      const entries = (await archive.getEntries())
+        .filter((entry) => !entry.directory && imagePattern.test(entry.filename))
+        .sort((a, b) => a.filename.localeCompare(b.filename, undefined, { numeric: true }));
+      if (!entries.length) throw new Error("O CBZ não contém páginas de imagem legíveis.");
+      if (entries.some((entry) => entry.encrypted)) throw new Error("CBZ protegido por senha não pode ser lido.");
+      const names = new Map(entries.map((entry, index) => [`page-${String(index).padStart(6, "0")}.jpg`, entry]));
+      const pageBlob = (index: number) => {
+        const entry = entries[index];
+        if (!entry) throw new Error("Página não encontrada no CBZ.");
+        const extension = entry.filename.split(".").pop()?.toLowerCase();
+        const type = extension === "png" ? "image/png" : extension === "webp" ? "image/webp" : extension === "gif" ? "image/gif" : extension === "bmp" ? "image/bmp" : extension === "avif" ? "image/avif" : "image/jpeg";
+        if (!entry.getData) throw new Error("Página inválida no CBZ.");
+        return entry.getData(new BlobWriter(type));
+      };
+      const loader = {
+        entries: [...names.keys()].map((filename) => ({ filename })),
+        getSize: (name: string) => names.get(name)?.uncompressedSize || 0,
+        getComment: () => "",
+        loadBlob: (name: string) => pageBlob([...names.keys()].indexOf(name)),
+      };
+      const { makeComicBook } = await import("foliate-js/comic-book.js");
+      const book = await makeComicBook(loader, file) as PublicationBook;
+      book.getPageBlob = pageBlob;
+      const destroy = book.destroy?.bind(book);
+      book.destroy = () => { destroy?.(); void archive.close(); };
+      return book;
+    } catch (error) { await archive.close(); throw error; }
   }
 
   const { rar, entries: archiveEntries } = await unrar(file);

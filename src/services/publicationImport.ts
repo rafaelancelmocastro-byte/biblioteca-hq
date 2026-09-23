@@ -8,7 +8,7 @@ const issue = (name: string) => name.match(/(?:#|(?:edi[çc][ãa]o|issue|n[ºo.]
 
 export async function inspectPublication(file: File, lightweight = false): Promise<PdfInspection> {
   const format = publicationFormat(file.name);
-  if (!format) throw new Error("Use um arquivo PDF, CBR, EPUB ou AZW3.");
+  if (!format) throw new Error("Use um arquivo PDF, CBR, CBZ, EPUB ou AZW3.");
   if (format === "pdf") return lightweight ? manualPdfInspection(file) : inspectPdf(file);
 
   const header = new Uint8Array(await file.slice(0, 100).arrayBuffer());
@@ -21,6 +21,8 @@ export async function inspectPublication(file: File, lightweight = false): Promi
     throw new Error("EPUB inválido ou corrompido.");
   } else if (format === "cbr" && !(header[0] === 0x52 && header[1] === 0x61 && header[2] === 0x72 && header[3] === 0x21)) {
     throw new Error("CBR inválido ou corrompido.");
+  } else if (format === "cbz" && !(header[0] === 0x50 && header[1] === 0x4b)) {
+    throw new Error("CBZ inválido ou corrompido.");
   }
 
   const book = await openPublicationBook(file);
@@ -44,7 +46,7 @@ export async function inspectPublication(file: File, lightweight = false): Promi
       title, issueNumber: issue(file.name) || (["epub", "azw3"].includes(format) ? "1" : ""), year: year(file.name),
       totalPages: String(book.sections.length), writers, pencillers: "", colorists: "",
       synopsis: "", tags: "", characters: "", cover, thumbnail,
-      warning: format === "cbr" ? "Páginas encontradas no CBR. Revise título, ano e capa." : "Livro analisado. O progresso será contado por seções/capítulos, pois o número de páginas varia com o tamanho da tela.",
+      warning: format === "cbr" || format === "cbz" ? `Páginas encontradas no ${format.toUpperCase()}. Revise título, ano e capa.` : "Livro analisado. O progresso será contado por seções/capítulos, pois o número de páginas varia com o tamanho da tela.",
     };
   } finally { book.destroy?.(); }
 }

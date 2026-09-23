@@ -11,7 +11,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === "POST") return req.body?.action === "regenerate-cover" ? repairComicCover(req, res) : res.status(400).json({ error: "Ação inválida." });
   const body = req.body ?? {};
   if (body.contentType && !["comic", "graphic_novel", "manga", "manhwa", "book"].includes(body.contentType) || body.readingDirection && !["ltr", "rtl"].includes(body.readingDirection)) return res.status(400).json({ error: "Formato ou direção de leitura inválidos." });
-  if (body.pdfKey && !/^comics\/[a-f0-9-]+\.(pdf|cbr|epub|azw3)$/i.test(body.pdfKey)) return res.status(400).json({ error: "Arquivo inválido." });
+  if (body.pdfKey && !/^comics\/[a-f0-9-]+\.(pdf|cbr|cbz|epub|azw3)$/i.test(body.pdfKey)) return res.status(400).json({ error: "Arquivo inválido." });
   if (typeof body.id !== "string" || !body.title?.trim() || !body.series?.id) return res.status(400).json({ error: "Metadados inválidos." });
   const url = process.env.VITE_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;

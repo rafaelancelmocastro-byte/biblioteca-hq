@@ -5,14 +5,14 @@ import { requireOwner } from "../_lib/auth.js";
 import { createR2Client, getR2Config } from "../_lib/r2.js";
 
 const ALLOWED_FILES = {
-  comic: ["application/pdf", "application/vnd.comicbook-rar", "application/epub+zip", "application/vnd.amazon.ebook"],
+  comic: ["application/pdf", "application/vnd.comicbook-rar", "application/vnd.comicbook+zip", "application/epub+zip", "application/vnd.amazon.ebook"],
   cover: ["image/jpeg", "image/png", "image/webp"],
 } as const;
 
 type UploadPurpose = keyof typeof ALLOWED_FILES;
 
 function extensionFor(contentType: string): string {
-  return ({ "application/pdf": "pdf", "application/vnd.comicbook-rar": "cbr", "application/epub+zip": "epub", "application/vnd.amazon.ebook": "azw3" } as Record<string, string>)[contentType] || contentType.split("/")[1];
+  return ({ "application/pdf": "pdf", "application/vnd.comicbook-rar": "cbr", "application/vnd.comicbook+zip": "cbz", "application/epub+zip": "epub", "application/vnd.amazon.ebook": "azw3" } as Record<string, string>)[contentType] || contentType.split("/")[1];
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
