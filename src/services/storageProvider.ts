@@ -41,7 +41,11 @@ export class R2StorageProvider implements StorageProvider {
   }
 
   async uploadFile(file: File, path: string, onProgress?: (percent: number) => void): Promise<StorageUploadResult> {
-    const contentType = file.type || (path === "comics" ? "application/pdf" : /\.png$/i.test(file.name) ? "image/png" : /\.jpe?g$/i.test(file.name) ? "image/jpeg" : "image/webp");
+    // Mobile document pickers often report PDFs as octet-stream or x-pdf.
+    // The signed-upload endpoint requires the canonical MIME type.
+    const contentType = path === "comics" ? "application/pdf" : /\.png$/i.test(file.name) ? "image/png" : /\.jpe?g$/i.test(file.name) ? "image/jpeg" : /\.webp$/i.test(file.name) ? "image/webp" : file.type;
+    if (path === "comics" && !/\.pdf$/i.test(file.name)) throw new Error("Selecione um arquivo PDF.");
+    if (path !== "comics" && !["image/png", "image/jpeg", "image/webp"].includes(contentType)) throw new Error("Use uma capa JPG, PNG ou WebP.");
     const { uploadUrl, fileKey } = await this.createPresignedUploadUrl(file.name, contentType);
     await new Promise<void>((resolve, reject) => {
       const request = new XMLHttpRequest();

@@ -530,12 +530,13 @@ button, input, select { font: inherit; }
 .admin-field:focus { border-color: rgba(255,213,33,.55); box-shadow: 0 0 0 3px rgba(255,213,33,.07); }
 textarea.admin-field { resize: vertical; }
 .upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; margin: 1rem 0; }
-.upload-tile { min-height: 8rem; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1rem; text-align: center; border: 1px dashed rgba(255,213,33,.32); border-radius: 1rem; background: rgba(255,255,255,.025); cursor: pointer; }
+.upload-tile { position: relative; min-height: 8rem; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1rem; text-align: center; border: 1px dashed rgba(255,213,33,.32); border-radius: 1rem; background: rgba(255,255,255,.025); cursor: pointer; overflow: hidden; }
 .upload-tile:hover { border-color: var(--brand-yellow); background: rgba(255,213,33,.04); }
+.upload-tile:focus-within { outline: 2px solid var(--brand-yellow); outline-offset: 2px; }
 .upload-tile svg { width: 1.5rem; color: var(--brand-yellow); }
 .upload-tile strong { margin-top: .4rem; color: #fff; font-size: .75rem; }
 .upload-tile small { max-width: 100%; margin-top: .2rem; color: #8f8680; font-size: .62rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.upload-tile input { display: none; }
+.upload-tile input[type="file"] { position: absolute; inset: 0; display: block; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 1rem; }
 .studio-primary { min-height: 2.8rem; display: inline-flex; align-items: center; justify-content: center; gap: .55rem; width: 100%; border-radius: .8rem; background: linear-gradient(135deg,#e4262e,#ac1117); color: #fff; font-size: .76rem; font-weight: 800; box-shadow: 0 13px 30px rgba(215,25,32,.18); cursor: pointer; }
 .studio-primary:disabled { opacity: .55; cursor: wait; }
 .studio-primary svg { width: 1rem; }
@@ -651,7 +652,16 @@ body { padding-top: env(safe-area-inset-top); }
 /* Keep the publisher and collection covers inside their stage at tablet widths. */
 .collection-hub .cover-flow-card {
   width: auto;
-  height: min(calc(100% - 3rem), 24rem);
+  height: calc(100% - 4rem);
+  max-height: 22rem;
   aspect-ratio: 2 / 3;
+}
+.collection-hub { container-type: inline-size; }
+.collection-hub-info { min-width: 0; padding: .75rem .25rem .25rem; }
+.collection-hub-info > div { min-width: 0; }
+.collection-hub-info h2, .collection-hub-info p, .collection-hub-info small { overflow-wrap: anywhere; }
+@container (max-width: 38rem) {
+  .collection-hub-info { flex-direction: column; align-items: stretch; gap: 1rem; }
+  .collection-hub-info .catalog-primary-action { width: 100%; }
 }
 @media (max-width: 640px) { .app-header { backdrop-filter: blur(10px); }.app-mobile-nav { backdrop-filter: blur(12px); }.streaming-page::before { display: none; }.login-card { border-radius: 1.2rem; }.reader-settings { max-width: calc(100vw - 1rem); } }

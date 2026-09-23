@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import type { Comic, Series } from "../../types/comic";
-import { inspectPdf, makeImageThumbnail, type PdfInspection } from "../../services/pdfImport";
+import { inspectPdf, makeImageThumbnail, manualPdfInspection, type PdfInspection } from "../../services/pdfImport";
 import { checkComicDuplicate, createComicRecord, saveSeriesRecord, updateComicRecord, type ComicRegistration } from "../../services/comicAdminService";
 import { storageProvider } from "../../services/storageProvider";
 
@@ -87,7 +87,15 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
           setDrafts((current) => current.map((draft, position) => position === index ? { ...draft, meta, seriesId: exact?.id || "", coverOverride: matchedCover, status: "ready", message: meta.warning || (exact ? `Coleção “${exact.title}” sugerida pelo nome do arquivo; confirme antes de publicar.` : "Selecione a coleção; campos sem evidência permanecem vazios.") } : draft));
         } catch (error) {
           if (!active) return;
-          setDrafts((current) => current.map((draft, position) => position === index ? { ...draft, status: "error", message: error instanceof Error ? error.message : "Falha ao analisar o PDF." } : draft));
+          try {
+            if (error instanceof Error && error.message === "PDF protegido por senha.") throw error;
+            const meta = await manualPdfInspection(file);
+            if (!active) return;
+            setDrafts((current) => current.map((draft, position) => position === index ? { ...draft, meta, status: "incomplete", message: meta.warning || "Preencha os dados manualmente." } : draft));
+          } catch (fallbackError) {
+            if (!active) return;
+            setDrafts((current) => current.map((draft, position) => position === index ? { ...draft, status: "error", message: fallbackError instanceof Error ? fallbackError.message : "Falha ao analisar o PDF." } : draft));
+          }
         }
       }
     };

@@ -6,7 +6,7 @@ import { checkComicDuplicate, checkStorageStatuses, createComicRecord, deleteCom
 import type { Comic, Series } from "../../types/comic";
 import { formatFileSize } from "../../lib/formatters";
 import { BatchImport } from "../../components/admin/BatchImport";
-import { inspectPdf, makeImageThumbnail } from "../../services/pdfImport";
+import { inspectPdf, makeImageThumbnail, manualPdfInspection } from "../../services/pdfImport";
 import { UsersPanel } from "../../components/admin/UsersPanel";
 import { AssetsPanel } from "../../components/admin/AssetsPanel";
 
@@ -91,7 +91,14 @@ export const AdminPage: React.FC = () => {
       setForm((current) => ({ ...current, title: meta.title, seriesId: matchedSeries?.id || "", issue: meta.issueNumber, year: meta.year, pages: meta.totalPages, synopsis: meta.synopsis, writers: meta.writers, tags: meta.tags, characters: meta.characters }));
       if (meta.cover && !cover) setCover(meta.cover);
       setNotice(meta.warning || "Ficha extraída. Revise os campos vazios antes de publicar.");
-    } catch (error) { setNotice(error instanceof Error ? error.message : "Não foi possível analisar o PDF."); }
+    } catch (error) {
+      if (error instanceof Error && error.message === "PDF protegido por senha.") { feedback(error.message, "error"); return; }
+      try {
+        const fallback = await manualPdfInspection(files[0]);
+        setForm((current) => ({ ...current, title: fallback.title, issue: fallback.issueNumber, year: fallback.year, pages: "" }));
+        feedback(fallback.warning || "Preencha os metadados manualmente.", "info");
+      } catch (fallbackError) { feedback(fallbackError instanceof Error ? fallbackError.message : "Não foi possível ler o PDF.", "error"); }
+    }
   };
   const submitComic = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -105,7 +112,7 @@ export const AdminPage: React.FC = () => {
         if (check.code !== "UNIQUE") { feedback(`${check.message} Use “Revisar como lote” para comparar e escolher entre manter, substituir ou cancelar.`, "error"); return; }
       }
       setNotice("Enviando arquivos privados ao Cloudflare R2...");
-      const uploadedPdf = pdf ? await storageProvider.uploadFile(pdf, "comics") : null;
+      const uploadedPdf = pdf ? await storageProvider.uploadFile(pdf, "comics", (percent) => setNotice(`Enviando PDF ao R2: ${percent}%`)) : null;
       const uploadedCover = cover ? await storageProvider.uploadFile(cover, "covers") : null;
       const thumbnail = coverThumbnail || (cover ? await makeImageThumbnail(cover) : null);
       const uploadedThumb = thumbnail ? await storageProvider.uploadFile(thumbnail, "covers") : null;
@@ -215,7 +222,7 @@ export const AdminPage: React.FC = () => {
           <label>Categorias / tags<input className={fieldClass} placeholder="X-Men, mutantes, aventura" value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} /></label>
         </div>
         {editing && <label className="bulk-edit-toggle"><input type="checkbox" checked={applyToCollection} onChange={(e) => setApplyToCollection(e.target.checked)} /><div><strong>Aplicar ficha editorial a toda a coleção</strong><span>Atualiza sinopse, roteiro, arte, cores e categorias nas {allComics.filter((comic) => comic.seriesId === form.seriesId).length} edições de “{seriesList.find((series) => series.id === form.seriesId)?.title || "esta coleção"}”. Título, número, ano, páginas, PDF e capa continuam individuais.</span></div></label>}
-        <div className="upload-grid"><label className="upload-tile"><FileUp /><strong>{batchPdfs.length ? `${batchPdfs.length} PDFs selecionados` : pdf?.name || (editing ? "Substituir PDF" : "Selecionar um ou vários PDFs")}</strong><small>{pdf ? formatFileSize(pdf.size / 1024 / 1024) : editing?.fileName || "Envio direto ao R2 · até 5 GB por arquivo"}</small><input type="file" accept="application/pdf,.pdf" multiple={!editing} onChange={(e) => void selectPdfs(Array.from(e.target.files || []))} /></label><label className="upload-tile"><FileImage /><strong>{batchCovers.length ? `${batchCovers.length} capas selecionadas` : cover?.name || (editing ? "Substituir capa" : "Adicionar uma ou várias capas")}</strong><small>JPG, PNG ou WebP · nomes iguais aos PDFs fazem a associação automática</small><input type="file" accept="image/jpeg,image/png,image/webp" multiple={!editing} onChange={(e) => { const files = Array.from(e.target.files || []); if (files.length > 1) { setBatchCovers(files); setCover(null); } else { setCover(files[0] || null); setCoverThumbnail(null); setBatchCovers([]); } }} /></label></div>
+        <div className="upload-grid"><label className="upload-tile"><FileUp /><strong>{batchPdfs.length ? `${batchPdfs.length} PDFs selecionados` : pdf?.name || (editing ? "Substituir PDF" : "Selecionar um ou vários PDFs")}</strong><small>{pdf ? formatFileSize(pdf.size / 1024 / 1024) : editing?.fileName || "Envio direto ao R2 · até 5 GB por arquivo"}</small><input type="file" aria-label={editing ? "Substituir PDF" : "Selecionar PDFs"} accept="application/pdf,.pdf" multiple={!editing} onChange={(e) => { const files = Array.from(e.currentTarget.files || []); e.currentTarget.value = ""; void selectPdfs(files); }} /></label><label className="upload-tile"><FileImage /><strong>{batchCovers.length ? `${batchCovers.length} capas selecionadas` : cover?.name || (editing ? "Substituir capa" : "Adicionar uma ou várias capas")}</strong><small>JPG, PNG ou WebP · nomes iguais aos PDFs fazem a associação automática</small><input type="file" aria-label={editing ? "Substituir capa" : "Selecionar capas"} accept="image/jpeg,image/png,image/webp" multiple={!editing} onChange={(e) => { const files = Array.from(e.currentTarget.files || []); e.currentTarget.value = ""; if (files.length > 1) { setBatchCovers(files); setCover(null); } else { setCover(files[0] || null); setCoverThumbnail(null); setBatchCovers([]); } }} /></label></div>
         {pdf && !editing && <button type="button" onClick={() => { setBatchPdfs([pdf]); setPdf(null); }}>Revisar como lote (opções para duplicados)</button>}
         {batchPdfs.length === 0 && <button className="studio-primary" disabled={busy}><UploadCloud /> {busy ? "Publicando..." : editing ? "Salvar alterações" : "Cadastrar e publicar"}</button>}
       </form>

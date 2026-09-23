@@ -42,20 +42,37 @@ async function renderCover(page: Awaited<ReturnType<Awaited<ReturnType<typeof ge
 }
 
 export async function makeImageThumbnail(file: File): Promise<File> {
-  const image = await createImageBitmap(file);
+  let source: ImageBitmap | HTMLImageElement;
+  let objectUrl: string | undefined;
+  if (typeof createImageBitmap === "function") {
+    try { source = await createImageBitmap(file); }
+    catch { objectUrl = URL.createObjectURL(file); source = await loadImage(objectUrl); }
+  } else {
+    objectUrl = URL.createObjectURL(file);
+    source = await loadImage(objectUrl);
+  }
   try {
-    const width = Math.min(420, image.width);
+    const width = Math.min(420, source.width);
     const canvas = document.createElement("canvas");
     canvas.width = width;
-    canvas.height = Math.max(1, Math.round(image.height * width / image.width));
+    canvas.height = Math.max(1, Math.round(source.height * width / source.width));
     const context = canvas.getContext("2d", { alpha: false });
     if (!context) throw new Error("Canvas indisponível.");
-    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    context.drawImage(source, 0, 0, canvas.width, canvas.height);
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", .78));
     canvas.width = 0; canvas.height = 0;
     if (!blob) throw new Error("Não foi possível reduzir a capa.");
     return new File([blob], `${clean(file.name)}-mini.webp`, { type: "image/webp" });
-  } finally { image.close(); }
+  } finally { if (typeof ImageBitmap !== "undefined" && source instanceof ImageBitmap) source.close(); if (objectUrl) URL.revokeObjectURL(objectUrl); }
+}
+
+function loadImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Não foi possível abrir a capa selecionada.")); };
+    image.src = url;
+  });
 }
 
 export async function inspectPdf(file: File): Promise<PdfInspection> {
@@ -79,7 +96,8 @@ export async function inspectPdf(file: File): Promise<PdfInspection> {
     let warning = "";
     try {
       const firstPage = await pdf.getPage(1);
-      [cover, thumbnail] = await Promise.all([renderCover(firstPage, file, 1200), renderCover(firstPage, file, 420)]);
+      cover = await renderCover(firstPage, file, 1200);
+      thumbnail = await renderCover(firstPage, file, 420);
     } catch { warning = "A capa automática não pôde ser gerada. Selecione uma capa manual."; }
     let fileSha256: string | undefined;
     if (file.size <= 64 * 1024 * 1024) {
@@ -94,7 +112,28 @@ export async function inspectPdf(file: File): Promise<PdfInspection> {
   } catch (error) {
     throw new Error(error instanceof Error && error.name === "PasswordException" ? "PDF protegido por senha." : "O PDF está corrompido ou não pôde ser processado.");
   } finally {
-    void task.destroy();
+    await task.destroy().catch(() => {});
     URL.revokeObjectURL(blobUrl);
   }
+}
+
+export async function manualPdfInspection(file: File): Promise<PdfInspection> {
+  const header = new TextDecoder().decode(await file.slice(0, 1024).arrayBuffer());
+  if (!/\.pdf$/i.test(file.name) || !/%PDF-\d/.test(header)) throw new Error("O arquivo selecionado não parece ser um PDF válido.");
+  const title = clean(file.name);
+  const year = yearMatch(file.name);
+  const issueNumber = issueMatch(file.name);
+  return {
+    title,
+    issueNumber: issueNumber === year ? "" : issueNumber,
+    year,
+    totalPages: "",
+    writers: "",
+    pencillers: "",
+    colorists: "",
+    synopsis: "",
+    tags: "",
+    characters: "",
+    warning: "A análise automática não terminou neste dispositivo. Preencha páginas e confira os demais dados antes de publicar.",
+  };
 }
