@@ -73,8 +73,12 @@ export async function regenerateComicCover(comicId: string): Promise<void> {
 export type SelectedComicPatch = Partial<Pick<ComicRegistration, "title" | "year" | "synopsis" | "writers" | "pencillers" | "colorists" | "tags" | "characters" | "contentType" | "readingDirection">> & { seriesId?: string };
 
 export async function updateSelectedComics(ids: string[], fields: SelectedComicPatch): Promise<number> {
-  const payload = await ownerRequest("/api/comics/bulk-update", { ids, fields }, "PATCH");
-  return Number(payload.updated || 0);
+  let updated = 0;
+  for (let start = 0; start < ids.length; start += 100) {
+    const payload = await ownerRequest("/api/comics/bulk-update", { ids: ids.slice(start, start + 100), fields }, "PATCH");
+    updated += Number(payload.updated || 0);
+  }
+  return updated;
 }
 
 export async function updateCollectionComics(
@@ -91,8 +95,12 @@ export async function saveSeriesRecord(series: Omit<Series, "id"> & { id?: strin
 }
 
 export async function deleteComicRecords(ids: string[]): Promise<number> {
-  const payload = await ownerRequest("/api/comics/delete", { ids });
-  return Number(payload.deleted || 0);
+  let deleted = 0;
+  for (let start = 0; start < ids.length; start += 100) {
+    const payload = await ownerRequest("/api/comics/delete", { ids: ids.slice(start, start + 100) });
+    deleted += Number(payload.deleted || 0);
+  }
+  return deleted;
 }
 
 export async function deleteSeriesRecord(id: string, deleteContents: boolean): Promise<void> {

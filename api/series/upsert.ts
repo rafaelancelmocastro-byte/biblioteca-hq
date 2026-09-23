@@ -33,10 +33,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (duplicate) return res.status(409).json({ error: `A coleção “${duplicate.title}” já existe para esta editora.`, existing: duplicate });
   if (body.id) {
     const result = await admin.from("series").update(record).eq("id", body.id).select("id").single();
-    if (result.error) return res.status(409).json({ error: result.error.message });
+    if (result.error) return res.status(409).json({ error: result.error.code === "23505" ? "Já existe um agrupamento com este nome, editora e ano. Abra o cadastro existente para editá-lo." : "Não foi possível salvar o agrupamento." });
     return res.status(200).json({ id: result.data.id });
   }
+  // Soft-deleted rows still occupy the database's unique (title, publisher, year) key.
+  // Reuse the archived row so a collection can be recreated without a SQL error.
+  const archived = await admin.from("series").select("id,cover_key").eq("title", record.title).eq("publisher", record.publisher).eq("start_year", record.start_year).not("deleted_at", "is", null).limit(1).maybeSingle();
+  if (archived.error) return res.status(503).json({ error: "Não foi possível verificar agrupamentos anteriores." });
+  if (archived.data) {
+    const restored = await admin.from("series").update({ ...record, cover_key: record.cover_key || archived.data.cover_key, deleted_at: null }).eq("id", archived.data.id).select("id").single();
+    if (restored.error) return res.status(409).json({ error: "Não foi possível recuperar o agrupamento anterior." });
+    return res.status(200).json({ id: restored.data.id, restored: true });
+  }
   const result = await admin.from("series").insert(record).select("id").single();
-  if (result.error) return res.status(409).json({ error: result.error.message });
+  if (result.error) return res.status(409).json({ error: result.error.code === "23505" ? "Já existe um agrupamento com este nome, editora e ano. Atualize a página e edite o cadastro existente." : "Não foi possível criar o agrupamento." });
   return res.status(201).json({ id: result.data.id });
 }
