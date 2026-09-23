@@ -319,6 +319,15 @@ button, input, select { font: inherit; }
 .admin-series-row { display: flex; align-items: center; gap: .5rem; }
 .admin-series-row > button:first-child { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: space-between; text-align: left; padding: .7rem; border: 1px solid rgba(255,255,255,.08); border-radius: .7rem; }
 .admin-series-row > button:first-child > div { display: flex; flex-direction: column; min-width: 0; }
+.publisher-manager-list { display: flex; flex-wrap: wrap; gap: .5rem; max-height: 11rem; overflow: auto; }
+.publisher-manager-list button { display: inline-flex; align-items: center; gap: .5rem; max-width: 100%; min-height: 2.6rem; padding: .35rem .65rem; border: 1px solid var(--line); border-radius: .7rem; color: #d9dce0; background: #1b1e22; text-align: left; }
+.publisher-manager-list button.active { border-color: var(--brand-yellow); color: #fff; }
+.publisher-manager-list button img, .publisher-manager-list button svg { width: 1.7rem; height: 1.7rem; border-radius: .3rem; object-fit: contain; flex: none; }
+.publisher-manager-list button span { overflow-wrap: anywhere; }
+.publisher-cover-preview { display: flex; align-items: end; gap: 1rem; flex-wrap: wrap; }
+.publisher-cover-preview img { width: min(100%, 12rem); height: 7rem; border-radius: .6rem; object-fit: contain; background: #101215; }
+.publisher-cover-preview button { min-height: 2.5rem; padding: .5rem .8rem; border: 1px solid var(--line); border-radius: .6rem; }
+.publisher-manager-actions { display: flex; flex-wrap: wrap; gap: .7rem; }
 .admin-confirm-backdrop { position: fixed; z-index: 1000; inset: 0; background: rgba(0,0,0,.8); display: grid; place-items: center; padding: 1rem; }
 .admin-confirm-dialog { width: min(100%, 31rem); background: #191d23; border: 1px solid #565a60; border-radius: 1rem; padding: 1.4rem; box-shadow: 0 2rem 5rem #0008; }
 .admin-confirm-dialog h2 { color: #fff; font-size: 1.4rem; margin: 0 0 .6rem; }

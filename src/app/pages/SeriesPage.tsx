@@ -36,7 +36,7 @@ export const SeriesPage: React.FC<{ onOpenReader: (id: string) => void }> = ({ o
     const requested = seriesList.find((item) => item.id === requestedId);
     if (requested) { setPublisher(requested.publisher); setSeriesId(requested.id); }
   }, [seriesList]);
-  const publishers = useMemo(() => [...new Set(seriesList.map((series) => series.publisher))].sort((a, b) => a.localeCompare(b, "pt-BR")), [seriesList]);
+  const publishers = useMemo(() => [...new Set([...seriesList.map((series) => series.publisher), ...Object.keys(publisherKeys)])].sort((a, b) => a.localeCompare(b, "pt-BR")), [seriesList, publisherKeys]);
   const groups = useMemo(() => seriesList.filter((series) => series.publisher === publisher && !series.parentSeriesId && (kind === "all" || (series.bannerTone === "saga" ? "saga" : "collection") === kind) && series.title.toLocaleLowerCase("pt-BR").includes(groupSearch.toLocaleLowerCase("pt-BR"))), [seriesList, publisher, kind, groupSearch]);
   const activeGroup = groups[Math.min(activeSeries, groups.length - 1)];
   const selectedSeries = seriesList.find((series) => series.id === seriesId);
