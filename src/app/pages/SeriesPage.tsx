@@ -7,11 +7,12 @@ import { ComicCard } from "../../components/library/ComicCard";
 import { ComicDetailModal } from "../../components/library/ComicDetailModal";
 import { ProgressUpdateModal } from "../../components/library/ProgressUpdateModal";
 import { supabase } from "../../services/supabaseClient";
-import { getAssetUrls } from "../../services/assetUrls";
+import { getAssetUrls, getCachedAssetUrls } from "../../services/assetUrls";
 
 const slug = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 const publisherArt = (name: string) => /dc comics|^dc$/i.test(name) ? "/publisher-art/dc.png" : /marvel/i.test(name) ? "/publisher-art/marvel.png" : /jbc/i.test(name) ? "/publisher-art/jbc.png" : /new.?pop/i.test(name) ? "/publisher-art/newpop.png" : undefined;
 const sagaArt = (name: string) => { const value = slug(name); return value.includes("batman") ? "/saga-art/batman.png" : value.includes("superman") ? "/saga-art/superman.png" : value.includes("x-men") ? "/saga-art/x-men.png" : value.includes("lanterna verde") || value.includes("green lantern") ? "/saga-art/green-lantern.png" : undefined; };
+let cachedPublisherKeys: Record<string, string> = {};
 
 export const SeriesPage: React.FC<{ onOpenReader: (id: string) => void }> = ({ onOpenReader }) => {
   const { allComics, seriesList, favoriteSeriesIds, toggleFavorite, toggleSeriesFavorite, updateProgress, setStatus, isLoading } = useLibrary();
@@ -25,8 +26,8 @@ export const SeriesPage: React.FC<{ onOpenReader: (id: string) => void }> = ({ o
   const [activePublisher, setActivePublisher] = useState(0);
   const [activeSeries, setActiveSeries] = useState(0);
   const [activeSaga, setActiveSaga] = useState(0);
-  const [assetUrls, setAssetUrls] = useState<Record<string, string>>({});
-  const [publisherKeys, setPublisherKeys] = useState<Record<string, string>>({});
+  const [assetUrls, setAssetUrls] = useState<Record<string, string>>(() => getCachedAssetUrls(Object.values(cachedPublisherKeys)));
+  const [publisherKeys, setPublisherKeys] = useState<Record<string, string>>(() => cachedPublisherKeys);
   const [detail, setDetail] = useState<Comic | null>(null);
   const [progress, setProgress] = useState<Comic | null>(null);
   const [favoriteError, setFavoriteError] = useState("");
@@ -44,13 +45,13 @@ export const SeriesPage: React.FC<{ onOpenReader: (id: string) => void }> = ({ o
   const childSagas = useMemo(() => seriesList.filter((series) => series.parentSeriesId === seriesId), [seriesList, seriesId]);
   const issues = useMemo(() => allComics.filter((comic) => comic.seriesId === seriesId).sort((a, b) => (a.volume || 0) - (b.volume || 0) || a.issueNumber - b.issueNumber || a.year - b.year), [allComics, seriesId]);
   const visibleIssues = useMemo(() => issues.filter((comic) => `${comic.title} ${comic.issueNumber} ${comic.characters.join(" ")}`.toLocaleLowerCase("pt-BR").includes(issueSearch.toLocaleLowerCase("pt-BR")) && (issueStatus === "all" || (comic.progress?.status || "not_started") === issueStatus)).sort((a,b) => issueSort === "recent" ? b.year - a.year || b.issueNumber - a.issueNumber : issueSort === "title" ? a.title.localeCompare(b.title, "pt-BR") : (a.volume || 0) - (b.volume || 0) || a.issueNumber - b.issueNumber), [issues, issueSearch, issueStatus, issueSort]);
-  useEffect(() => { if (!supabase) return; let alive = true; void supabase.from("publisher_assets").select("publisher,logo_key").then(async ({ data }) => { const keys = Object.fromEntries((data || []).map((row) => [row.publisher, row.logo_key])); if (alive) setPublisherKeys(keys); }); return () => { alive = false; }; }, []);
-  useEffect(() => { const keys = [...seriesList.map((item) => item.coverKey), ...Object.values(publisherKeys)].filter((key): key is string => !!key); if (keys.length) void getAssetUrls(keys).then(setAssetUrls); }, [seriesList, publisherKeys]);
-  const publisherItems = publishers.map((name) => ({ id: name, title: name, subtitle: `${allComics.filter((comic) => comic.publisher === name).length} edições`, image: assetUrls[publisherKeys[name]] || publisherArt(name) || allComics.find((comic) => comic.publisher === name)?.coverUrl }));
+  useEffect(() => { if (!supabase) return; let alive = true; void supabase.from("publisher_assets").select("publisher,logo_key").then(({ data }) => { const keys = Object.fromEntries((data || []).map((row) => [row.publisher, row.logo_key])); if (alive) { cachedPublisherKeys = keys; setPublisherKeys(keys); } }); return () => { alive = false; }; }, []);
+  useEffect(() => { const keys = [...seriesList.map((item) => item.coverKey), ...Object.values(publisherKeys)].filter((key): key is string => !!key); if (!keys.length) return; setAssetUrls((current) => ({ ...current, ...getCachedAssetUrls(keys) })); let alive = true; void getAssetUrls(keys).then((urls) => { if (alive) setAssetUrls((current) => ({ ...current, ...urls })); }); return () => { alive = false; }; }, [seriesList, publisherKeys]);
+  const publisherItems = publishers.map((name) => ({ id: name, title: name, subtitle: `${allComics.filter((comic) => comic.publisher === name).length} edições`, image: publisherKeys[name] ? assetUrls[publisherKeys[name]] : publisherArt(name) || allComics.find((comic) => comic.publisher === name)?.coverUrl }));
   const issueCount = (id: string) => allComics.filter((comic) => comic.seriesId === id || seriesList.some((series) => series.id === comic.seriesId && series.parentSeriesId === id)).length;
   const editionCover = (id: string) => allComics.filter((comic) => !!comic.coverUrl && (comic.seriesId === id || seriesList.some((series) => series.id === comic.seriesId && series.parentSeriesId === id))).sort((a, b) => a.year - b.year || (a.volume || 0) - (b.volume || 0) || a.issueNumber - b.issueNumber)[0]?.coverUrl;
-  const seriesItems = groups.map((group) => ({ id: group.id, title: group.title, subtitle: `${favoriteSeriesIds.has(group.id) ? "♥ Favorita · " : ""}${issueCount(group.id)} edições · ${group.bannerTone === "saga" ? "Saga" : "Coleção"}`, image: assetUrls[group.coverKey || ""] || editionCover(group.id) || sagaArt(group.title) }));
-  const sagaItems = childSagas.map((saga) => ({ id: saga.id, title: saga.title, subtitle: `${favoriteSeriesIds.has(saga.id) ? "♥ Favorita · " : ""}${issueCount(saga.id)} edições · ${saga.bannerTone === "one_shot" ? "Obra fechada" : saga.bannerTone === "phase" ? "Fase" : "Saga"}`, image: assetUrls[saga.coverKey || ""] || editionCover(saga.id) }));
+  const seriesItems = groups.map((group) => ({ id: group.id, title: group.title, subtitle: `${favoriteSeriesIds.has(group.id) ? "♥ Favorita · " : ""}${issueCount(group.id)} edições · ${group.bannerTone === "saga" ? "Saga" : "Coleção"}`, image: group.coverKey ? assetUrls[group.coverKey] : editionCover(group.id) || sagaArt(group.title) }));
+  const sagaItems = childSagas.map((saga) => ({ id: saga.id, title: saga.title, subtitle: `${favoriteSeriesIds.has(saga.id) ? "♥ Favorita · " : ""}${issueCount(saga.id)} edições · ${saga.bannerTone === "one_shot" ? "Obra fechada" : saga.bannerTone === "phase" ? "Fase" : "Saga"}`, image: saga.coverKey ? assetUrls[saga.coverKey] : editionCover(saga.id) }));
   const favoriteButton = (series: typeof selectedSeries) => series && <button type="button" className={`collection-favorite-action ${favoriteSeriesIds.has(series.id) ? "active" : ""}`} aria-pressed={favoriteSeriesIds.has(series.id)} onClick={() => { setFavoriteError(""); void toggleSeriesFavorite(series.id).catch(() => setFavoriteError("Não foi possível salvar o favorito. Tente novamente.")); }}><Heart fill={favoriteSeriesIds.has(series.id) ? "currentColor" : "none"} />{favoriteSeriesIds.has(series.id) ? "Remover dos favoritos" : `Favoritar ${series.bannerTone === "saga" ? "saga" : series.bannerTone === "phase" ? "fase" : series.bannerTone === "one_shot" ? "obra" : "coleção"}`}</button>;
   const goPublishers = () => { setPublisher(null); setSeriesId(null); setActiveSeries(0); };
   return <div className="streaming-page series-page space-y-8">

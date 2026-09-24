@@ -7,7 +7,6 @@ import {
   ShieldCheck,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
   Compass,
   Star,
   HardDriveDownload,
@@ -40,21 +39,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
       path: "/biblioteca",
       icon: BookOpen,
       badge: totalComicsCount > 0 ? String(totalComicsCount) : undefined,
+      section: "Explorar",
     },
+    { label: "Novidades 2026", path: "/lancamentos", icon: Star },
+    { label: "Coleções e sagas", path: "/series", icon: Layers },
+    { label: "Indie e mangás", path: "/multiverso", icon: Compass },
+    { label: "Guia de leitura", path: "/guia", icon: Compass },
     {
       label: "Continuar lendo",
       path: "/continuar",
       icon: Clock,
+      section: "Minha leitura",
     },
-    { label: "Edições de 2026", path: "/lancamentos", icon: Star },
     { label: "Salvos offline", path: "/offline", icon: HardDriveDownload },
-    {
-      label: "Coleções",
-      path: "/series",
-      icon: Layers,
-    },
-    { label: "Indie & Mangás", path: "/multiverso", icon: Compass },
-    { label: "Por onde começar?", path: "/guia", icon: Compass },
     {
       label: "Favoritos",
       path: "/favoritos",
@@ -66,6 +63,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: ShieldCheck,
       tag: "Dono",
       ownerOnly: true,
+      section: "Gestão",
     },
   ];
 
@@ -100,26 +98,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Navigation Links */}
-      <nav className="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto">
+      <nav className="sidebar-nav flex-1 px-3 py-4 overflow-y-auto">
         {navItems.filter((item) => !item.ownerOnly || isOwner).map((item) => {
           const Icon = item.icon;
           const isActive = currentPath === item.path;
 
-          return (
+          return <React.Fragment key={item.path}>
+            {item.section && !isCollapsed && <span className="sidebar-section-label">{item.section}</span>}
             <button
-              key={item.path}
               id={`nav-link-${item.path.replace("/", "")}`}
               onClick={() => onNavigate(item.path)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer relative group ${
+              className={`sidebar-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer relative group ${
                 isActive
-                  ? "bg-amber-500/10 text-amber-300 font-semibold border border-amber-500/30"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 border border-transparent"
+                  ? "active text-slate-100 font-semibold"
+                  : "text-slate-400 hover:text-slate-100"
               } ${isCollapsed ? "justify-center px-0" : ""}`}
               title={isCollapsed ? item.label : undefined}
             >
               <Icon
                 className={`w-5 h-5 flex-shrink-0 transition-colors ${
-                  isActive ? "text-amber-400" : "text-slate-400 group-hover:text-slate-200"
+                  isActive ? "text-[#a8bacf]" : "text-slate-400 group-hover:text-slate-200"
                 }`}
               />
 
@@ -147,25 +145,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
               {/* Indicador lateral sutil ativo */}
               {isActive && (
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-amber-500 rounded-r-full" />
+                <span className="sidebar-active-rail absolute left-0 top-1/2 -translate-y-1/2 rounded-r-full" />
               )}
             </button>
-          );
+          </React.Fragment>;
         })}
       </nav>
-
-      {/* Atalho de descoberta */}
-      {!isCollapsed && (
-        <div className="p-3 mx-3 mb-3 rounded-lg bg-[#141923] border border-slate-800/80">
-          <div className="flex items-center gap-2 text-xs font-semibold text-amber-400">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Não sabe o que ler?</span>
-          </div>
-          <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
-            Encontre uma ordem de leitura no guia.
-          </p>
-        </div>
-      )}
 
       {/* Footer com Toggle de Recolher */}
       <div className="p-3 border-t border-[#1e2535] flex items-center justify-between">
