@@ -497,6 +497,7 @@ button, input, select { font: inherit; }
 .texture-paper .reader-paper-grain { opacity: .18; }
 .texture-warm .reader-paper-grain { opacity: .1; background: rgba(160,75,25,.12); mix-blend-mode: multiply; }
 .reader-loading, .reader-error { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+.reader-preview-status { position: absolute; z-index: 2; left: 50%; bottom: 1rem; transform: translateX(-50%); width: max-content; max-width: calc(100% - 2rem); padding: .45rem .75rem; border: 1px solid rgba(255,255,255,.15); border-radius: 999px; background: rgba(12,16,22,.9); color: #e3e7ec; font-size: .72rem; text-align: center; pointer-events: none; }
 .reader-loading span { width: 2.5rem; height: 2.5rem; border: 2px solid rgba(255,255,255,.18); border-top-color: #526d8a; border-radius: 50%; animation: reader-spin .8s linear infinite; }
 .reader-error { color: #bfd0df; font-size: .8rem; }
 @keyframes reader-spin { to { transform: rotate(360deg); } }

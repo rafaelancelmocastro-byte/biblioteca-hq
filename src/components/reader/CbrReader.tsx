@@ -48,6 +48,7 @@ export function CbrReader({ comic, fileUrl, fileData, onBack, onNextChapter, onU
   onNextChapter?: () => void; onUpdateProgress: (id: string, page: number, total: number) => void;
 }) {
   const [book, setBook] = useState<PublicationBook | null>(null);
+  const [previewBook, setPreviewBook] = useState<PublicationBook | null>(null);
   const [error, setError] = useState("");
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [page, setPage] = useState(Math.max(1, comic.progress?.currentPage || 1));
@@ -62,9 +63,12 @@ export function CbrReader({ comic, fileUrl, fileData, onBack, onNextChapter, onU
   const lastWheelTurn = useRef(0);
   const shellRef = useRef<HTMLDivElement>(null);
   const startTouch = useRef<{ x: number; y: number; distance?: number; zoom?: number } | null>(null);
+  const activeBook = book || previewBook;
+  const previewOnly = !book && !!previewBook;
   const total = book?.sections.length || comic.totalPages;
-  const visiblePage = mode === "spread" && page > 1 && page % 2 === 1 ? page - 1 : page;
-  const setCurrent = useCallback((target: number) => setPage(Math.max(1, Math.min(total, target))), [total]);
+  const displayedPage = previewOnly && page > previewBook.sections.length ? 1 : page;
+  const visiblePage = mode === "spread" && displayedPage > 1 && displayedPage % 2 === 1 ? displayedPage - 1 : displayedPage;
+  const setCurrent = useCallback((target: number) => setPage(Math.max(1, Math.min(book?.sections.length || previewBook?.sections.length || total, target))), [book, previewBook, total]);
   const previous = useCallback(() => setCurrent(visiblePage - (mode === "spread" && visiblePage > 2 ? 2 : 1)), [mode, setCurrent, visiblePage]);
   const next = useCallback(() => setCurrent(visiblePage + (mode === "spread" && visiblePage > 1 ? 2 : 1)), [mode, setCurrent, visiblePage]);
   const progress = useCallback((current: number) => { setPage(current); onUpdateProgress(comic.id, current, total); }, [comic.id, onUpdateProgress, total]);
@@ -72,15 +76,30 @@ export function CbrReader({ comic, fileUrl, fileData, onBack, onNextChapter, onU
   useEffect(() => {
     let active = true;
     let opened: PublicationBook | null = null;
+    let preview: PublicationBook | null = null;
     setBook(null);
+    setPreviewBook(null);
     setError("");
     setDownloadProgress(0);
     void (async () => {
       if (!fileData && fileUrl && ["cbr", "cbz"].includes(publicationFormat(comic.fileName) || "")) {
         try {
           const source = await createRemoteArchiveSource(comic.id, fileUrl);
+          if (publicationFormat(comic.fileName) === "cbr") {
+            const length = await source.getLength();
+            for (const size of [4, 8].map((megabytes) => Math.min(length, megabytes * 1024 * 1024))) {
+              try {
+                const prefix = await source.read(0, size);
+                preview = await openPublicationBook(new File([new Uint8Array(prefix)], comic.fileName));
+                if (!preview.sections.length || !preview.getPageBlob) throw new Error("Prévia vazia.");
+                await preview.getPageBlob(0);
+                if (active) setPreviewBook(preview);
+                break;
+              } catch { preview?.destroy?.(); preview = null; }
+            }
+          }
           opened = await openPublicationBook(new File([], comic.fileName), source);
-          if (active) { setBook(opened); setPage((current) => Math.min(current, opened!.sections.length)); }
+          if (active) { setBook(opened); setPreviewBook(null); setPage((current) => Math.min(current, opened!.sections.length)); window.setTimeout(() => preview?.destroy?.(), 1000); }
           else opened.destroy?.();
           return;
         } catch { /* Fall back to downloading the archive in chunks. */ }
@@ -90,7 +109,7 @@ export function CbrReader({ comic, fileUrl, fileData, onBack, onNextChapter, onU
       if (active) { setBook(opened); setPage((current) => Math.min(current, opened!.sections.length)); }
       else opened.destroy?.();
     })().catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : "Não foi possível abrir a HQ."); });
-    return () => { active = false; opened?.destroy?.(); };
+    return () => { active = false; opened?.destroy?.(); preview?.destroy?.(); };
   }, [comic.id, comic.fileName, fileData, fileUrl]);
   useEffect(() => { localStorage.setItem("biblioteca_reader_mode", mode); }, [mode]);
   useEffect(() => { if (book) onUpdateProgress(comic.id, page, total); }, [book, comic.id, page, total, onUpdateProgress]);
@@ -123,9 +142,10 @@ export function CbrReader({ comic, fileUrl, fileData, onBack, onNextChapter, onU
       onTouchMove={(event) => { if (event.touches.length === 2 && startTouch.current?.distance) { const distance = Math.hypot(event.touches[0].clientX - event.touches[1].clientX, event.touches[0].clientY - event.touches[1].clientY); setZoom(Math.min(3, Math.max(.7, startTouch.current.zoom! * distance / startTouch.current.distance))); } }}
       onTouchEnd={(event) => { if (mode === "continuous" || zoom > 1.05 || !startTouch.current || startTouch.current.distance || !event.changedTouches.length) return; const dx = event.changedTouches[0].clientX - startTouch.current.x, dy = event.changedTouches[0].clientY - startTouch.current.y; if (mode === "page" && Math.abs(dy) > 55 && Math.abs(dy) > Math.abs(dx)) dy < 0 ? next() : previous(); else if (mode !== "page" && Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy)) dx < 0 ? (direction === "rtl" ? previous() : next()) : (direction === "rtl" ? next() : previous()); }}
       onWheel={(event) => { if (mode === "continuous" || zoom > 1.05 || Date.now() - lastWheelTurn.current < 420) return; if (mode === "page" && Math.abs(event.deltaY) > 30) { lastWheelTurn.current = Date.now(); event.preventDefault(); event.deltaY > 0 ? next() : previous(); } else if (mode !== "page" && Math.abs(event.deltaX) > 30) { lastWheelTurn.current = Date.now(); event.preventDefault(); event.deltaX > 0 ? next() : previous(); } }}>
-      {!book ? <div className="reader-loading" role="status">{error || (downloadProgress > 0 && downloadProgress < 100 ? `Carregando HQ… ${downloadProgress}%` : "Preparando HQ…")}</div> : mode === "continuous" ? <div className="cbr-continuous" style={{ width: `${Math.round(zoom * 100)}%`, maxWidth: `${56 * zoom}rem` }}>{book.sections.map((_, index) => <CbrImage key={index} book={book} index={index} onVisible={progress} />)}</div> : <div className={`cbr-page ${mode === "spread" ? "cbr-spread" : ""}`} style={{ width: `${Math.round(zoom * 100)}%` }}>{shown.map((index) => <CbrImage key={index} book={book} index={index} />)}</div>}
+      {!activeBook ? <div className="reader-loading" role="status">{error || (downloadProgress > 0 && downloadProgress < 100 ? `Carregando HQ… ${downloadProgress}%` : "Preparando HQ…")}</div> : mode === "continuous" ? <div className="cbr-continuous" style={{ width: `${Math.round(zoom * 100)}%`, maxWidth: `${56 * zoom}rem` }}>{activeBook.sections.map((_, index) => <CbrImage key={index} book={activeBook} index={index} onVisible={book ? progress : undefined} />)}</div> : <div className={`cbr-page ${mode === "spread" ? "cbr-spread" : ""}`} style={{ width: `${Math.round(zoom * 100)}%` }}>{shown.filter((index) => index < activeBook.sections.length).map((index) => <CbrImage key={index} book={activeBook} index={index} />)}</div>}
+      {previewOnly && <div className="reader-preview-status" role="status">Primeiras páginas disponíveis · preparando o restante</div>}
       {book && page >= total && onNextChapter && <button className="reader-next-chapter" onClick={onNextChapter}>Ler o próximo capítulo <ChevronRight /></button>}
     </main>
-    <footer className="reader-dock"><button onClick={direction === "rtl" ? next : previous} disabled={direction === "rtl" ? page >= total : page <= 1} aria-label={direction === "rtl" ? "Próxima página" : "Página anterior"}><ChevronLeft /></button><div className="reader-page-control"><input type="range" min="1" max={total} value={page} onChange={(event) => { const target = Number(event.target.value); setCurrent(target); if (mode === "continuous") stageRef.current?.querySelector(`[data-cbr-page="${target}"]`)?.scrollIntoView({ block: "start" }); }} aria-label="Progresso da leitura" /><span>{page} <small>/ {total}</small></span></div><button onClick={direction === "rtl" ? previous : next} disabled={direction === "rtl" ? page <= 1 : page >= total} aria-label={direction === "rtl" ? "Página anterior" : "Próxima página"}><ChevronRight /></button><div className="reader-zoom"><button onClick={() => setZoom((value) => Math.max(.7, value - .1))} aria-label="Reduzir zoom"><Minus /></button><button className="reader-reset-zoom" onClick={() => setZoom(1)} aria-label="Redefinir zoom"><RotateCcw /><span>{Math.round(zoom * 100)}%</span></button><button onClick={() => setZoom((value) => Math.min(3, value + .1))} aria-label="Aumentar zoom"><Plus /></button></div></footer>
+    <footer className="reader-dock"><button onClick={direction === "rtl" ? next : previous} disabled={direction === "rtl" ? displayedPage >= (activeBook?.sections.length || total) : displayedPage <= 1} aria-label={direction === "rtl" ? "Próxima página" : "Página anterior"}><ChevronLeft /></button><div className="reader-page-control"><input type="range" min="1" max={total} value={displayedPage} disabled={previewOnly} onChange={(event) => { const target = Number(event.target.value); setCurrent(target); if (mode === "continuous") stageRef.current?.querySelector(`[data-cbr-page="${target}"]`)?.scrollIntoView({ block: "start" }); }} aria-label="Progresso da leitura" /><span>{displayedPage} <small>/ {total}</small></span></div><button onClick={direction === "rtl" ? previous : next} disabled={direction === "rtl" ? displayedPage <= 1 : displayedPage >= (activeBook?.sections.length || total)} aria-label={direction === "rtl" ? "Página anterior" : "Próxima página"}><ChevronRight /></button><div className="reader-zoom"><button onClick={() => setZoom((value) => Math.max(.7, value - .1))} aria-label="Reduzir zoom"><Minus /></button><button className="reader-reset-zoom" onClick={() => setZoom(1)} aria-label="Redefinir zoom"><RotateCcw /><span>{Math.round(zoom * 100)}%</span></button><button onClick={() => setZoom((value) => Math.min(3, value + .1))} aria-label="Aumentar zoom"><Plus /></button></div></footer>
   </div>;
 }
