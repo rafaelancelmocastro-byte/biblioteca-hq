@@ -762,8 +762,7 @@ body { padding-top: env(safe-area-inset-top); }
 .catalog-hero-actions { flex-wrap: wrap; }
 .catalog-hero-actions button { max-width: 100%; text-align: center; }
 .streaming-modal { width: min(100%, 42rem); }
-.modal-close-bar { pointer-events: none; }
-.modal-close-bar button { pointer-events: auto; }
+.modal-close-bar { pointer-events: auto; }
 .comic-detail-streaming, .comic-detail-streaming > div { min-width: 0; }
 .comic-detail-streaming h2, .comic-detail-streaming p, .comic-detail-streaming span { overflow-wrap: anywhere; }
 .comic-detail-streaming .comic-detail-synopsis { max-height: min(13rem, 30dvh); }

@@ -71,10 +71,11 @@ export const Modal: React.FC<ModalProps> = ({
         ref={modalRef}
         className={`streaming-modal relative w-full ${maxWidthClass} z-10 max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-3rem)] overflow-x-hidden overflow-y-auto my-auto transform transition-transform`}
       >
-        <div className="modal-close-bar sticky top-0 z-[60] flex justify-end h-0 pr-2 pt-2">
+        <div className="modal-close-bar sticky top-0 z-[60] flex min-h-14 justify-end items-center pr-3 bg-black/85 backdrop-blur-md">
         <button
+          type="button"
           onClick={onClose}
-          className="modal-close-button grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/20 bg-black/90 text-white shadow-2xl backdrop-blur-md transition-colors hover:bg-slate-800 cursor-pointer"
+          className="modal-close-button grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/20 bg-black/90 text-white shadow-2xl transition-colors hover:bg-slate-800 cursor-pointer"
           aria-label="Fechar detalhes"
           title="Fechar"
         >
@@ -102,7 +103,7 @@ export const Modal: React.FC<ModalProps> = ({
         )}
 
         {/* Conteúdo */}
-        <div className="modal-content p-4 pt-14 sm:p-6 sm:pt-14">{children}</div>
+        <div className="modal-content p-4 pt-1 sm:p-6 sm:pt-1">{children}</div>
       </div>
     </div>
   );
