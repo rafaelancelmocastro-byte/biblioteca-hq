@@ -82,6 +82,20 @@ button, input, select { font: inherit; }
 }
 .sidebar-active-rail { width: 2px; height: 1.1rem; background: #a8bacf; }
 
+.import-organization { grid-column: 1 / -1; }
+.import-organization-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  width: 100%;
+  text-align: left;
+  color: #dce5ef;
+}
+.import-organization-toggle > svg { color: #a8bacf; flex: none; }
+.import-organization-toggle span { display: flex; flex-direction: column; gap: 0.2rem; }
+.import-organization-toggle small { color: #94a3b8; font-size: 0.75rem; }
+.import-organization-toggle:hover strong { color: white; }
+
 .app-mobile-nav {
   border-top: 1px solid rgba(210, 221, 235, .1);
   background: rgba(8, 11, 15, .9);

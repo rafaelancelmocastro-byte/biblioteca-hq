@@ -11,6 +11,7 @@ import { inspectPublication, manualPublicationInspection } from "../../services/
 import { PUBLICATION_ACCEPT, publicationFormat } from "../../services/publicationFormats";
 import { UsersPanel } from "../../components/admin/UsersPanel";
 import { AssetsPanel } from "../../components/admin/AssetsPanel";
+import { ImportOrganization } from "../../components/admin/ImportOrganization";
 import { clearSharedPdfs, takeSharedPdfs } from "../../services/sharedPdfImport";
 import { loadPendingImport, savePendingImport } from "../../services/pendingImport";
 import { supabase } from "../../services/supabaseClient";
@@ -42,6 +43,7 @@ export const AdminPage: React.FC = () => {
   const [pdfHash, setPdfHash] = useState<string | undefined>();
   const [batchPdfs, setBatchPdfs] = useState<File[]>([]);
   const [batchCovers, setBatchCovers] = useState<File[]>([]);
+  const [newImportSeriesId, setNewImportSeriesId] = useState("");
   const [draftUserId, setDraftUserId] = useState("");
   const [draftHydrated, setDraftHydrated] = useState(false);
   const [draftSaveState, setDraftSaveState] = useState<"saving" | "saved" | "error" | "idle">("idle");
@@ -170,6 +172,7 @@ export const AdminPage: React.FC = () => {
   };
   const selectPdfs = async (files: File[]) => {
     if (!files.length) return;
+    setNewImportSeriesId("");
     void navigator.storage?.persist?.().catch(() => {});
     if (mobilePdfPicker && !editing) {
       const next = mergeFiles([...batchPdfs, ...(pdf ? [pdf] : []), ...files]);
@@ -368,7 +371,8 @@ export const AdminPage: React.FC = () => {
     {notice && <div className="studio-notice"><CheckCircle2 /> {notice}</div>}
     {toast && <div className={`admin-toast ${toast.type}`} role={toast.type === "error" ? "alert" : "status"}>{toast.type === "error" ? <AlertCircle /> : <CheckCircle2 />}<span>{toast.message}</span><button type="button" aria-label="Fechar aviso" onClick={() => setToast(null)}><X /></button></div>}
     {tab === "catalog" && <div className="studio-grid">
-      {batchPdfs.length > 0 && <BatchImport files={batchPdfs} covers={batchCovers} series={seriesList} existingComics={allComics} onComplete={() => reloadData(true)} onClear={() => { setBatchPdfs([]); setBatchCovers([]); }} onFeedback={feedback} />}
+      <ImportOrganization series={seriesList} onFeedback={feedback} onCreated={async (id) => { await reloadData(true); setForm((current) => ({ ...current, seriesId: id })); setNewImportSeriesId(id); }} />
+      {batchPdfs.length > 0 && <BatchImport files={batchPdfs} covers={batchCovers} series={seriesList} newlyCreatedSeriesId={newImportSeriesId} existingComics={allComics} onComplete={() => reloadData(true)} onClear={() => { setBatchPdfs([]); setBatchCovers([]); }} onFeedback={feedback} />}
       <form className="studio-panel comic-editor" onSubmit={submitComic}>
         <div className="studio-panel-title"><div><span>{editing ? "Editando edição" : "Nova publicação"}</span><h2>{editing?.title || "Cadastrar HQ ou livro"}</h2></div>{editing && <button type="button" onClick={resetComicForm} aria-label="Cancelar edição"><X /></button>}</div>
         <div className="form-grid">

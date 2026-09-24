@@ -47,13 +47,14 @@ interface Props {
   files: File[];
   covers: File[];
   series: Series[];
+  newlyCreatedSeriesId?: string;
   existingComics: Comic[];
   onComplete: () => Promise<unknown>;
   onClear: () => void;
   onFeedback: (message: string, type: "success" | "error" | "info") => void;
 }
 
-export const BatchImport: React.FC<Props> = ({ files, covers, series, existingComics, onComplete, onClear, onFeedback }) => {
+export const BatchImport: React.FC<Props> = ({ files, covers, series, newlyCreatedSeriesId, existingComics, onComplete, onClear, onFeedback }) => {
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const savedDrafts = useRef<Record<string, Partial<Draft>>>(readSavedDrafts());
   const [publishing, setPublishing] = useState(false);
@@ -69,6 +70,10 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
   const [sharedValues, setSharedValues] = useState<Record<SharedField, string>>({ title: "", year: "", characters: "", writers: "", pencillers: "", colorists: "", tags: "", synopsis: "", seriesId: "", contentType: "comic", readingDirection: "ltr" });
   const [sharedEnabled, setSharedEnabled] = useState<SharedField[]>([]);
   const [sharedMessage, setSharedMessage] = useState("");
+  useEffect(() => {
+    if (!newlyCreatedSeriesId || !series.some((item) => item.id === newlyCreatedSeriesId)) return;
+    setDrafts((current) => current.map((draft) => draft.seriesId || draft.status === "published" ? draft : { ...draft, seriesId: newlyCreatedSeriesId }));
+  }, [newlyCreatedSeriesId, series]);
   const discard = () => { localStorage.removeItem(DRAFT_STORAGE_KEY); savedDrafts.current = {}; onClear(); };
   useEffect(() => {
     if (!drafts.length || drafts.some((draft) => draft.status === "analyzing")) return;
@@ -129,7 +134,7 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, existingCo
           const exact = suggestIssueSeries(file.name, meta.title, series);
           const matchedCover = covers.find((item) => normalize(item.name) === normalize(file.name));
           const saved = savedDrafts.current[draftKey(file)];
-          setDrafts((current) => current.map((draft, position) => position === index ? { ...draft, meta: saved?.meta ? { ...meta, ...saved.meta, cover: meta.cover, thumbnail: meta.thumbnail } : meta, seriesId: saved?.seriesId || exact?.id || "", coverOverride: matchedCover, status: saved?.status === "published" ? "published" : meta.totalPages ? "ready" : "incomplete", message: saved?.status === "published" ? saved.message || "Publicado." : meta.warning || (exact ? `Caminho sugerido: ${seriesPath(exact, series)}. Confirme ou corrija antes de publicar.` : "Selecione a coleção ou saga; campos sem evidência permanecem vazios.") } : draft));
+          setDrafts((current) => current.map((draft, position) => position === index ? { ...draft, meta: saved?.meta ? { ...meta, ...saved.meta, cover: meta.cover, thumbnail: meta.thumbnail } : meta, seriesId: draft.seriesId || saved?.seriesId || exact?.id || "", coverOverride: matchedCover, status: saved?.status === "published" ? "published" : meta.totalPages ? "ready" : "incomplete", message: saved?.status === "published" ? saved.message || "Publicado." : meta.warning || (exact ? `Caminho sugerido: ${seriesPath(exact, series)}. Confirme ou corrija antes de publicar.` : "Selecione a coleção ou saga; campos sem evidência permanecem vazios.") } : draft));
         } catch (error) {
           if (!active) return;
           try {
