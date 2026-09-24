@@ -10,7 +10,7 @@ async function fetchChunk(comicId: string, token: string, start: number, end: nu
   });
 }
 
-export async function createRemoteCbrSource(comicId: string, signedUrl: string) {
+export async function createRemoteArchiveSource(comicId: string, signedUrl: string) {
   if (!supabase) throw new Error("Autenticação indisponível.");
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;

@@ -12,7 +12,7 @@ export type PublicationBook = {
 
 const imagePattern = /\.(jpe?g|png|gif|webp|bmp|avif)$/i;
 
-export async function openPublicationBook(file: File, cbrSource?: { getLength: () => Promise<number>; read: (offset: number, length: number) => Promise<Uint8Array> }): Promise<PublicationBook> {
+export async function openPublicationBook(file: File, remoteSource?: { getLength: () => Promise<number>; read: (offset: number, length: number) => Promise<Uint8Array> }): Promise<PublicationBook> {
   const format = publicationFormat(file.name);
   if (format !== "cbr" && format !== "cbz") {
     const { makeBook } = await import("foliate-js/view.js");
@@ -20,9 +20,13 @@ export async function openPublicationBook(file: File, cbrSource?: { getLength: (
   }
 
   if (format === "cbz") {
-    const { BlobReader, BlobWriter, ZipReader, configure } = await import("@zip.js/zip.js");
+    const { BlobReader, BlobWriter, Reader, ZipReader, configure } = await import("@zip.js/zip.js");
     configure({ useWebWorkers: false });
-    const archive = new ZipReader(new BlobReader(file));
+    class RemoteZipReader extends Reader<null> {
+      async init() { super.init?.(); this.size = await remoteSource!.getLength(); }
+      async readUint8Array(offset: number, length: number) { return remoteSource!.read(offset, length); }
+    }
+    const archive = new ZipReader(remoteSource ? new RemoteZipReader(null) : new BlobReader(file));
     try {
       const entries = (await archive.getEntries())
         .filter((entry) => !entry.directory && imagePattern.test(entry.filename))
@@ -53,7 +57,7 @@ export async function openPublicationBook(file: File, cbrSource?: { getLength: (
     } catch (error) { await archive.close(); throw error; }
   }
 
-  const { rar, entries: archiveEntries } = await unrar(cbrSource || file);
+  const { rar, entries: archiveEntries } = await unrar(remoteSource || file);
   const entries = Object.values(archiveEntries)
     .filter((entry) => !entry.isDirectory && imagePattern.test(entry.name))
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
