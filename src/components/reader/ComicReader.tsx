@@ -128,7 +128,7 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, pdfData
 
   useEffect(() => {
     let active = true;
-    const task = pdfData ? getDocument({ data: pdfData }) : getDocument({ url: pdfUrl, withCredentials: false });
+    const task = pdfData ? getDocument({ data: pdfData }) : getDocument({ url: pdfUrl, withCredentials: false, disableAutoFetch: true, disableStream: true, rangeChunkSize: 256 * 1024 });
     task.promise
       .then((document) => {
         if (!active) return;

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 interface ModalProps {
@@ -52,7 +53,7 @@ export const Modal: React.FC<ModalProps> = ({
     "2xl": "max-w-2xl",
   }[maxWidth];
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-black/80 backdrop-blur-xs transition-opacity duration-200"
       role="dialog"
@@ -105,6 +106,7 @@ export const Modal: React.FC<ModalProps> = ({
         {/* Conteúdo */}
         <div className="modal-content p-4 pt-1 sm:p-6 sm:pt-1">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
