@@ -1,7 +1,7 @@
 import { supabase } from "./supabaseClient";
 
 const CHUNK_SIZE = 2 * 1024 * 1024;
-const REMOTE_BLOCK_SIZE = 256 * 1024;
+const REMOTE_BLOCK_SIZE = 1024 * 1024;
 
 async function fetchChunk(comicId: string, token: string, start: number, end: number): Promise<Response> {
   return fetch(`/api/storage/comic-read?comicId=${encodeURIComponent(comicId)}&start=${start}&end=${end}`, {
@@ -20,14 +20,18 @@ export async function createRemoteArchiveSource(comicId: string, signedUrl: stri
   const total = Number(first.headers.get("Content-Range")?.split("/")[1]);
   if (!Number.isSafeInteger(total) || total < 1) throw new Error("Tamanho da edição inválido.");
   const cache = new Map<number, Uint8Array>();
+  let directUnavailable = false;
   const readRange = async (start: number, end: number): Promise<Uint8Array> => {
-    try {
-      const response = await fetch(signedUrl, { headers: { Range: `bytes=${start}-${end}` } });
-      if (response.status === 206) {
-        const bytes = new Uint8Array(await response.arrayBuffer());
-        if (bytes.length === end - start + 1) return bytes;
-      }
-    } catch { /* Fall back to the authenticated route. */ }
+    if (!directUnavailable) {
+      try {
+        const response = await fetch(signedUrl, { headers: { Range: `bytes=${start}-${end}` } });
+        if (response.status === 206) {
+          const bytes = new Uint8Array(await response.arrayBuffer());
+          if (bytes.length === end - start + 1) return bytes;
+        }
+      } catch { /* Use the authenticated route below. */ }
+      directUnavailable = true;
+    }
     const response = await fetchChunk(comicId, token, start, end);
     if (!response.ok) throw new Error("Não foi possível carregar um trecho da HQ.");
     return new Uint8Array(await response.arrayBuffer());

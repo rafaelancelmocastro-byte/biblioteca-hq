@@ -27,7 +27,7 @@ async function getAuthenticatedUserId(): Promise<string | null> {
 
 export async function getSupabaseLibraryState(): Promise<SupabaseLibraryState | null> {
   try {
-    const userId = await getAuthenticatedUserId();
+    const userId = (await supabase?.auth.getSession())?.data.session?.user.id;
     if (!supabase || !userId) return null;
 
     const [favoritesResult, seriesFavoritesResult, progressResult] = await Promise.all([

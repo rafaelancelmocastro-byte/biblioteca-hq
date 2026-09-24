@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Comic, ComicStatus, LibraryFilters, Series, Character } from "../types/comic";
 import { localFavoriteRepository } from "../services/localFavoriteRepository";
 import { localProgressRepository } from "../services/localProgressRepository";
@@ -29,6 +29,7 @@ const DEFAULT_FILTERS: LibraryFilters = {
 };
 
 export function useLibrary() {
+  const loadVersion = useRef(0);
   const [allComics, setAllComics] = useState<Comic[]>([]);
   const [seriesList, setSeriesList] = useState<Series[]>([]);
   const [favoriteSeriesIds, setFavoriteSeriesIds] = useState<Set<string>>(new Set());
@@ -43,10 +44,12 @@ export function useLibrary() {
   );
 
   const reloadData = useCallback(async (fresh = false) => {
+    const version = ++loadVersion.current;
     if (fresh) invalidateCatalogCache();
     setIsLoading(true);
     try {
       const [{ comics, series, characters, publishers: pubs, years: yrs }, remoteState] = await Promise.all([getSupabaseCatalog(), getSupabaseLibraryState()]);
+      if (version !== loadVersion.current) return;
       const hydrated = remoteState ? applySupabaseLibraryState(comics, remoteState) : comics;
       setAllComics(hydrated);
       setSeriesList(series);
@@ -54,16 +57,21 @@ export function useLibrary() {
       setCharactersList(characters);
       setPublishers(pubs);
       setYears(yrs);
-      void getCoverUrls(hydrated).then((urls) => {
-        setAllComics((current) => current.map((comic) => urls[comic.id] ? { ...comic, coverUrl: urls[comic.id] } : comic));
-      });
+      void (async () => {
+        for (let offset = 0; offset < hydrated.length && version === loadVersion.current; offset += 100) {
+          const urls = await getCoverUrls(hydrated.slice(offset, offset + 100));
+          if (version !== loadVersion.current) return;
+          setAllComics((current) => current.map((comic) => urls[comic.id] && comic.coverUrl !== urls[comic.id] ? { ...comic, coverUrl: urls[comic.id] } : comic));
+        }
+      })().catch(() => { /* Capas são opcionais; a biblioteca permanece disponível. */ });
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    reloadData();
+    void reloadData();
+    return () => { loadVersion.current++; };
   }, [reloadData]);
 
   const setGridDensity = useCallback((density: "compact" | "comfortable") => {
