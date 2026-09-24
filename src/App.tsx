@@ -82,7 +82,7 @@ export default function App() {
     );
   }
 
-  if (activeRoute === "/pagamento") return <CheckoutPage email={session?.user.email || ""} onBack={() => navigate("/biblioteca")} />;
+  if (activeRoute === "/pagamento") return <div className="login-screen min-h-dvh flex items-center justify-center p-4"><div className="login-card max-w-md rounded-3xl p-6 text-center"><h1 className="text-2xl font-bold">Acesso já liberado</h1><p className="mt-3 text-sm text-slate-300">Sua conta já pode ler o acervo. Não é necessário fazer outro PIX.</p><button className="studio-primary mt-5" onClick={() => navigate("/biblioteca")}>Ir para a biblioteca</button></div></div>;
 
   return (
     <AppLayout

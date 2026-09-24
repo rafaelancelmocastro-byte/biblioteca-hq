@@ -6,6 +6,8 @@ export type CheckoutSettings = {
   whatsapp_number: string;
 };
 
+export const REGULAR_LIFETIME_PRICE_CENTS = 2999;
+
 const field = (id: string, value: string) => `${id}${String(value.length).padStart(2, "0")}${value}`;
 const ascii = (value: string, length: number) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9 .-]/g, "").slice(0, length);
 
