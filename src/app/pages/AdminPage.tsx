@@ -138,7 +138,7 @@ export const AdminPage: React.FC = () => {
       await runLimited(targets, window.matchMedia("(pointer: coarse)").matches ? 1 : 2, async (comic) => {
         try {
           if (["cbr", "cbz"].includes(publicationFormat(comic.fileName) || "")) {
-            const response = await fetch(await getComicReadUrl(comic.id), { cache: "no-store" });
+            const response = await fetch(await getComicReadUrl(comic.id));
             if (!response.ok) throw new Error("Não foi possível baixar a HQ.");
             const extracted = await inspectPublication(new File([await response.blob()], comic.fileName));
             if (!extracted.cover) throw new Error("A primeira imagem do arquivo não pôde ser extraída.");

@@ -3,6 +3,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight, Rows3, Square } from "lucide-reac
 import type { Comic } from "../../types/comic";
 import { openPublicationBook, type PublicationBook } from "../../services/publicationBooks";
 import { publicationFormat } from "../../services/publicationFormats";
+import { downloadComicBlob } from "../../services/comicDownload";
 
 type FoliateView = HTMLElement & {
   book: PublicationBook;
@@ -41,9 +42,7 @@ export const PublicationReader: React.FC<{
     const open = async () => {
       if (!holderRef.current) return;
       setLoading(true);
-      const response = fileData ? null : await fetch(fileUrl!, { cache: "no-store" });
-      if (response && !response.ok) throw new Error("Não foi possível baixar o arquivo para leitura.");
-      const blob = fileData ? new Blob([new Uint8Array(fileData)]) : await response!.blob();
+      const blob = fileData ? new Blob([new Uint8Array(fileData)]) : await downloadComicBlob(comic.id, fileUrl!);
       const file = new File([blob], comic.fileName);
       book = await openPublicationBook(file);
       if (!active) { book.destroy?.(); return; }

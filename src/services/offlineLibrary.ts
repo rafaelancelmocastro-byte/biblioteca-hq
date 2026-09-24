@@ -47,7 +47,7 @@ export async function hasOffline(userId: string, comicId: string): Promise<boole
 export async function saveOffline(userId: string, comic: Comic, onProgress?: (received: number) => void): Promise<void> {
   if (!userId) throw new Error("Entre na sua conta para salvar uma edição.");
   const url = await getComicReadUrl(comic.id);
-  const response = await fetch(url, { cache: "no-store" });
+  const response = await fetch(url);
   if (!response.ok || !response.body) throw new Error("Não foi possível baixar esta edição para o app.");
   const db = await database(); const key = await userKey(db, userId); const id = editionId(userId, comic.id);
   await removeOffline(userId, comic.id);

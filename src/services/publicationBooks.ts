@@ -61,9 +61,17 @@ export async function openPublicationBook(file: File): Promise<PublicationBook> 
   if (entries.some((entry) => entry.encrypted)) { rar.dispose(); throw new Error("CBR protegido por senha não pode ser lido."); }
 
   const names = new Map(entries.map((entry, index) => [`page-${String(index).padStart(6, "0")}.jpg`, entry]));
+  // unrarit shares a WASM heap between entries. Concurrent extraction can detach
+  // its ArrayBuffer while another page is still copying image bytes.
+  let extraction = Promise.resolve();
   const mime = (entry: RarEntry) => {
     const extension = entry.name.split(".").pop()?.toLowerCase();
     return extension === "png" ? "image/png" : extension === "webp" ? "image/webp" : extension === "gif" ? "image/gif" : extension === "bmp" ? "image/bmp" : extension === "avif" ? "image/avif" : "image/jpeg";
+  };
+  const extract = (entry: RarEntry): Promise<Blob> => {
+    const result = extraction.then(() => entry.blob(mime(entry)));
+    extraction = result.then(() => undefined, () => undefined);
+    return result;
   };
   const loader = {
     entries: [...names.keys()].map((filename) => ({ filename })),
@@ -72,7 +80,7 @@ export async function openPublicationBook(file: File): Promise<PublicationBook> 
     loadBlob: (name: string) => {
       const entry = names.get(name);
       if (!entry) throw new Error("Página não encontrada no CBR.");
-      return entry.blob(mime(entry));
+      return extract(entry);
     },
   };
   try {
@@ -81,7 +89,7 @@ export async function openPublicationBook(file: File): Promise<PublicationBook> 
     book.getPageBlob = (index: number) => {
       const entry = entries[index];
       if (!entry) throw new Error("Página não encontrada no CBR.");
-      return entry.blob(mime(entry));
+      return extract(entry);
     };
     const destroy = book.destroy?.bind(book);
     book.destroy = () => { destroy?.(); rar.dispose(); };

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, BookOpen, ChevronLeft, ChevronRight, Expand, GalleryHorizontal, Minimize, Minus, Plus, RotateCcw, Rows3, Settings2, Square, SunMedium } from "lucide-react";
 import type { Comic } from "../../types/comic";
 import { openPublicationBook, type PublicationBook } from "../../services/publicationBooks";
+import { downloadComicBlob } from "../../services/comicDownload";
 
 type Mode = "continuous" | "page" | "horizontal" | "spread";
 type Texture = "clean" | "paper" | "warm";
@@ -10,32 +11,34 @@ function CbrImage({ book, index, className = "", onVisible }: { book: Publicatio
   const holder = useRef<HTMLDivElement>(null);
   const [url, setUrl] = useState("");
   const [height, setHeight] = useState(0);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState("");
+  const [near, setNear] = useState(false);
   useEffect(() => {
     const element = holder.current;
     if (!element || !book.getPageBlob) return;
     let active = true;
     let currentUrl = "";
     const observer = new IntersectionObserver(([entry]) => {
+      setNear(entry.isIntersecting);
       if (entry.isIntersecting) {
         if (!currentUrl && !failed) void book.getPageBlob!(index).then((blob) => {
           if (!active) return;
           currentUrl = URL.createObjectURL(blob);
           setUrl(currentUrl);
-        }).catch(() => { if (active) setFailed(true); });
+        }).catch((cause) => { if (active) setFailed(cause instanceof Error ? cause.message : "Erro ao extrair imagem"); });
       } else if (currentUrl) {
         URL.revokeObjectURL(currentUrl);
         currentUrl = "";
         setUrl("");
       }
-    }, { root: element.closest(".cbr-scroll-stage"), rootMargin: "800px 0px" });
+    }, { root: element.closest(".cbr-scroll-stage"), rootMargin: "350px 0px" });
     observer.observe(element);
     const visibility = onVisible ? new IntersectionObserver(([entry]) => { if (entry.isIntersecting && entry.intersectionRatio > .15) onVisible(index + 1); }, { root: element.closest(".cbr-scroll-stage"), threshold: [.15, .4] }) : null;
     visibility?.observe(element);
     return () => { active = false; observer.disconnect(); visibility?.disconnect(); if (currentUrl) URL.revokeObjectURL(currentUrl); };
   }, [book, index, onVisible, failed]);
   return <div ref={holder} data-cbr-page={index + 1} className={`cbr-image-holder ${className}`} style={height ? { minHeight: height } : undefined}>
-    {url && !failed ? <img src={url} alt={`Página ${index + 1}`} onLoad={(event) => setHeight(event.currentTarget.getBoundingClientRect().height)} onError={() => setFailed(true)} /> : <span>{failed ? `Não foi possível abrir a página ${index + 1}.` : `Carregando página ${index + 1}…`}</span>}
+    {url && !failed ? <img src={url} alt={`Página ${index + 1}`} onLoad={(event) => setHeight(event.currentTarget.getBoundingClientRect().height)} onError={() => setFailed("Imagem inválida")} /> : near || failed ? <span>{failed ? `Não foi possível abrir a página ${index + 1}: ${failed}` : `Carregando página ${index + 1}…`}</span> : null}
   </div>;
 }
 
@@ -45,6 +48,7 @@ export function CbrReader({ comic, fileUrl, fileData, onBack, onNextChapter, onU
 }) {
   const [book, setBook] = useState<PublicationBook | null>(null);
   const [error, setError] = useState("");
+  const [downloadProgress, setDownloadProgress] = useState(0);
   const [page, setPage] = useState(Math.max(1, comic.progress?.currentPage || 1));
   const [mode, setMode] = useState<Mode>(() => (localStorage.getItem("biblioteca_reader_mode") as Mode) || "page");
   const [direction, setDirection] = useState<"ltr" | "rtl">(comic.readingDirection || "ltr");
@@ -69,16 +73,15 @@ export function CbrReader({ comic, fileUrl, fileData, onBack, onNextChapter, onU
     let opened: PublicationBook | null = null;
     setBook(null);
     setError("");
+    setDownloadProgress(0);
     void (async () => {
-      const response = fileData ? null : await fetch(fileUrl!, { cache: "no-store" });
-      if (response && !response.ok) throw new Error("Não foi possível baixar a HQ.");
-      const blob = fileData ? new Blob([new Uint8Array(fileData)]) : await response!.blob();
+      const blob = fileData ? new Blob([new Uint8Array(fileData)]) : await downloadComicBlob(comic.id, fileUrl!, (received, total) => { if (active) setDownloadProgress(Math.min(100, Math.round(received / total * 100))); });
       opened = await openPublicationBook(new File([blob], comic.fileName));
       if (active) { setBook(opened); setPage((current) => Math.min(current, opened!.sections.length)); }
       else opened.destroy?.();
     })().catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : "Não foi possível abrir a HQ."); });
     return () => { active = false; opened?.destroy?.(); };
-  }, [comic.fileName, fileData, fileUrl]);
+  }, [comic.id, comic.fileName, fileData, fileUrl]);
   useEffect(() => { localStorage.setItem("biblioteca_reader_mode", mode); }, [mode]);
   useEffect(() => { if (book) onUpdateProgress(comic.id, page, total); }, [book, comic.id, page, total, onUpdateProgress]);
   useEffect(() => {
@@ -110,7 +113,7 @@ export function CbrReader({ comic, fileUrl, fileData, onBack, onNextChapter, onU
       onTouchMove={(event) => { if (event.touches.length === 2 && startTouch.current?.distance) { const distance = Math.hypot(event.touches[0].clientX - event.touches[1].clientX, event.touches[0].clientY - event.touches[1].clientY); setZoom(Math.min(3, Math.max(.7, startTouch.current.zoom! * distance / startTouch.current.distance))); } }}
       onTouchEnd={(event) => { if (mode === "continuous" || zoom > 1.05 || !startTouch.current || startTouch.current.distance || !event.changedTouches.length) return; const dx = event.changedTouches[0].clientX - startTouch.current.x, dy = event.changedTouches[0].clientY - startTouch.current.y; if (mode === "page" && Math.abs(dy) > 55 && Math.abs(dy) > Math.abs(dx)) dy < 0 ? next() : previous(); else if (mode !== "page" && Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy)) dx < 0 ? (direction === "rtl" ? previous() : next()) : (direction === "rtl" ? next() : previous()); }}
       onWheel={(event) => { if (mode === "continuous" || zoom > 1.05 || Date.now() - lastWheelTurn.current < 420) return; if (mode === "page" && Math.abs(event.deltaY) > 30) { lastWheelTurn.current = Date.now(); event.preventDefault(); event.deltaY > 0 ? next() : previous(); } else if (mode !== "page" && Math.abs(event.deltaX) > 30) { lastWheelTurn.current = Date.now(); event.preventDefault(); event.deltaX > 0 ? next() : previous(); } }}>
-      {!book ? <div className="reader-loading" role="status">{error || "Preparanda HQ..."}</div> : mode === "continuous" ? <div className="cbr-continuous" style={{ width: `${Math.round(zoom * 100)}%`, maxWidth: `${56 * zoom}rem` }}>{book.sections.map((_, index) => <CbrImage key={index} book={book} index={index} onVisible={progress} />)}</div> : <div className={`cbr-page ${mode === "spread" ? "cbr-spread" : ""}`} style={{ width: `${Math.round(zoom * 100)}%` }}>{shown.map((index) => <CbrImage key={index} book={book} index={index} />)}</div>}
+      {!book ? <div className="reader-loading" role="status">{error || (downloadProgress > 0 && downloadProgress < 100 ? `Carregando HQ… ${downloadProgress}%` : "Preparando HQ…")}</div> : mode === "continuous" ? <div className="cbr-continuous" style={{ width: `${Math.round(zoom * 100)}%`, maxWidth: `${56 * zoom}rem` }}>{book.sections.map((_, index) => <CbrImage key={index} book={book} index={index} onVisible={progress} />)}</div> : <div className={`cbr-page ${mode === "spread" ? "cbr-spread" : ""}`} style={{ width: `${Math.round(zoom * 100)}%` }}>{shown.map((index) => <CbrImage key={index} book={book} index={index} />)}</div>}
       {book && page >= total && onNextChapter && <button className="reader-next-chapter" onClick={onNextChapter}>Ler o próximo capítulo <ChevronRight /></button>}
     </main>
     <footer className="reader-dock"><button onClick={direction === "rtl" ? next : previous} disabled={direction === "rtl" ? page >= total : page <= 1} aria-label={direction === "rtl" ? "Próxima página" : "Página anterior"}><ChevronLeft /></button><div className="reader-page-control"><input type="range" min="1" max={total} value={page} onChange={(event) => { const target = Number(event.target.value); setCurrent(target); if (mode === "continuous") stageRef.current?.querySelector(`[data-cbr-page="${target}"]`)?.scrollIntoView({ block: "start" }); }} aria-label="Progresso da leitura" /><span>{page} <small>/ {total}</small></span></div><button onClick={direction === "rtl" ? previous : next} disabled={direction === "rtl" ? page <= 1 : page >= total} aria-label={direction === "rtl" ? "Página anterior" : "Próxima página"}><ChevronRight /></button><div className="reader-zoom"><button onClick={() => setZoom((value) => Math.max(.7, value - .1))} aria-label="Reduzir zoom"><Minus /></button><button className="reader-reset-zoom" onClick={() => setZoom(1)} aria-label="Redefinir zoom"><RotateCcw /><span>{Math.round(zoom * 100)}%</span></button><button onClick={() => setZoom((value) => Math.min(3, value + .1))} aria-label="Aumentar zoom"><Plus /></button></div></footer>
