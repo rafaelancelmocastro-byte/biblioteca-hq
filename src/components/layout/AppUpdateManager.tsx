@@ -6,13 +6,9 @@ export function AppUpdateManager() {
   useEffect(() => {
     if (!("serviceWorker" in navigator) || !import.meta.env.PROD) return;
     let disposed = false;
-    let refreshing = false;
     const hadController = !!navigator.serviceWorker.controller;
-    const safeToReload = () => !/^\/(ler|admin|configuracoes)(\/|$)/.test(location.pathname) && !document.querySelector("input:focus,textarea:focus,select:focus");
     const onControllerChange = () => {
-      if (disposed || !hadController || refreshing) return;
-      if (safeToReload()) { refreshing = true; location.reload(); }
-      else setUpdateReady(true);
+      if (!disposed && hadController) setUpdateReady(true);
     };
     navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
     let registration: ServiceWorkerRegistration | undefined;
@@ -52,5 +48,5 @@ export function AppUpdateManager() {
     return () => { document.removeEventListener("touchstart", start); document.removeEventListener("touchmove", move); document.removeEventListener("touchend", end); };
   }, []);
 
-  return <>{pullReady && <div className="app-refresh-pull" role="status">Solte para atualizar</div>}{updateReady && <div className="app-update-banner" role="status"><span>Nova versão da Biblioteca HQ disponível.</span><button onClick={() => location.reload()}>Atualizar agora</button></div>}</>;
+  return <>{pullReady && <div className="app-refresh-pull" role="status">Solte para atualizar</div>}{updateReady && !/^\/ler(\/|$)/.test(location.pathname) && <div className="app-update-banner" role="status"><span>Nova versão da Biblioteca HQ disponível.</span><button onClick={() => location.reload()}>Atualizar agora</button></div>}</>;
 }

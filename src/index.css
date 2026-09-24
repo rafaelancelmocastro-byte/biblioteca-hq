@@ -356,6 +356,14 @@ button, input, select { font: inherit; }
 .roulette-wheel i svg { width:1.1rem; }
 .roulette-center { position:absolute; z-index:3; inset:34%; display:grid; place-items:center; border:.25rem solid #d2dce9; border-radius:50%; background:#0e1218; color:#a8bacf; box-shadow:0 8px 22px rgba(0,0,0,.5); }
 .roulette-center svg { width:38%; height:38%; }
+@media (max-width: 1024px) {
+  .recommendation-roulette { grid-template-columns: minmax(0,1fr) 7rem; gap: 1rem; padding: 1rem 1.2rem; border-radius: 1rem; box-shadow: none; background: #10141a; }
+  .roulette-copy h2 { font-size: 1.6rem; }
+  .roulette-copy > p { margin-top: .3rem; }
+  .roulette-result { min-height: 3.5rem; margin-top: .65rem; }
+  .roulette-actions { margin-top: .6rem; }
+  .roulette-wheel { width: 6.5rem; border-width: .3rem; box-shadow: 0 0 0 .12rem #a8bacf; }
+}
 .catalog-cover-float img { width: 100%; border-radius: 1rem; border: 1px solid rgba(255,255,255,.15); }
 .catalog-summary { display: flex; align-items: center; gap: .65rem; color: #8a8e93; font-size: .75rem; padding-inline: .25rem; }
 .catalog-summary svg { width: 1rem; color: #5f7896; }
@@ -593,9 +601,10 @@ button, input, select { font: inherit; }
   .streaming-modal { max-height: calc(100dvh - 1rem); border-radius: 1rem; }
   .modal-content { padding-left: .85rem; padding-right: .85rem; padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
   .comic-detail-streaming > div:first-child > div:first-child { width: min(10.5rem,46vw); }
-  .recommendation-roulette { grid-template-columns: 1fr; text-align: left; }
-  .roulette-wheel { grid-row: 1; width: min(15rem,68vw); }
-  .roulette-copy h2 { font-size: 2.25rem; }
+  .recommendation-roulette { grid-template-columns: 1fr; text-align: left; padding: .85rem; }
+  .roulette-wheel { display: none; }
+  .roulette-copy h2 { font-size: 1.35rem; }
+  .roulette-copy > p { display: none; }
   .roulette-actions { display: grid; grid-template-columns: 1fr 1fr; }
   .roulette-actions .catalog-primary-action { grid-column: 1 / -1; }
   .roulette-read { justify-content: center; min-height: 2.8rem; }

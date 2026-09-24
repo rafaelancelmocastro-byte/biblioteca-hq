@@ -43,7 +43,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const archived = await admin.from("series").select("id,cover_key").eq("title", record.title).eq("publisher", record.publisher).eq("start_year", record.start_year).not("deleted_at", "is", null).limit(1).maybeSingle();
   if (archived.error) return res.status(503).json({ error: "Não foi possível verificar agrupamentos anteriores." });
   if (archived.data) {
-    const restored = await admin.from("series").update({ ...record, cover_key: record.cover_key || archived.data.cover_key, deleted_at: null }).eq("id", archived.data.id).select("id").single();
+    const restored = await admin.from("series").update({ ...record, cover_key: record.cover_key !== undefined ? record.cover_key : archived.data.cover_key, deleted_at: null }).eq("id", archived.data.id).select("id").single();
     if (restored.error) return res.status(409).json({ error: "Não foi possível recuperar o agrupamento anterior." });
     return res.status(200).json({ id: restored.data.id, restored: true });
   }

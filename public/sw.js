@@ -13,10 +13,6 @@ self.addEventListener('activate', (event) => event.waitUntil((async () => {
   const previousCaches = (await caches.keys()).filter((key) => key.startsWith('biblioteca-hq-shell-') && key !== CACHE);
   for (const key of previousCaches) await caches.delete(key);
   await self.clients.claim();
-  if (previousCaches.length) {
-    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    await Promise.allSettled(windows.filter((client) => !/^\/(ler|admin|configuracoes|login|mobile-upload\.html)(\/|$)/.test(new URL(client.url).pathname)).map((client) => client.navigate(client.url)));
-  }
 })()));
 self.addEventListener('fetch', (event) => {
   const request = event.request;
