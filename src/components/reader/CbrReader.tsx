@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, BookOpen, ChevronLeft, ChevronRight, Expand, GalleryHorizontal, Minimize, Minus, Plus, RotateCcw, Rows3, Settings2, Square, SunMedium } from "lucide-react";
 import type { Comic } from "../../types/comic";
 import { openPublicationBook, type PublicationBook } from "../../services/publicationBooks";
-import { downloadComicBlob } from "../../services/comicDownload";
+import { createRemoteCbrSource, downloadComicBlob } from "../../services/comicDownload";
+import { publicationFormat } from "../../services/publicationFormats";
 
 type Mode = "continuous" | "page" | "horizontal" | "spread";
 type Texture = "clean" | "paper" | "warm";
@@ -75,6 +76,15 @@ export function CbrReader({ comic, fileUrl, fileData, onBack, onNextChapter, onU
     setError("");
     setDownloadProgress(0);
     void (async () => {
+      if (!fileData && fileUrl && publicationFormat(comic.fileName) === "cbr") {
+        try {
+          const source = await createRemoteCbrSource(comic.id, fileUrl);
+          opened = await openPublicationBook(new File([], comic.fileName), source);
+          if (active) { setBook(opened); setPage((current) => Math.min(current, opened!.sections.length)); }
+          else opened.destroy?.();
+          return;
+        } catch { /* Fall back to downloading the archive in chunks. */ }
+      }
       const blob = fileData ? new Blob([new Uint8Array(fileData)]) : await downloadComicBlob(comic.id, fileUrl!, (received, total) => { if (active) setDownloadProgress(Math.min(100, Math.round(received / total * 100))); });
       opened = await openPublicationBook(new File([blob], comic.fileName));
       if (active) { setBook(opened); setPage((current) => Math.min(current, opened!.sections.length)); }

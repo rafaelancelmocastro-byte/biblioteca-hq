@@ -12,7 +12,7 @@ export type PublicationBook = {
 
 const imagePattern = /\.(jpe?g|png|gif|webp|bmp|avif)$/i;
 
-export async function openPublicationBook(file: File): Promise<PublicationBook> {
+export async function openPublicationBook(file: File, cbrSource?: { getLength: () => Promise<number>; read: (offset: number, length: number) => Promise<Uint8Array> }): Promise<PublicationBook> {
   const format = publicationFormat(file.name);
   if (format !== "cbr" && format !== "cbz") {
     const { makeBook } = await import("foliate-js/view.js");
@@ -53,7 +53,7 @@ export async function openPublicationBook(file: File): Promise<PublicationBook> 
     } catch (error) { await archive.close(); throw error; }
   }
 
-  const { rar, entries: archiveEntries } = await unrar(file);
+  const { rar, entries: archiveEntries } = await unrar(cbrSource || file);
   const entries = Object.values(archiveEntries)
     .filter((entry) => !entry.isDirectory && imagePattern.test(entry.name))
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
