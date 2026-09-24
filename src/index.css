@@ -554,9 +554,10 @@ button, input, select { font: inherit; }
 /* Biblioteca HQ — identidade e sistema visual compartilhado */
 :root { --brand-red: #293e57; --brand-yellow: #a8bacf; --panel: rgba(20,25,32,.82); --line: rgba(255,255,255,.095); }
 .brand-lockup { display: inline-flex; align-items: center; gap: .7rem; min-width: 0; }
-.brand-mark { width: 3.4rem; height: 3.4rem; object-fit: contain; filter: drop-shadow(0 7px 18px rgba(215,25,32,.22)); }
+.brand-mark { width: 3.4rem; height: 3.4rem; object-fit: contain; filter: drop-shadow(0 7px 18px rgba(0,0,0,.2)); }
 .brand-copy { display: flex; flex-direction: column; min-width: 0; text-align: left; }
 .brand-copy strong { color: #fff; font-size: 1rem; line-height: 1; letter-spacing: -.02em; text-transform: uppercase; }
+.brand-copy strong span { color: #ffb81f; }
 .brand-copy small { max-width: 17rem; margin-top: .35rem; color: #9ea2a7; font-size: .62rem; line-height: 1.25; letter-spacing: .04em; text-transform: uppercase; }
 .brand-lockup-compact .brand-mark { width: 2.75rem; height: 2.75rem; }
 .sidebar-brand-mark .brand-mark { width: 2.8rem; height: 2.8rem; }
@@ -614,7 +615,7 @@ button, input, select { font: inherit; }
 .login-screen { background: radial-gradient(circle at 15% 18%,rgba(215,25,32,.2),transparent 25rem), radial-gradient(circle at 90% 88%,rgba(168,186,207,.08),transparent 28rem), #04080e; }
 .login-card { border: 1px solid rgba(255,255,255,.11); background: rgba(18,14,12,.82); box-shadow: 0 40px 120px rgba(0,0,0,.7); backdrop-filter: blur(28px) saturate(120%); }
 .login-brand { flex-direction: column; gap: .25rem; }
-.login-brand .brand-mark { width: 8.25rem; height: 8.25rem; }
+.login-brand .brand-mark { width: 10.5rem; height: 8.25rem; }
 .login-brand .brand-copy { align-items: center; text-align: center; }
 .login-brand .brand-copy strong { font: 900 1.5rem/1.1 Inter,sans-serif; }
 .login-brand .brand-copy small { color: #acb0b5; }
@@ -713,7 +714,7 @@ textarea.admin-field { resize: vertical; }
   .catalog-manager-list article > button { grid-row: 2; }
   .catalog-manager-list article > button:nth-last-child(2) { grid-column: 2; }
   .catalog-manager-list article > button:last-child { grid-column: 3; justify-self: start; }
-  .login-brand .brand-mark { width: 7rem; height: 7rem; }
+  .login-brand .brand-mark { width: 9rem; height: 7rem; }
 }
 
 /* O gerenciador mantém ações e estado do arquivo na mesma linha em todos os tamanhos. */

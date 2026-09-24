@@ -1,0 +1,35 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="620" height="470" viewBox="0 0 620 470" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="S&#195;&#173;mbolo 3D &#226;&#128;&#148; Livro Portal">
+<path id="Vector" d="M311 52L540 160L474 393L313 440L81 329L146 95L311 52Z" fill="#281B59" stroke="#0B1020" stroke-width="16" stroke-linejoin="round"/>
+<path id="Vector_2" d="M311 29L540 137L474 370L313 417L81 306L146 72L311 29Z" fill="url(#paint0_linear_0_16)" stroke="#FF6978" stroke-width="7" stroke-linejoin="round"/>
+<path id="Vector_3" d="M311 54L507 147L450 342L313 387L114 292L171 96L311 54Z" fill="url(#paint1_linear_0_16)" stroke="#10152A" stroke-width="11" stroke-linejoin="round"/>
+<path id="Vector_4" opacity="0.72" d="M311 63V386" stroke="#FFFADE" stroke-width="8"/>
+<path id="Vector_5" d="M177 171C221 150 271 153 310 191V318C262 279 220 272 177 292V171Z" fill="url(#paint2_linear_0_16)" stroke="#10152A" stroke-width="11" stroke-linejoin="round"/>
+<path id="Vector_6" d="M443 171C399 150 349 153 310 191V318C358 279 400 272 443 292V171Z" fill="url(#paint3_linear_0_16)" stroke="#10152A" stroke-width="11" stroke-linejoin="round"/>
+<path id="Vector_7" d="M197 190C232 179 265 188 289 209M197 222C232 211 265 220 289 241M197 254C232 243 265 252 289 273" stroke="#5070A7" stroke-width="8" stroke-linecap="round"/>
+<path id="Vector_8" d="M423 190C388 179 355 188 331 209M423 222C388 211 355 220 331 241M423 254C388 243 355 252 331 273" stroke="#5070A7" stroke-width="8" stroke-linecap="round"/>
+<path id="Vector_9" d="M311 318C272 287 222 281 177 304L230 338C259 321 284 324 311 346C338 324 363 321 392 338L443 304C398 281 348 287 311 318Z" fill="#17213D" stroke="#10152A" stroke-width="10" stroke-linejoin="round"/>
+<path id="Vector_10" d="M311 123C318.18 123 324 117.18 324 110C324 102.82 318.18 97 311 97C303.82 97 298 102.82 298 110C298 117.18 303.82 123 311 123Z" fill="#FFF9CF"/>
+<path id="Vector_11" d="M270 112H243M379 112H352M311 70V43" stroke="#FFF9CF" stroke-width="8" stroke-linecap="round"/>
+</g>
+<defs>
+<linearGradient id="paint0_linear_0_16" x1="70" y1="79" x2="510" y2="415" gradientUnits="userSpaceOnUse">
+<stop stop-color="#FF3B5C"/>
+<stop offset="0.55" stop-color="#B62965"/>
+<stop offset="1" stop-color="#5E2B86"/>
+</linearGradient>
+<linearGradient id="paint1_linear_0_16" x1="78" y1="64" x2="500" y2="402" gradientUnits="userSpaceOnUse">
+<stop stop-color="#FFF4A9"/>
+<stop offset="0.5" stop-color="#FFC342"/>
+<stop offset="1" stop-color="#FF8E3C"/>
+</linearGradient>
+<linearGradient id="paint2_linear_0_16" x1="197" y1="176" x2="425" y2="317" gradientUnits="userSpaceOnUse">
+<stop stop-color="white"/>
+<stop offset="1" stop-color="#D8E5FF"/>
+</linearGradient>
+<linearGradient id="paint3_linear_0_16" x1="197" y1="176" x2="425" y2="317" gradientUnits="userSpaceOnUse">
+<stop stop-color="white"/>
+<stop offset="1" stop-color="#D8E5FF"/>
+</linearGradient>
+</defs>
+</svg>

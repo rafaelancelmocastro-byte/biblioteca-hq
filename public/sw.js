@@ -1,5 +1,5 @@
 const CACHE = 'biblioteca-hq-shell-v6';
-const SHELL = ['/', '/mobile-upload.html', '/site.webmanifest', '/icon-192.png', '/icon-512.png', '/icon-maskable-512.png'];
+const SHELL = ['/', '/mobile-upload.html', '/site.webmanifest', '/brand-icon.svg', '/brand-logo.svg', '/favicon-32.png', '/icon-192.png', '/icon-512.png', '/icon-maskable-512.png'];
 const ASSETS = __ASSETS__;
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
