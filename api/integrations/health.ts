@@ -39,6 +39,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
+  if (req.query.checkout === "1") {
+    res.setHeader("Cache-Control", "public, max-age=60, s-maxage=60");
+    const url = process.env.VITE_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !key) return res.status(503).json({ error: "Dados do pagamento indisponíveis." });
+    const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { data, error } = await client.from("app_settings").select("lifetime_price_cents,pix_key,pix_merchant_name,pix_merchant_city,whatsapp_number").eq("id", true).maybeSingle();
+    if (error || !data) return res.status(503).json({ error: "Dados do pagamento indisponíveis." });
+    return res.status(200).json(data);
+  }
+
   const [supabase, r2] = await Promise.all([checkSupabase(), checkR2()]);
   const status = supabase === "ok" && r2 === "ok" ? "ok" : "degraded";
 

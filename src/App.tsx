@@ -10,7 +10,10 @@ import { LoginPage } from "./app/pages/LoginPage";
 import { useNavigation } from "./hooks/useNavigation";
 import { useAuth } from "./hooks/useAuth";
 import { CheckoutPage } from "./app/pages/CheckoutPage";
+import { PasswordResetPage } from "./app/pages/PasswordResetPage";
 import { flushReadingProgress } from "./services/offlineProgress";
+
+const legacyRecoveryLink = /(?:[?&#])type=recovery(?:[&#]|$)/.test(window.location.search + window.location.hash);
 
 const ContinuePage = React.lazy(() => import("./app/pages/ContinuePage").then((module) => ({ default: module.ContinuePage })));
 const SeriesPage = React.lazy(() => import("./app/pages/SeriesPage").then((module) => ({ default: module.SeriesPage })));
@@ -32,6 +35,7 @@ export default function App() {
   const isOwner = profile?.role === "master" && profile.is_active;
   const canRead = isOwner || (profile?.access_status === "lifetime" && profile.is_active);
   const [restrictedNotice, setRestrictedNotice] = useState(false);
+  const [legacyRecoveryHandled, setLegacyRecoveryHandled] = useState(false);
   useEffect(() => { if (!restrictedNotice) return; const timer = window.setTimeout(() => setRestrictedNotice(false), 4000); return () => window.clearTimeout(timer); }, [restrictedNotice]);
   useEffect(() => { if (!session?.user.id) return; const sync = () => { void flushReadingProgress(session.user.id); }; window.addEventListener("online", sync); sync(); return () => window.removeEventListener("online", sync); }, [session?.user.id]);
 
@@ -50,13 +54,18 @@ export default function App() {
     );
   }
 
+  if (activeRoute === "/redefinir-senha" || (activeRoute === "/login" && legacyRecoveryLink && !legacyRecoveryHandled)) return <PasswordResetPage onLogin={() => { setLegacyRecoveryHandled(true); navigate("/login"); }} />;
+
+  if (isSupabaseConfigured && session && !profile) return <div className="login-screen min-h-dvh flex items-center justify-center p-4"><div className="login-card max-w-md rounded-3xl p-6 text-center"><h1 className="text-xl font-bold">Não foi possível verificar seu acesso</h1><p className="mt-3 text-sm text-slate-300">Confira sua conexão e tente novamente. Nenhum pagamento é necessário enquanto esta verificação estiver indisponível.</p><button className="studio-primary mt-5" onClick={() => window.location.reload()}>Tentar novamente</button></div></div>;
+
+  if (isSupabaseConfigured && session && !canRead) return <CheckoutPage email={session.user.email || ""} blocked={profile?.access_status === "blocked"} onBack={() => { void signOut().then(() => navigate("/login")); }} />;
+
   if (isSupabaseConfigured && !session && activeRoute !== "/login") {
     return <LoginPage onSuccess={() => navigate("/biblioteca")} />;
   }
 
   // Rota de Leitura Imersiva (oculta layout padrão)
   if (activeRoute === "/ler" && comicId) {
-    if (!canRead && isSupabaseConfigured) return <CheckoutPage email={session?.user.email || ""} onBack={() => navigate("/biblioteca")} />;
     return (
       <React.Suspense fallback={<div className="min-h-screen bg-[#05090f] flex items-center justify-center"><div className="w-10 h-10 border-2 border-[#526d8a] border-t-transparent rounded-full animate-spin" /></div>}>
         <ReaderPage comicId={comicId} onBack={() => navigate("/biblioteca")} onOpenReader={openReader} />

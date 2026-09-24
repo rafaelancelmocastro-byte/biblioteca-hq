@@ -38,8 +38,9 @@ export function useAuth() {
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
+      const changedUser = currentUserId !== (nextSession?.user.id || "");
       currentUserId = nextSession?.user.id || "";
-      if (currentUserId) { setIsLoading(true); void loadProfile(currentUserId).finally(() => { if (mounted) setIsLoading(false); }); }
+      if (currentUserId) { if (changedUser) setIsLoading(true); void loadProfile(currentUserId).finally(() => { if (mounted) setIsLoading(false); }); }
       else { setProfile(null); setIsLoading(false); }
     });
     const refreshAccess = () => { if (currentUserId && navigator.onLine) void loadProfile(currentUserId); };

@@ -13,6 +13,7 @@ export type AppRoute =
   | { path: "/admin" }
   | { path: "/configuracoes" }
   | { path: "/login" }
+  | { path: "/redefinir-senha" }
   | { path: "/ler"; comicId: string };
 
 function parsePath(pathname: string): { route: string; comicId?: string } {
@@ -27,7 +28,7 @@ function parsePath(pathname: string): { route: string; comicId?: string } {
   }
 
   // Rotas normais
-  const validRoutes = ["/biblioteca", "/continuar", "/series", "/guia", "/multiverso", "/lancamentos", "/offline", "/pagamento", "/favoritos", "/admin", "/configuracoes", "/login"];
+  const validRoutes = ["/biblioteca", "/continuar", "/series", "/guia", "/multiverso", "/lancamentos", "/offline", "/pagamento", "/favoritos", "/admin", "/configuracoes", "/login", "/redefinir-senha"];
   if (validRoutes.includes(pathname)) {
     return { route: pathname };
   }
