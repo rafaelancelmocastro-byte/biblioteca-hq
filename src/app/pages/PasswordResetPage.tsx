@@ -14,7 +14,7 @@ export function PasswordResetPage({ onLogin }: { onLogin: () => void }) {
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(linkHasError ? "Este link expirou ou já foi usado. Peça uma nova redefinição na tela de login." : "");
+  const [error, setError] = useState(linkHasError ? "Este link expirou ou já foi usado. Peça uma nova redefinição na tela de login." : !arrivedFromRecovery && !sessionStorage.getItem("biblioteca-hq-recovery-started") ? "Abra o link de redefinição recebido por e-mail para criar uma nova senha." : "");
 
   useEffect(() => {
     if (!supabase || linkHasError) return;
@@ -22,9 +22,9 @@ export function PasswordResetPage({ onLogin }: { onLogin: () => void }) {
     const startedAt = Number(sessionStorage.getItem("biblioteca-hq-recovery-started") || 0);
     const recoveryPending = startedAt > 0 && Date.now() - startedAt < 10 * 60 * 1000;
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (active && event === "PASSWORD_RECOVERY" && session) setReady(true);
+      if (active && event === "PASSWORD_RECOVERY" && session) { setReady(true); setError(""); }
     });
-    if (recoveryPending) void supabase.auth.getSession().then(({ data }) => { if (active && data.session) setReady(true); });
+    if (recoveryPending) void supabase.auth.getSession().then(({ data }) => { if (!active) return; if (data.session) { setReady(true); setError(""); } else setError("Este link expirou ou já foi usado. Peça uma nova redefinição na tela de login."); });
     return () => { active = false; listener.subscription.unsubscribe(); };
   }, []);
 
