@@ -109,6 +109,7 @@ export default function App() {
           isFilterDrawerOpen={isFilterDrawerOpen}
           onCloseFilterDrawer={() => setIsFilterDrawerOpen(false)}
           onOpenGuide={() => navigate("/guia")}
+          onOpenLaunches={() => navigate("/lancamentos")}
         />
       )}
 
