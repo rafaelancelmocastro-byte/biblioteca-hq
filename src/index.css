@@ -719,43 +719,6 @@ button, input, select { font: inherit; }
   backdrop-filter: blur(24px) saturate(140%);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
-.apple-segmented-control {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.25rem;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  max-width: 100%;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-}
-.apple-segmented-control::-webkit-scrollbar {
-  display: none;
-}
-.apple-segmented-button {
-  padding: 0.4rem 0.95rem;
-  border-radius: 999px;
-  font-size: 0.76rem;
-  font-weight: 600;
-  color: #9ca3af;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-.apple-segmented-button.active {
-  background: #ffffff;
-  color: #030712;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
-}
-.apple-segmented-button:not(.active):hover {
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.08);
-}
 .comic-action-desktop { position: absolute; left: 0; top: calc(100% + .3rem); z-index: 40; width: 12rem; padding: .35rem; border: 1px solid rgba(255,255,255,.17); border-radius: .75rem; background: #181c22; box-shadow: 0 16px 35px #000b; }
 .comic-action-list { display: grid; gap: .2rem; }
 .comic-action-list button { display: flex; align-items: center; gap: .65rem; width: 100%; min-height: 2.5rem; padding: .55rem .65rem; border-radius: .5rem; color: #e5e9ee; text-align: left; cursor: pointer; font-size: .76rem; }

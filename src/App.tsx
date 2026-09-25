@@ -90,7 +90,7 @@ export default function App() {
       onNavigate={navigate}
       searchQuery={globalSearch}
       onSearchChange={(query) => { setGlobalSearch(query); if (query && activeRoute !== "/biblioteca") navigate("/biblioteca"); }}
-      onToggleFilters={activeRoute === "/biblioteca" ? () => setIsFilterDrawerOpen(!isFilterDrawerOpen) : undefined}
+      onToggleFilters={activeRoute === "/biblioteca" ? () => setIsFilterDrawerOpen((open) => !open) : undefined}
       onLogout={async () => {
         await signOut();
         navigate("/login");
@@ -107,6 +107,7 @@ export default function App() {
           searchQuery={globalSearch}
           onSearchChange={setGlobalSearch}
           isFilterDrawerOpen={isFilterDrawerOpen}
+          onToggleFilterDrawer={() => setIsFilterDrawerOpen((open) => !open)}
           onCloseFilterDrawer={() => setIsFilterDrawerOpen(false)}
           onOpenGuide={() => navigate("/guia")}
           onOpenLaunches={() => navigate("/lancamentos")}

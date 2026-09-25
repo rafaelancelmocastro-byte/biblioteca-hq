@@ -1,20 +1,17 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   SlidersHorizontal,
   RotateCcw,
   LayoutGrid,
   Grid3X3,
-  Heart,
   ArrowUpDown,
   X,
-  Check,
 } from "lucide-react";
-import { ComicStatus, LibraryFilters, Series, Character, SortOption } from "../../types/comic";
+import { LibraryFilters, Series, Character, SortOption } from "../../types/comic";
 
 interface LibraryFilterBarProps {
   filters: LibraryFilters;
   onFilterChange: (filters: LibraryFilters) => void;
-  onResetFilters: () => void;
   seriesList: Series[];
   charactersList: Character[];
   publishers: string[];
@@ -23,13 +20,13 @@ interface LibraryFilterBarProps {
   onDensityChange: (density: "compact" | "comfortable") => void;
   totalFilteredCount: number;
   isFilterDrawerOpen?: boolean;
+  onToggleFilterDrawer?: () => void;
   onCloseFilterDrawer?: () => void;
 }
 
 export const LibraryFilterBar: React.FC<LibraryFilterBarProps> = ({
   filters,
   onFilterChange,
-  onResetFilters,
   seriesList,
   charactersList,
   publishers,
@@ -38,9 +35,9 @@ export const LibraryFilterBar: React.FC<LibraryFilterBarProps> = ({
   onDensityChange,
   totalFilteredCount,
   isFilterDrawerOpen = false,
+  onToggleFilterDrawer,
   onCloseFilterDrawer,
 }) => {
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   const handleUpdate = <K extends keyof LibraryFilters>(key: K, value: LibraryFilters[K]) => {
     onFilterChange({
@@ -49,50 +46,59 @@ export const LibraryFilterBar: React.FC<LibraryFilterBarProps> = ({
     });
   };
 
-  const hasAdvancedFilters =
+  const hasActiveFilters =
     filters.series !== "all" ||
     filters.character !== "all" ||
     filters.publisher !== "all" ||
-    filters.year !== "all";
+    filters.year !== "all" ||
+    filters.status !== "all" ||
+    filters.favoritesOnly;
 
-  const activeAdvancedCount = [
+  const activeFilterCount = [
     filters.series !== "all",
     filters.character !== "all",
     filters.publisher !== "all",
     filters.year !== "all",
+    filters.status !== "all",
+    filters.favoritesOnly,
   ].filter(Boolean).length;
 
-  // Determina o segmento ativo
-  const currentSegment = filters.favoritesOnly
-    ? "favorites"
-    : filters.status === "reading"
-    ? "reading"
-    : filters.status === "completed"
-    ? "completed"
-    : "all";
-
-  const handleSegmentChange = (segment: "all" | "reading" | "favorites" | "completed") => {
-    if (segment === "all") {
-      onFilterChange({ ...filters, status: "all", favoritesOnly: false });
-    } else if (segment === "reading") {
-      onFilterChange({ ...filters, status: "reading", favoritesOnly: false });
-    } else if (segment === "favorites") {
-      onFilterChange({ ...filters, favoritesOnly: true, status: "all" });
-    } else if (segment === "completed") {
-      onFilterChange({ ...filters, status: "completed", favoritesOnly: false });
-    }
-  };
-
-  const filterControls = (
+  const renderFilterControls = (idPrefix: string) => (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="flex flex-col">
+          <label htmlFor={`${idPrefix}-filter-status`} className="text-[11px] font-medium text-neutral-400 mb-1">Leitura</label>
+          <select
+            id={`${idPrefix}-filter-status`}
+            value={filters.status}
+            onChange={(e) => handleUpdate("status", e.target.value as LibraryFilters["status"])}
+            className="h-9 px-3 bg-white/[0.05] text-xs text-white border border-white/10 rounded-xl focus:border-white/30 focus:outline-none cursor-pointer"
+          >
+            <option value="all" className="bg-[#121620]">Todas</option>
+            <option value="reading" className="bg-[#121620]">Lendo</option>
+            <option value="completed" className="bg-[#121620]">Concluídas</option>
+            <option value="not_started" className="bg-[#121620]">Não iniciadas</option>
+          </select>
+        </div>
+        <div className="flex flex-col">
+          <label htmlFor={`${idPrefix}-filter-favorites`} className="text-[11px] font-medium text-neutral-400 mb-1">Favoritos</label>
+          <select
+            id={`${idPrefix}-filter-favorites`}
+            value={filters.favoritesOnly ? "favorites" : "all"}
+            onChange={(e) => handleUpdate("favoritesOnly", e.target.value === "favorites")}
+            className="h-9 px-3 bg-white/[0.05] text-xs text-white border border-white/10 rounded-xl focus:border-white/30 focus:outline-none cursor-pointer"
+          >
+            <option value="all" className="bg-[#121620]">Todas as HQs</option>
+            <option value="favorites" className="bg-[#121620]">Somente favoritas</option>
+          </select>
+        </div>
         {/* Filtro Série */}
         <div className="flex flex-col">
-          <label htmlFor="filter-series" className="text-[11px] font-medium text-neutral-400 mb-1">
+          <label htmlFor={`${idPrefix}-filter-series`} className="text-[11px] font-medium text-neutral-400 mb-1">
             Coleção / Série
           </label>
           <select
-            id="filter-series"
+            id={`${idPrefix}-filter-series`}
             value={filters.series}
             onChange={(e) => handleUpdate("series", e.target.value)}
             className="h-9 px-3 bg-white/[0.05] text-xs text-white border border-white/10 rounded-xl focus:border-white/30 focus:outline-none cursor-pointer"
@@ -108,11 +114,11 @@ export const LibraryFilterBar: React.FC<LibraryFilterBarProps> = ({
 
         {/* Filtro Personagem */}
         <div className="flex flex-col">
-          <label htmlFor="filter-character" className="text-[11px] font-medium text-neutral-400 mb-1">
+          <label htmlFor={`${idPrefix}-filter-character`} className="text-[11px] font-medium text-neutral-400 mb-1">
             Personagem
           </label>
           <select
-            id="filter-character"
+            id={`${idPrefix}-filter-character`}
             value={filters.character}
             onChange={(e) => handleUpdate("character", e.target.value)}
             className="h-9 px-3 bg-white/[0.05] text-xs text-white border border-white/10 rounded-xl focus:border-white/30 focus:outline-none cursor-pointer"
@@ -128,11 +134,11 @@ export const LibraryFilterBar: React.FC<LibraryFilterBarProps> = ({
 
         {/* Filtro Editora */}
         <div className="flex flex-col">
-          <label htmlFor="filter-publisher" className="text-[11px] font-medium text-neutral-400 mb-1">
+          <label htmlFor={`${idPrefix}-filter-publisher`} className="text-[11px] font-medium text-neutral-400 mb-1">
             Editora
           </label>
           <select
-            id="filter-publisher"
+            id={`${idPrefix}-filter-publisher`}
             value={filters.publisher}
             onChange={(e) => handleUpdate("publisher", e.target.value)}
             className="h-9 px-3 bg-white/[0.05] text-xs text-white border border-white/10 rounded-xl focus:border-white/30 focus:outline-none cursor-pointer"
@@ -148,11 +154,11 @@ export const LibraryFilterBar: React.FC<LibraryFilterBarProps> = ({
 
         {/* Filtro Ano */}
         <div className="flex flex-col">
-          <label htmlFor="filter-year" className="text-[11px] font-medium text-neutral-400 mb-1">
+          <label htmlFor={`${idPrefix}-filter-year`} className="text-[11px] font-medium text-neutral-400 mb-1">
             Ano de Publicação
           </label>
           <select
-            id="filter-year"
+            id={`${idPrefix}-filter-year`}
             value={filters.year}
             onChange={(e) => handleUpdate("year", e.target.value)}
             className="h-9 px-3 bg-white/[0.05] text-xs text-white border border-white/10 rounded-xl focus:border-white/30 focus:outline-none cursor-pointer"
@@ -167,25 +173,25 @@ export const LibraryFilterBar: React.FC<LibraryFilterBarProps> = ({
         </div>
       </div>
 
-      {hasAdvancedFilters && (
+      {hasActiveFilters && (
         <div className="flex items-center justify-between pt-2 border-t border-white/5 text-xs">
           <span className="text-neutral-400">
-            Filtros avançados ativos no catálogo
+            Filtros ativos no catálogo
           </span>
           <button
-            onClick={() => {
-              onFilterChange({
-                ...filters,
-                series: "all",
-                character: "all",
-                publisher: "all",
-                year: "all",
-              });
-            }}
+            onClick={() => onFilterChange({
+              ...filters,
+              series: "all",
+              character: "all",
+              publisher: "all",
+              year: "all",
+              status: "all",
+              favoritesOnly: false,
+            })}
             className="flex items-center gap-1.5 text-blue-400 hover:text-blue-300 cursor-pointer font-medium"
           >
             <RotateCcw className="w-3 h-3" />
-            <span>Limpar filtros avançados</span>
+            <span>Limpar filtros</span>
           </button>
         </div>
       )}
@@ -194,70 +200,38 @@ export const LibraryFilterBar: React.FC<LibraryFilterBarProps> = ({
 
   return (
     <div id="library-filter-panel" className="mb-8 space-y-3.5 scroll-mt-24">
-      {/* Barra de Filtros Minimalista Estilo Apple TV+ */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-2.5 sm:p-3 bg-white/[0.035] border border-white/[0.08] backdrop-blur-2xl rounded-2xl shadow-sm">
-        {/* Lado Esquerdo: Segmented Control (Padrão tvOS / iOS com scroll suave sem barra) */}
-        <div className="apple-segmented-control flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5 max-w-full">
+      <div className="flex flex-col gap-3 p-3 bg-white/[0.035] border border-white/[0.08] backdrop-blur-2xl rounded-2xl shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <span className="px-1 text-xs text-neutral-400 whitespace-nowrap" aria-live="polite">
+          <strong className="text-white">{totalFilteredCount}</strong> {totalFilteredCount === 1 ? "HQ encontrada" : "HQs encontradas"}
+        </span>
+        <div className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
           <button
             type="button"
-            onClick={() => handleSegmentChange("all")}
-            className={`apple-segmented-button shrink-0 ${currentSegment === "all" ? "active" : ""}`}
-          >
-            Todas as HQs
-          </button>
-          <button
-            type="button"
-            onClick={() => handleSegmentChange("reading")}
-            className={`apple-segmented-button shrink-0 ${currentSegment === "reading" ? "active" : ""}`}
-          >
-            Lendo
-          </button>
-          <button
-            type="button"
-            onClick={() => handleSegmentChange("favorites")}
-            className={`apple-segmented-button shrink-0 flex items-center gap-1.5 ${currentSegment === "favorites" ? "active" : ""}`}
-          >
-            <Heart className={`w-3 h-3 ${currentSegment === "favorites" ? "fill-current" : ""}`} />
-            Favoritas
-          </button>
-          <button
-            type="button"
-            onClick={() => handleSegmentChange("completed")}
-            className={`apple-segmented-button shrink-0 ${currentSegment === "completed" ? "active" : ""}`}
-          >
-            Concluídas
-          </button>
-        </div>
-
-        {/* Lado Direito: Refinar, Ordenação e Densidade */}
-        <div className="flex items-center justify-between sm:justify-end gap-2.5 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-white/5">
-          {/* Botão Refinar / Filtros Avançados */}
-          <button
-            type="button"
-            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold cursor-pointer transition-all ${
-              hasAdvancedFilters || showAdvancedFilters
+            onClick={onToggleFilterDrawer}
+            aria-expanded={isFilterDrawerOpen}
+            aria-controls="catalog-filter-controls-desktop catalog-filter-controls-mobile"
+            className={`inline-flex h-9 items-center gap-1.5 px-3 rounded-full border text-xs font-semibold cursor-pointer transition-all ${
+              hasActiveFilters || isFilterDrawerOpen
                 ? "bg-white text-black border-white shadow-xs"
                 : "bg-white/[0.06] hover:bg-white/[0.12] text-neutral-300 border-white/10"
             }`}
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
             <span>Filtros</span>
-            {activeAdvancedCount > 0 && (
+            {activeFilterCount > 0 && (
               <span className="w-4 h-4 rounded-full bg-blue-500 text-white text-[10px] flex items-center justify-center font-bold">
-                {activeAdvancedCount}
+                {activeFilterCount}
               </span>
             )}
           </button>
 
-          {/* Ordenação Minimalista */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex min-w-0 items-center gap-1.5">
             <ArrowUpDown className="w-3.5 h-3.5 text-neutral-400 hidden sm:inline" />
             <select
               id="library-sort-select"
               value={filters.sortBy}
               onChange={(e) => handleUpdate("sortBy", e.target.value as SortOption)}
-              className="h-8 px-2.5 bg-white/[0.05] text-xs text-neutral-200 border border-white/10 rounded-full focus:border-white/30 focus:outline-none cursor-pointer"
+              className="h-9 min-w-0 w-full px-2.5 bg-white/[0.05] text-xs text-neutral-200 border border-white/10 rounded-full focus:border-white/30 focus:outline-none cursor-pointer sm:w-auto"
               aria-label="Ordenar biblioteca"
             >
               <option value="added_at_desc" className="bg-[#121620]">Recentes</option>
@@ -269,8 +243,7 @@ export const LibraryFilterBar: React.FC<LibraryFilterBarProps> = ({
             </select>
           </div>
 
-          {/* Alternância de Densidade */}
-          <div className="flex items-center border border-white/10 rounded-full p-0.5 bg-white/[0.04]">
+          <div className="flex items-center shrink-0 border border-white/10 rounded-full p-0.5 bg-white/[0.04]">
             <button
               onClick={() => onDensityChange("comfortable")}
               className={`p-1.5 rounded-full cursor-pointer transition-colors ${
@@ -299,10 +272,8 @@ export const LibraryFilterBar: React.FC<LibraryFilterBarProps> = ({
         </div>
       </div>
 
-      {/* Painel Expansível de Filtros para Desktop */}
-      {(showAdvancedFilters || isFilterDrawerOpen) && (
-        <div className="hidden md:block p-4 bg-white/[0.035] border border-white/[0.08] backdrop-blur-2xl rounded-2xl animate-in fade-in duration-200">
-          {isFilterDrawerOpen && (
+      {isFilterDrawerOpen && (
+        <div id="catalog-filter-controls-desktop" className="hidden md:block p-4 bg-white/[0.035] border border-white/[0.08] backdrop-blur-2xl rounded-2xl animate-in fade-in duration-200">
             <div className="mb-3.5 flex items-center justify-between border-b border-white/10 pb-3">
               <span className="flex items-center gap-2 text-sm font-bold text-white">
                 <SlidersHorizontal className="h-4 w-4 text-blue-400" /> Filtros do catálogo
@@ -315,14 +286,13 @@ export const LibraryFilterBar: React.FC<LibraryFilterBarProps> = ({
                 <X className="h-4 w-4" />
               </button>
             </div>
-          )}
-          {filterControls}
+          {renderFilterControls("desktop")}
         </div>
       )}
 
       {/* Bottom Sheet / Drawer de Filtros para Mobile */}
       {isFilterDrawerOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex flex-col justify-end bg-black/85 backdrop-blur-md">
+        <div id="catalog-filter-controls-mobile" className="md:hidden fixed inset-0 z-50 flex flex-col justify-end bg-black/85 backdrop-blur-md">
           <div
             className="fixed inset-0"
             onClick={onCloseFilterDrawer}
@@ -343,7 +313,7 @@ export const LibraryFilterBar: React.FC<LibraryFilterBarProps> = ({
               </button>
             </div>
 
-            {filterControls}
+            {renderFilterControls("mobile")}
 
             <div className="mt-6 pt-3.5 border-t border-white/10">
               <button
