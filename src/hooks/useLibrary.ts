@@ -30,7 +30,7 @@ const DEFAULT_FILTERS: LibraryFilters = {
   sortBy: "added_at_desc",
 };
 
-export function useLibrary() {
+export function useLibrary(initialFilters: LibraryFilters = DEFAULT_FILTERS) {
   const loadVersion = useRef(0);
   const [allComics, setAllComics] = useState<Comic[]>([]);
   const [seriesList, setSeriesList] = useState<Series[]>([]);
@@ -40,7 +40,7 @@ export function useLibrary() {
   const [years, setYears] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const [filters, setFilters] = useState<LibraryFilters>(DEFAULT_FILTERS);
+  const [filters, setFilters] = useState<LibraryFilters>(initialFilters);
   const [gridDensity, setGridDensityState] = useState<"compact" | "comfortable">(() =>
     getLocalStorageItem<"compact" | "comfortable">(DENSITY_STORAGE_KEY, "comfortable")
   );

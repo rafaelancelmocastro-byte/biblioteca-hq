@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Comic } from "../../types/comic";
-import { getCoverUrls, getSupabaseCatalog, getSupabaseComicById } from "../../services/supabaseCatalogRepository";
+import { getCoverUrls, getSupabaseComicById } from "../../services/supabaseCatalogRepository";
 import { getComicReadUrl } from "../../services/comicRead";
 import { ComicReader } from "../../components/reader/ComicReader";
 import { PublicationReader } from "../../components/reader/PublicationReader";
@@ -24,43 +24,54 @@ export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack, onOpenR
   const [pdfData, setPdfData] = useState<Uint8Array | undefined>();
   const [userId, setUserId] = useState("");
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [nextComic, setNextComic] = useState<Comic | null>(null);
-  const updateProgress = useCallback((id: string, page: number, total: number) => { void saveReadingProgress(userId, id, page, total); }, [userId]);
+  const [nextComicId, setNextComicId] = useState<string | null>(null);
+  const [findNextNow, setFindNextNow] = useState(false);
+  const updateProgress = useCallback((id: string, page: number, total: number) => {
+    void saveReadingProgress(userId, id, page, total);
+    if (page >= total - 3) setFindNextNow(true);
+  }, [userId]);
 
   useEffect(() => {
     let active = true;
     const findNext = async () => {
-      let comics: Comic[] = [];
-      if (navigator.onLine) {
-        try { comics = (await getSupabaseCatalog()).comics; } catch { /* Offline copies may still be available. */ }
+      if (!comic?.seriesId) return;
+      type Issue = { id: string; issue_number: number; volume: number | null; publication_year: number };
+      let issues: Issue[] = [];
+      if (navigator.onLine && supabase) {
+        try {
+          const { data, error } = await supabase.from("comics").select("id,issue_number,volume,publication_year").eq("series_id", comic.seriesId);
+          if (!error) issues = data || [];
+        } catch { /* A cópia offline ainda pode fornecer o próximo capítulo. */ }
       }
-      if (!comics.length) {
-        const session = (await supabase?.auth.getSession())?.data.session;
-        if (session) comics = (await listOffline(session.user.id)).map((item) => item.comic);
-      }
-      const current = comics.find((item) => item.id === comicId);
-      if (!current || !active) return;
-      const ordered = comics.filter((item) => item.seriesId === current.seriesId)
-        .sort((a, b) => (a.volume || 0) - (b.volume || 0) || a.issueNumber - b.issueNumber || a.year - b.year);
-      setNextComic(ordered[ordered.findIndex((item) => item.id === comicId) + 1] || null);
+      if (!issues.length && userId) issues = (await listOffline(userId)).filter(({ comic: item }) => item.seriesId === comic.seriesId).map(({ comic: item }) => ({ id: item.id, issue_number: item.issueNumber, volume: item.volume ?? null, publication_year: item.year }));
+      if (!active) return;
+      issues.sort((a, b) => (a.volume || 0) - (b.volume || 0) || a.issue_number - b.issue_number || a.publication_year - b.publication_year);
+      const currentIndex = issues.findIndex((item) => item.id === comicId);
+      setNextComicId(currentIndex < 0 ? null : issues[currentIndex + 1]?.id || null);
     };
-    setNextComic(null);
-    void findNext();
+    if (findNextNow) void findNext();
     return () => { active = false; };
-  }, [comicId]);
+  }, [comic?.seriesId, comicId, findNextNow, userId]);
 
   useEffect(() => {
     let isMounted = true;
     setIsLoading(true);
+    setFindNextNow(false);
+    setNextComicId(null);
 
     (async () => {
-      const { data: auth } = await supabase!.auth.getSession();
+      const authPromise = supabase!.auth.getSession();
+      const onlinePromise = navigator.onLine ? Promise.all([getSupabaseComicById(comicId), getComicReadUrl(comicId)]).catch(() => null) : null;
+      const { data: auth } = await authPromise;
       if (isMounted) setUserId(auth.session?.user.id || "");
-      if (navigator.onLine) {
+      if (onlinePromise) {
         try {
-          const [data, url] = await Promise.all([getSupabaseComicById(comicId), getComicReadUrl(comicId)]);
+          const result = await onlinePromise;
+          if (!result) throw new Error("Leitura online indisponível");
+          const [data, url] = result;
           if (data && isMounted) {
             setComic(auth.session ? applyQueuedProgress(auth.session.user.id, [data])[0] : data);
+            if (data.progress && data.progress.currentPage >= data.totalPages - 3) setFindNextNow(true);
             setPdfUrl(url);
             setIsLoading(false);
             if (!data.coverUrl) void getCoverUrls([data]).then((urls) => {
@@ -102,14 +113,14 @@ export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack, onOpenR
         </p>
         <Button variant="primary" onClick={onBack}>
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Voltar para a Biblioteca
+          Voltar
         </Button>
       </div>
     );
   }
 
-  if (["cbr", "cbz"].includes(publicationFormat(comic.fileName) || "")) return <CbrReader comic={comic} fileUrl={pdfUrl} fileData={pdfData} onBack={onBack} onNextChapter={nextComic ? () => onOpenReader(nextComic.id) : undefined} onUpdateProgress={updateProgress} />;
-  if (publicationFormat(comic.fileName) && publicationFormat(comic.fileName) !== "pdf") return <PublicationReader comic={comic} fileUrl={pdfUrl} fileData={pdfData} onBack={onBack} onNextChapter={nextComic ? () => onOpenReader(nextComic.id) : undefined} onUpdateProgress={updateProgress} />;
+  if (["cbr", "cbz"].includes(publicationFormat(comic.fileName) || "")) return <CbrReader comic={comic} fileUrl={pdfUrl} fileData={pdfData} onBack={onBack} onNextChapter={nextComicId ? () => onOpenReader(nextComicId) : undefined} onUpdateProgress={updateProgress} />;
+  if (publicationFormat(comic.fileName) && publicationFormat(comic.fileName) !== "pdf") return <PublicationReader comic={comic} fileUrl={pdfUrl} fileData={pdfData} onBack={onBack} onNextChapter={nextComicId ? () => onOpenReader(nextComicId) : undefined} onUpdateProgress={updateProgress} />;
 
   return (
     <ComicReader
@@ -117,7 +128,7 @@ export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack, onOpenR
       pdfUrl={pdfUrl}
       pdfData={pdfData}
       onBack={onBack}
-      onNextChapter={nextComic ? () => onOpenReader(nextComic.id) : undefined}
+      onNextChapter={nextComicId ? () => onOpenReader(nextComicId) : undefined}
       onUpdateProgress={updateProgress}
     />
   );

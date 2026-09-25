@@ -28,7 +28,7 @@ const ReaderPage = React.lazy(() =>
 const AdminPage = React.lazy(() => import("./app/pages/AdminPage").then((module) => ({ default: module.AdminPage })));
 
 export default function App() {
-  const { pathname, activeRoute, comicId, navigate, openReader } = useNavigation();
+  const { pathname, activeRoute, comicId, navigate, openReader, backFromReader } = useNavigation();
   const [globalSearch, setGlobalSearch] = useState("");
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const { session, profile, isLoading, signOut, isSupabaseConfigured } = useAuth();
@@ -68,7 +68,7 @@ export default function App() {
   if (activeRoute === "/ler" && comicId) {
     return (
       <React.Suspense fallback={<div className="min-h-screen bg-[#05090f] flex items-center justify-center"><div className="w-10 h-10 border-2 border-[#526d8a] border-t-transparent rounded-full animate-spin" /></div>}>
-        <ReaderPage comicId={comicId} onBack={() => navigate("/biblioteca")} onOpenReader={openReader} />
+        <ReaderPage comicId={comicId} onBack={backFromReader} onOpenReader={openReader} />
       </React.Suspense>
     );
   }
@@ -128,7 +128,7 @@ export default function App() {
         <FavoritesPage
           onOpenReader={openReader}
           onNavigateToLibrary={() => navigate("/biblioteca")}
-          onNavigateToSeries={(seriesId) => { navigate("/series"); window.history.replaceState({}, "", `/series?series=${encodeURIComponent(seriesId)}`); }}
+          onNavigateToSeries={(seriesId) => navigate(`/series?series=${encodeURIComponent(seriesId)}`)}
         />
       )}
 

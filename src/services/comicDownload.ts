@@ -15,11 +15,14 @@ export async function createRemoteArchiveSource(comicId: string, signedUrl: stri
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   if (!token) throw new Error("Entre novamente para ler esta edição.");
-  const first = await fetchChunk(comicId, token, 0, 0);
+  // O mesmo pedido descobre o tamanho e já traz o primeiro bloco usado pelo leitor.
+  const first = await fetchChunk(comicId, token, 0, REMOTE_BLOCK_SIZE - 1);
   if (!first.ok) throw new Error("Não foi possível consultar o tamanho da edição.");
   const total = Number(first.headers.get("Content-Range")?.split("/")[1]);
   if (!Number.isSafeInteger(total) || total < 1) throw new Error("Tamanho da edição inválido.");
-  const cache = new Map<number, Uint8Array>();
+  const firstBytes = new Uint8Array(await first.arrayBuffer());
+  if (firstBytes.length !== Math.min(total, REMOTE_BLOCK_SIZE)) throw new Error("O arquivo recebido está incompleto. Tente novamente.");
+  const cache = new Map<number, Uint8Array>([[0, firstBytes]]);
   let directUnavailable = false;
   const readRange = async (start: number, end: number): Promise<Uint8Array> => {
     if (!directUnavailable) {

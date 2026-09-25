@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Comic } from "../../types/comic";
+import { Comic, LibraryFilters } from "../../types/comic";
 import { ContinueReadingSection } from "../../components/library/ContinueReadingSection";
 import { RecentSection } from "../../components/library/RecentSection";
 import { LibraryFilterBar } from "../../components/library/LibraryFilterBar";
@@ -21,6 +21,8 @@ interface LibraryPageProps {
   onCloseFilterDrawer?: () => void;
   onOpenGuide?: () => void;
 }
+
+let rememberedView: { filters?: LibraryFilters; catalogPage: number; featuredIndex: number; selectedComic: Comic | null } = { catalogPage: 1, featuredIndex: 0, selectedComic: null };
 
 export const LibraryPage: React.FC<LibraryPageProps> = ({
   onOpenReader,
@@ -48,14 +50,11 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
     setStatus,
     allComics,
     isLoading,
-  } = useLibrary();
+  } = useLibrary(rememberedView.filters);
 
   // Sincroniza query global da busca do cabeçalho com o filtro
   React.useEffect(() => {
-    setFilters((prev) => ({
-      ...prev,
-      searchQuery,
-    }));
+    setFilters((prev) => prev.searchQuery === searchQuery ? prev : { ...prev, searchQuery });
   }, [searchQuery, setFilters]);
 
   React.useEffect(() => {
@@ -65,15 +64,17 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
     });
   }, [isFilterDrawerOpen]);
 
-  const [selectedComic, setSelectedComic] = useState<Comic | null>(null);
+  const [selectedComic, setSelectedComic] = useState<Comic | null>(rememberedView.selectedComic);
   const [comicForProgress, setComicForProgress] = useState<Comic | null>(null);
-  const [featuredIndex, setFeaturedIndex] = useState(0);
-  const [catalogPage, setCatalogPage] = useState(1);
+  const [featuredIndex, setFeaturedIndex] = useState(rememberedView.featuredIndex);
+  const [catalogPage, setCatalogPage] = useState(rememberedView.catalogPage);
+  React.useEffect(() => { rememberedView = { filters, catalogPage, featuredIndex, selectedComic }; }, [filters, catalogPage, featuredIndex, selectedComic]);
   const catalogPageSize = 24;
   const catalogPageCount = Math.max(1, Math.ceil(filteredComics.length / catalogPageSize));
   const currentCatalogPage = Math.min(catalogPage, catalogPageCount);
   const visibleComics = filteredComics.slice((currentCatalogPage - 1) * catalogPageSize, currentCatalogPage * catalogPageSize);
-  React.useEffect(() => setCatalogPage(1), [filters]);
+  const filtersMounted = React.useRef(false);
+  React.useEffect(() => { if (filtersMounted.current) setCatalogPage(1); else filtersMounted.current = true; }, [filters]);
   const goToCatalogPage = (page: number) => {
     setCatalogPage(page);
     window.requestAnimationFrame(() => document.getElementById("catalogo-completo")?.scrollIntoView({ behavior: "smooth", block: "start" }));

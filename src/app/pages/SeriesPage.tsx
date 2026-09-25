@@ -13,25 +13,28 @@ const slug = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/
 const publisherArt = (name: string) => /dc comics|^dc$/i.test(name) ? "/publisher-art/dc.png" : /marvel/i.test(name) ? "/publisher-art/marvel.png" : /jbc/i.test(name) ? "/publisher-art/jbc.png" : /new.?pop/i.test(name) ? "/publisher-art/newpop.png" : undefined;
 const sagaArt = (name: string) => { const value = slug(name); return value.includes("batman") ? "/saga-art/batman.png" : value.includes("superman") ? "/saga-art/superman.png" : value.includes("x-men") ? "/saga-art/x-men.png" : value.includes("lanterna verde") || value.includes("green lantern") ? "/saga-art/green-lantern.png" : undefined; };
 let cachedPublisherKeys: Record<string, string> = {};
+let rememberedView = { publisher: null as string | null, seriesId: null as string | null, kind: "all" as "all" | "collection" | "saga", groupSearch: "", issueSearch: "", issueStatus: "all", issueSort: "issue", activePublisher: 0, activeSeries: 0, activeSaga: 0, detail: null as Comic | null };
 
 export const SeriesPage: React.FC<{ onOpenReader: (id: string) => void }> = ({ onOpenReader }) => {
   const { allComics, seriesList, favoriteSeriesIds, toggleFavorite, toggleSeriesFavorite, updateProgress, setStatus, isLoading } = useLibrary();
-  const [publisher, setPublisher] = useState<string | null>(null);
-  const [seriesId, setSeriesId] = useState<string | null>(null);
-  const [kind, setKind] = useState<"all" | "collection" | "saga">("all");
-  const [groupSearch, setGroupSearch] = useState("");
-  const [issueSearch, setIssueSearch] = useState("");
-  const [issueStatus, setIssueStatus] = useState("all");
-  const [issueSort, setIssueSort] = useState("issue");
-  const [activePublisher, setActivePublisher] = useState(0);
-  const [activeSeries, setActiveSeries] = useState(0);
-  const [activeSaga, setActiveSaga] = useState(0);
+  const [publisher, setPublisher] = useState<string | null>(rememberedView.publisher);
+  const [seriesId, setSeriesId] = useState<string | null>(rememberedView.seriesId);
+  const [kind, setKind] = useState<"all" | "collection" | "saga">(rememberedView.kind);
+  const [groupSearch, setGroupSearch] = useState(rememberedView.groupSearch);
+  const [issueSearch, setIssueSearch] = useState(rememberedView.issueSearch);
+  const [issueStatus, setIssueStatus] = useState(rememberedView.issueStatus);
+  const [issueSort, setIssueSort] = useState(rememberedView.issueSort);
+  const [activePublisher, setActivePublisher] = useState(rememberedView.activePublisher);
+  const [activeSeries, setActiveSeries] = useState(rememberedView.activeSeries);
+  const [activeSaga, setActiveSaga] = useState(rememberedView.activeSaga);
   const [assetUrls, setAssetUrls] = useState<Record<string, string>>(() => getCachedAssetUrls(Object.values(cachedPublisherKeys)));
   const [publisherKeys, setPublisherKeys] = useState<Record<string, string>>(() => cachedPublisherKeys);
-  const [detail, setDetail] = useState<Comic | null>(null);
+  const [detail, setDetail] = useState<Comic | null>(rememberedView.detail);
   const [progress, setProgress] = useState<Comic | null>(null);
   const [favoriteError, setFavoriteError] = useState("");
-  useEffect(() => setActiveSaga(0), [seriesId]);
+  useEffect(() => { rememberedView = { publisher, seriesId, kind, groupSearch, issueSearch, issueStatus, issueSort, activePublisher, activeSeries, activeSaga, detail }; }, [publisher, seriesId, kind, groupSearch, issueSearch, issueStatus, issueSort, activePublisher, activeSeries, activeSaga, detail]);
+  const seriesMounted = React.useRef(false);
+  useEffect(() => { if (seriesMounted.current) setActiveSaga(0); else seriesMounted.current = true; }, [seriesId]);
   useEffect(() => {
     const requestedId = new URLSearchParams(window.location.search).get("series");
     const requested = seriesList.find((item) => item.id === requestedId);
