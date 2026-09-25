@@ -2,21 +2,17 @@ import React, { useEffect, useState } from "react";
 import {
   BookOpen,
   Heart,
-  Calendar,
   FileText,
-  Users,
-  Tag,
   CheckCircle2,
   Sliders,
   RotateCcw,
   HardDriveDownload,
+  Check,
 } from "lucide-react";
 import { Comic } from "../../types/comic";
 import { Modal } from "../ui/Modal";
 import { CoverPlaceholder } from "../ui/CoverPlaceholder";
 import { ProgressBar } from "../ui/ProgressBar";
-import { Button } from "../ui/Button";
-import { Badge } from "../ui/Badge";
 import { formatFileSize, formatPercentage, getStatusLabel } from "../../lib/formatters";
 import { hasOffline, saveOffline } from "../../services/offlineLibrary";
 import { supabase } from "../../services/supabaseClient";
@@ -46,14 +42,33 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
   const [savedOffline, setSavedOffline] = useState(false);
   const [offlineBusy, setOfflineBusy] = useState(false);
   const [offlineMessage, setOfflineMessage] = useState("");
+
   useEffect(() => setIsFavorite(Boolean(comic?.isFavorite)), [comic?.id, comic?.isFavorite]);
-  useEffect(() => { if (!comic || !supabase) return; void supabase.auth.getSession().then(async ({ data }) => { if (data.session) setSavedOffline(await hasOffline(data.session.user.id, comic.id)); }); }, [comic?.id]);
+
+  useEffect(() => {
+    if (!comic || !supabase) return;
+    void supabase.auth.getSession().then(async ({ data }) => {
+      if (data.session) setSavedOffline(await hasOffline(data.session.user.id, comic.id));
+    });
+  }, [comic?.id]);
+
   const saveForOffline = async () => {
     if (!comic || !supabase) return;
-    setOfflineBusy(true); setOfflineMessage("Preparando edição para leitura offline...");
-    try { const { data } = await supabase.auth.getSession(); if (!data.session) throw new Error("Entre na sua conta."); await saveOffline(data.session.user.id, comic, (bytes) => setOfflineMessage(`Salvando... ${(bytes / 1048576).toFixed(1)} MB`)); setSavedOffline(true); setOfflineMessage("Disponível offline neste dispositivo."); }
-    catch (error) { setOfflineMessage(error instanceof Error ? error.message : "Não foi possível salvar."); }
-    finally { setOfflineBusy(false); }
+    setOfflineBusy(true);
+    setOfflineMessage("Preparando para leitura offline...");
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) throw new Error("Entre na sua conta.");
+      await saveOffline(data.session.user.id, comic, (bytes) =>
+        setOfflineMessage(`Salvando... ${(bytes / 1048576).toFixed(1)} MB`)
+      );
+      setSavedOffline(true);
+      setOfflineMessage("Disponível offline neste dispositivo.");
+    } catch (error) {
+      setOfflineMessage(error instanceof Error ? error.message : "Não foi possível salvar.");
+    } finally {
+      setOfflineBusy(false);
+    }
   };
 
   if (!comic) return null;
@@ -62,14 +77,21 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
   const status = comic.progress?.status || "not_started";
   const isCompleted = status === "completed";
 
+  // Obter formato limpo do arquivo (ex: CBZ, PDF, CBR)
+  const fileExtension = comic.fileName?.split(".").pop()?.toUpperCase() || "HQ";
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} maxWidth="2xl" id="comic-detail-modal">
-      <div className="comic-detail-streaming flex flex-col sm:flex-row gap-6">
-        {/* Coluna da Capa */}
+      <div className="comic-detail-streaming flex flex-col sm:flex-row gap-6 sm:gap-7 p-1 sm:p-2">
+        {/* Coluna da Capa e Ações */}
         <div className="w-full sm:w-52 flex-shrink-0 flex flex-col items-center">
-          <div className="w-48 sm:w-full rounded-xl overflow-hidden shadow-2xl shadow-black/80 border border-slate-700/80">
+          <div className="w-44 sm:w-full rounded-2xl overflow-hidden shadow-2xl shadow-black/90 border border-white/10 bg-neutral-900 aspect-[2/3]">
             {comic.coverUrl ? (
-              <img src={comic.coverUrl} alt={`Capa de ${comic.title}`} className="aspect-[2/3] w-full object-cover" />
+              <img
+                src={comic.coverUrl}
+                alt={`Capa de ${comic.title}`}
+                className="w-full h-full object-cover"
+              />
             ) : (
               <CoverPlaceholder
                 title={comic.title}
@@ -81,148 +103,198 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
             )}
           </div>
 
-          {/* Botões de Ação Imediata */}
+          {/* Botões de Ação Apple TV+ */}
           <div className="w-full mt-4 flex flex-col gap-2">
-            <Button
-              variant="primary"
-              size="md"
+            <button
+              type="button"
               onClick={() => {
                 onClose();
                 onOpenReader(comic.id);
               }}
-              className="w-full font-bold shadow-lg"
+              className="w-full min-h-[2.85rem] rounded-full bg-white text-black font-bold text-xs sm:text-sm hover:bg-neutral-200 transition-all flex items-center justify-center gap-2 shadow-lg shadow-white/10 cursor-pointer"
             >
-              <BookOpen className="w-4 h-4 mr-2" />
+              <BookOpen className="w-4 h-4 fill-current" />
               {percentage > 0 ? "Continuar Leitura" : "Iniciar Leitura"}
-            </Button>
+            </button>
 
-            <Button variant="secondary" size="sm" onClick={() => void saveForOffline()} disabled={offlineBusy || savedOffline} className="w-full min-w-0 text-xs"><HardDriveDownload className="w-4 h-4 mr-2" />{savedOffline ? "Disponível offline" : offlineBusy ? "Salvando..." : "Salvar para ler offline"}</Button>
-            {offlineMessage && <p role="status" className="text-[11px] text-amber-200 break-words">{offlineMessage}</p>}
+            <button
+              type="button"
+              onClick={() => void saveForOffline()}
+              disabled={offlineBusy || savedOffline}
+              className={`w-full min-h-[2.4rem] rounded-full text-xs font-semibold flex items-center justify-center gap-2 border transition-all cursor-pointer ${
+                savedOffline
+                  ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                  : "bg-white/[0.06] hover:bg-white/[0.12] text-white border-white/10"
+              }`}
+            >
+              {savedOffline ? (
+                <Check className="w-3.5 h-3.5 text-emerald-400" />
+              ) : (
+                <HardDriveDownload className="w-3.5 h-3.5 text-neutral-300" />
+              )}
+              <span>{savedOffline ? "Salvo Offline" : offlineBusy ? "Salvando..." : "Baixar Offline"}</span>
+            </button>
 
-            <div className="comic-detail-actions flex flex-col gap-2">
-              <Button
-                variant={isFavorite ? "danger" : "secondary"}
-                size="sm"
-                onClick={() => { setIsFavorite((value) => !value); void onToggleFavorite(comic.id); }}
-                className="w-full min-w-0 text-xs"
+            {offlineMessage && (
+              <p role="status" className="text-[11px] text-blue-300 text-center break-words px-1">
+                {offlineMessage}
+              </p>
+            )}
+
+            <div className="flex gap-2 w-full mt-0.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsFavorite((value) => !value);
+                  void onToggleFavorite(comic.id);
+                }}
+                className={`flex-1 min-h-[2.4rem] rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 border transition-all cursor-pointer ${
+                  isFavorite
+                    ? "bg-rose-500/15 text-rose-300 border-rose-500/30"
+                    : "bg-white/[0.06] hover:bg-white/[0.12] text-white border-white/10"
+                }`}
                 aria-pressed={isFavorite}
               >
-                <Heart className={`w-3.5 h-3.5 mr-1.5 ${isFavorite ? "fill-current" : ""}`} />
-                {isFavorite ? "Favoritado" : "Favoritar"}
-              </Button>
+                <Heart className={`w-3.5 h-3.5 ${isFavorite ? "fill-current text-rose-400" : "text-neutral-300"}`} />
+                <span>{isFavorite ? "Favorito" : "Favoritar"}</span>
+              </button>
 
-              <Button
-                variant="secondary"
-                size="sm"
+              <button
+                type="button"
                 onClick={() => onOpenProgressModal(comic)}
-                className="w-full min-w-0 text-xs"
+                className="flex-1 min-h-[2.4rem] rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 border border-white/10 bg-white/[0.06] hover:bg-white/[0.12] text-white transition-all cursor-pointer"
               >
-                <Sliders className="w-3.5 h-3.5 mr-1.5 text-amber-400" />
-                Editar progresso
-              </Button>
+                <Sliders className="w-3.5 h-3.5 text-neutral-300" />
+                <span>Progresso</span>
+              </button>
             </div>
           </div>
         </div>
 
         {/* Coluna de Conteúdo e Metadados */}
-        <div className="flex-1 flex flex-col min-w-0">
-          {/* Cabeçalho */}
-          <div className="border-b border-slate-800 pb-3">
-            <div className="flex flex-wrap items-center gap-2 mb-1">
-              <Badge variant="amber">{comic.publisher}</Badge>
-              <Badge variant="outline">{comic.year}</Badge>
-              <Badge variant={isCompleted ? "emerald" : percentage > 0 ? "amber" : "default"}>
+        <div className="flex-1 flex flex-col min-w-0 justify-between">
+          <div>
+            {/* Metadados Superiores no Estilo Apple Zero-Pill */}
+            <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-neutral-400 mb-1.5">
+              {comic.publisher && <span className="text-white font-semibold">{comic.publisher}</span>}
+              {comic.publisher && comic.year && <span>·</span>}
+              {comic.year && <span>{comic.year}</span>}
+              {(comic.publisher || comic.year) && <span>·</span>}
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide uppercase ${
+                isCompleted
+                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                  : percentage > 0
+                  ? "bg-blue-500/20 text-blue-300 border border-blue-500/30"
+                  : "bg-white/10 text-neutral-300 border border-white/15"
+              }`}>
                 {getStatusLabel(status)}
-              </Badge>
+              </span>
             </div>
 
-            <h2 className="text-lg sm:text-xl font-black text-white leading-tight mt-1">
+            {/* Título Principal */}
+            <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight leading-snug">
               {comic.title}
             </h2>
 
-            <p className="text-xs text-slate-400 font-semibold mt-1">
-              Coleção: <span className="text-amber-400">{comic.seriesTitle || "Sem coleção"}</span> • Edição #{comic.issueNumber}
-            </p>
-          </div>
-
-          {/* Progresso de Leitura */}
-          <div className="py-3 border-b border-slate-800/80">
-            <div className="flex items-center justify-between text-xs text-slate-300 font-medium mb-1.5">
-              <span>Progresso de Leitura</span>
-              <span className="font-mono text-amber-400 font-bold">
-                Pág. {comic.progress?.currentPage || 0} de {comic.totalPages} ({formatPercentage(percentage)})
-              </span>
+            {/* Coleção & Edição */}
+            <div className="flex items-center gap-1.5 text-xs text-blue-400 font-semibold mt-1">
+              <span>{comic.seriesTitle || "Edição Especial"}</span>
+              <span className="text-neutral-500 font-normal">·</span>
+              <span className="text-neutral-300">Edição #{comic.issueNumber}</span>
             </div>
-            <ProgressBar percentage={percentage} status={status} size="md" />
 
-            <div className="mt-2 flex items-center justify-end gap-2">
-              {!isCompleted ? (
-                <button
-                  onClick={() => onMarkCompleted(comic.id, comic.totalPages)}
-                  className="text-[11px] text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1 cursor-pointer"
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  Marcar como lida
-                </button>
-              ) : (
-                <button
-                  onClick={() => onResetProgress(comic.id)}
-                  className="text-[11px] text-slate-400 hover:text-white font-medium flex items-center gap-1 cursor-pointer"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  Zerar progresso
-                </button>
-              )}
-            </div>
-          </div>
+            {/* Progresso de Leitura */}
+            <div className="py-3.5 border-b border-white/10 my-3">
+              <div className="flex items-center justify-between text-xs text-neutral-300 mb-1.5">
+                <span className="font-medium text-neutral-400">Progresso</span>
+                <span className="font-semibold text-white">
+                  Página {comic.progress?.currentPage || 0} de {comic.totalPages} ({formatPercentage(percentage)})
+                </span>
+              </div>
+              <ProgressBar percentage={percentage} status={status} size="sm" />
 
-          {/* Sinopse */}
-          <div className="py-3 border-b border-slate-800/80">
-            <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-              <FileText className="w-3.5 h-3.5 text-amber-400" />
-              Sinopse
-            </h4>
-            <p className="comic-detail-synopsis text-slate-300">
-              {comic.synopsis}
-            </p>
-          </div>
+              <div className="mt-2.5 flex items-center justify-end">
+                {!isCompleted ? (
+                  <button
+                    type="button"
+                    onClick={() => onMarkCompleted(comic.id, comic.totalPages)}
+                    className="text-[11px] text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    Marcar como lida
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => onResetProgress(comic.id)}
+                    className="text-[11px] text-neutral-400 hover:text-white font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    Zerar progresso
+                  </button>
+                )}
+              </div>
+            </div>
 
-          {/* Ficha Criativa */}
-          <div className="py-3 border-b border-slate-800/80 grid grid-cols-2 gap-2 text-xs">
-            <div>
-              <span className="text-slate-400 text-[11px] block">Roteiro</span>
-              <span className="text-slate-200 font-medium">{comic.writers.join(", ")}</span>
+            {/* Sinopse */}
+            <div className="py-2 border-b border-white/10">
+              <h4 className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-blue-400" />
+                Sinopse
+              </h4>
+              <p className="comic-detail-synopsis text-neutral-300 leading-relaxed">
+                {comic.synopsis || "Nenhuma sinopse disponível para esta edição no momento."}
+              </p>
             </div>
-            <div>
-              <span className="text-slate-400 text-[11px] block">Arte e Desenho</span>
-              <span className="text-slate-200 font-medium">{comic.pencillers.join(", ")}</span>
-            </div>
-            {comic.characters.length > 0 && (
-              <div className="col-span-2 pt-1">
-                <span className="text-slate-400 text-[11px] block">Personagens em Destaque</span>
-                <span className="text-amber-300/90 font-medium">{comic.characters.join(", ")}</span>
+
+            {/* Ficha Criativa */}
+            {(comic.writers.length > 0 || comic.pencillers.length > 0 || comic.characters.length > 0) && (
+              <div className="py-3 border-b border-white/10 grid grid-cols-2 gap-3 text-xs">
+                {comic.writers.length > 0 && (
+                  <div>
+                    <span className="text-neutral-500 text-[10px] uppercase tracking-wider font-semibold block">Roteiro</span>
+                    <span className="text-neutral-200 font-medium">{comic.writers.join(", ")}</span>
+                  </div>
+                )}
+                {comic.pencillers.length > 0 && (
+                  <div>
+                    <span className="text-neutral-500 text-[10px] uppercase tracking-wider font-semibold block">Arte e Desenho</span>
+                    <span className="text-neutral-200 font-medium">{comic.pencillers.join(", ")}</span>
+                  </div>
+                )}
+                {comic.characters.length > 0 && (
+                  <div className="col-span-2 pt-0.5">
+                    <span className="text-neutral-500 text-[10px] uppercase tracking-wider font-semibold block">Personagens em Destaque</span>
+                    <span className="text-blue-300 font-medium">{comic.characters.join(", ")}</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
 
-          {/* Arquivo & Tags */}
-          <div className="pt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400 font-mono">
-            <span>{comic.fileName}</span>
-            <span>{comic.totalPages} páginas • {formatFileSize(comic.fileSizeMb)}</span>
-          </div>
-
-          {comic.tags.length > 0 && (
-            <div className="mt-2.5 flex flex-wrap gap-1.5">
-              {comic.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/60"
-                >
-                  #{tag}
-                </span>
-              ))}
+          {/* Rodapé: Especificações do Arquivo & Tags */}
+          <div className="pt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-400">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-neutral-300">{comic.totalPages} páginas</span>
+              <span>·</span>
+              <span>{formatFileSize(comic.fileSizeMb)}</span>
+              <span>·</span>
+              <span className="px-1.5 py-0.2 rounded bg-white/10 text-[10px] font-bold text-neutral-300">{fileExtension}</span>
             </div>
-          )}
+
+            {comic.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {comic.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="text-[10px] px-2 py-0.5 rounded-full bg-white/[0.06] text-neutral-300 border border-white/10"
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </Modal>
