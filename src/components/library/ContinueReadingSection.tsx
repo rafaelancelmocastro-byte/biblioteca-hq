@@ -31,25 +31,50 @@ export const ContinueReadingSection: React.FC<ContinueReadingSectionProps> = ({
   if (comics.length === 0) return null;
 
   return (
-    <section className="mb-10" aria-labelledby="section-continue-reading">
+    <section className="mb-12" aria-labelledby="section-continue-reading">
       <div className="flex items-center justify-between mb-4 gap-3">
-        <div className="flex items-center gap-2">
-          <Clock className="w-5 h-5 text-amber-400" />
+        <div className="flex items-center gap-2.5">
+          <Clock className="w-4 h-4 text-blue-400" />
           <h2 id="section-continue-reading" className="text-lg font-bold text-white tracking-tight">
-            Continuar Lendo
+            Seguir Lendo
           </h2>
-          <span className="text-xs text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded-full font-mono">
-            {comics.length} em andamento
+          <span className="text-xs text-neutral-400 font-medium">
+            · {comics.length} {comics.length === 1 ? "em andamento" : "em andamento"}
           </span>
         </div>
-        {canScroll && <div className="hidden md:flex gap-2">
-          <button type="button" className="reading-rail-arrow" aria-label="Ver leituras anteriores" onClick={() => railRef.current?.scrollBy({ left: -380, behavior: "smooth" })}><ChevronLeft /></button>
-          <button type="button" className="reading-rail-arrow" aria-label="Ver próximas leituras" onClick={() => railRef.current?.scrollBy({ left: 380, behavior: "smooth" })}><ChevronRight /></button>
-        </div>}
+        {canScroll && (
+          <div className="hidden md:flex gap-1.5">
+            <button
+              type="button"
+              className="w-8 h-8 rounded-full border border-white/10 bg-white/5 hover:bg-white/15 text-white flex items-center justify-center transition-colors cursor-pointer"
+              aria-label="Ver leituras anteriores"
+              onClick={() => railRef.current?.scrollBy({ left: -380, behavior: "smooth" })}
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              className="w-8 h-8 rounded-full border border-white/10 bg-white/5 hover:bg-white/15 text-white flex items-center justify-center transition-colors cursor-pointer"
+              aria-label="Ver próximas leituras"
+              onClick={() => railRef.current?.scrollBy({ left: 380, behavior: "smooth" })}
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Grid de Cards Horizontais Estilo Streaming */}
-      <div ref={railRef} className="reading-rail" tabIndex={0} aria-label="Leituras em andamento; use as setas para navegar" onKeyDown={(event) => { if (event.key === "ArrowRight") railRef.current?.scrollBy({ left: 380, behavior: "smooth" }); if (event.key === "ArrowLeft") railRef.current?.scrollBy({ left: -380, behavior: "smooth" }); }}>
+      {/* Grid de Cards Horizontais Estilo Apple TV+ */}
+      <div
+        ref={railRef}
+        className="reading-rail"
+        tabIndex={0}
+        aria-label="Leituras em andamento; use as setas para navegar"
+        onKeyDown={(event) => {
+          if (event.key === "ArrowRight") railRef.current?.scrollBy({ left: 380, behavior: "smooth" });
+          if (event.key === "ArrowLeft") railRef.current?.scrollBy({ left: -380, behavior: "smooth" });
+        }}
+      >
         {comics.map((comic) => {
           const currentPage = comic.progress?.currentPage || 1;
           const totalPages = Math.max(comic.totalPages, comic.progress?.totalPages || 0, currentPage);
@@ -58,15 +83,15 @@ export const ContinueReadingSection: React.FC<ContinueReadingSectionProps> = ({
           return (
             <div
               key={comic.id}
-              className="reading-rail-card group relative flex bg-[#131722] hover:bg-[#181e2b] border border-[#1e2535] hover:border-slate-700/80 rounded-xl p-3 transition-all duration-200 shadow-md hover:shadow-xl hover:shadow-black/40 overflow-hidden"
+              className="reading-rail-card group relative flex bg-white/[0.035] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/20 rounded-2xl p-3.5 transition-all duration-300 shadow-lg hover:shadow-2xl hover:shadow-black/60 overflow-hidden"
             >
               {/* Capa Compacta à Esquerda */}
               <div
                 onClick={() => onOpenReader(comic.id)}
-                className="w-20 sm:w-24 flex-shrink-0 cursor-pointer rounded-lg overflow-hidden relative group/cover shadow-md"
+                className="w-20 sm:w-22 aspect-[2/3] flex-shrink-0 cursor-pointer rounded-xl overflow-hidden relative group/cover shadow-md bg-neutral-900 border border-white/10"
               >
                 {comic.coverUrl ? (
-                  <img src={comic.coverUrl} alt={`Capa de ${comic.title}`} className="h-full w-full object-cover" loading="lazy" />
+                  <img src={comic.coverUrl} alt={`Capa de ${comic.title}`} className="h-full w-full object-cover transition-transform duration-300 group-hover/cover:scale-105" loading="lazy" />
                 ) : (
                   <CoverPlaceholder
                     title={comic.title}
@@ -77,51 +102,53 @@ export const ContinueReadingSection: React.FC<ContinueReadingSectionProps> = ({
                     showSpine={false}
                   />
                 )}
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/cover:opacity-100 transition-opacity flex items-center justify-center">
-                  <Play className="w-6 h-6 text-amber-400 fill-amber-400" />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/cover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
+                  <div className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center shadow-lg">
+                    <Play className="w-4 h-4 fill-current ml-0.5" />
+                  </div>
                 </div>
               </div>
 
               {/* Informações à Direita */}
               <div className="flex-1 min-w-0 ml-3.5 flex flex-col justify-between py-0.5">
                 <div>
-                  <div className="flex items-center justify-between gap-1 text-[11px] text-amber-400 font-semibold mb-0.5">
+                  <div className="flex items-center gap-1.5 text-[11px] text-blue-400 font-semibold mb-1">
                     <span className="truncate">{comic.seriesTitle}</span>
-                    <span className="font-mono text-slate-400">Ed. #{comic.issueNumber}</span>
+                    <span className="text-neutral-500 font-normal">·</span>
+                    <span className="text-neutral-400 font-medium">#{comic.issueNumber}</span>
                   </div>
 
                   <h3
                     onClick={() => onOpenDetails(comic)}
-                    className="text-xs sm:text-sm font-bold text-white hover:text-amber-400 cursor-pointer line-clamp-1 transition-colors leading-tight"
+                    className="text-xs sm:text-sm font-bold text-white hover:text-blue-300 cursor-pointer line-clamp-1 transition-colors leading-tight"
                     title={comic.title}
                   >
                     {comic.title}
                   </h3>
 
-                  <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1.5 font-mono">
-                    <span>Página {currentPage} de {totalPages}</span>
-                    <span className="text-slate-600">•</span>
-                    <span className="text-amber-400 font-semibold">{formatPercentage(percentage)}</span>
+                  <p className="text-[11px] text-neutral-400 mt-1.5 flex items-center gap-1.5">
+                    <span>Pág. {currentPage}/{totalPages}</span>
+                    <span className="text-neutral-600">·</span>
+                    <span className="text-white font-semibold">{formatPercentage(percentage)}</span>
                   </p>
                 </div>
 
                 <div className="mt-3">
                   <ProgressBar percentage={percentage} size="sm" className="mb-2" />
 
-                  <div className="flex items-center justify-between gap-2 pt-1">
-                    <span className="text-[10px] text-slate-400 truncate">
-                      Lido {formatRelativeDate(comic.progress?.lastReadAt)}
+                  <div className="flex items-center justify-between gap-2 pt-0.5">
+                    <span className="text-[10px] text-neutral-400 truncate">
+                      {comic.progress?.lastReadAt ? `Lido ${formatRelativeDate(comic.progress.lastReadAt)}` : "Em andamento"}
                     </span>
 
-                    <Button
-                      size="sm"
-                      variant="primary"
+                    <button
+                      type="button"
                       onClick={() => onOpenReader(comic.id)}
-                      className="h-7 text-xs font-bold px-2.5 py-0"
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-black hover:bg-neutral-200 text-xs font-bold transition-all cursor-pointer shadow-xs"
                     >
-                      <Play className="w-3 h-3 fill-current mr-1" />
+                      <Play className="w-3 h-3 fill-current" />
                       Continuar
-                    </Button>
+                    </button>
                   </div>
                 </div>
               </div>
