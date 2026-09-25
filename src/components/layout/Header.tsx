@@ -62,33 +62,33 @@ export const Header: React.FC<HeaderProps> = ({
           <BrandLogo compact className="mobile-brand-mark" />
         </button>
 
-        <div className="hidden sm:flex flex-col">
-          <span className="text-xs text-[#b6c0ca] font-medium">
-            {getGreeting()}, <strong className="text-[#edf1f6] font-semibold">{userName}</strong>
+        <div className="hidden lg:flex flex-col">
+          <span className="text-xs text-neutral-300 font-medium">
+            {getGreeting()}, <strong className="text-white font-semibold">{userName}</strong>
           </span>
-          <span className="text-[10px] text-slate-500 font-mono">
+          <span className="text-[10px] text-neutral-500 font-medium">
             {APP_CONFIG.tagline}
           </span>
         </div>
       </div>
 
       {/* Centro: Barra de Busca com teclado ágil */}
-      <div className="flex-1 max-w-md mx-2 relative">
+      <div className="flex-1 max-w-md mx-1 sm:mx-2 relative">
         <div className="relative flex items-center">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
+          <Search className="w-4 h-4 text-neutral-400 absolute left-3 pointer-events-none" />
           <input
             id="global-search-input"
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Buscar série, ano ou edição (ex.: Batman 2011 #0)..."
-            className="app-search w-full h-10 pl-9 pr-8 text-[#edf1f6] placeholder-[#8a96a4] text-xs sm:text-sm rounded-full focus:outline-none transition-colors"
+            placeholder="Buscar por série, ano ou edição..."
+            className="app-search w-full h-9 sm:h-10 pl-9 pr-8 text-white placeholder-neutral-500 text-xs sm:text-sm rounded-full focus:outline-none transition-all bg-white/[0.05] border border-white/10 focus:border-white/30 focus:bg-white/[0.08]"
             aria-label="Buscar na biblioteca"
           />
           {searchQuery && (
             <button
               onClick={() => onSearchChange("")}
-              className="absolute right-2.5 text-slate-400 hover:text-white p-0.5 rounded cursor-pointer"
+              className="absolute right-2.5 text-neutral-400 hover:text-white p-0.5 rounded cursor-pointer"
               aria-label="Limpar busca"
             >
               <X className="w-3.5 h-3.5" />
@@ -97,16 +97,16 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Direita: Botão de Filtros e Avatar do Dono */}
-      <div className="flex items-center gap-2 sm:gap-3">
+      {/* Direita: Botão de Filtros e Avatar do Usuário */}
+      <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
         {onToggleFilters && (
           <button
             id="header-filter-button"
             onClick={onToggleFilters}
-            className={`h-9 px-3 rounded-lg border flex items-center gap-2 text-xs font-medium cursor-pointer transition-colors ${
+            className={`h-9 px-3 rounded-full border flex items-center gap-1.5 text-xs font-semibold cursor-pointer transition-all ${
               activeFiltersCount > 0
-                ? "bg-amber-500/15 text-amber-300 border-amber-500/40"
-                : "bg-[#141824] hover:bg-[#1a2030] text-slate-300 border-slate-700/60"
+                ? "bg-white text-black border-white shadow-sm"
+                : "bg-white/[0.06] hover:bg-white/[0.12] text-neutral-200 border-white/10"
             }`}
             aria-label="Alternar painel de filtros"
             title="Filtrar quadrinhos"
@@ -114,7 +114,7 @@ export const Header: React.FC<HeaderProps> = ({
             <SlidersHorizontal className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Filtros</span>
             {activeFiltersCount > 0 && (
-              <span className="w-4 h-4 rounded-full bg-amber-500 text-black font-extrabold text-[10px] flex items-center justify-center">
+              <span className="w-4 h-4 rounded-full bg-blue-500 text-white font-extrabold text-[10px] flex items-center justify-center">
                 {activeFiltersCount}
               </span>
             )}
@@ -126,7 +126,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="user-profile-button"
             onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-            className="w-9 h-9 rounded-full bg-gradient-to-tr from-slate-800 to-slate-700 border border-slate-600 hover:border-amber-400 flex items-center justify-center text-slate-200 transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-amber-400 shadow-sm"
+            className="w-9 h-9 rounded-full bg-white/[0.08] border border-white/15 hover:border-white/30 hover:bg-white/[0.14] flex items-center justify-center text-white transition-all cursor-pointer focus-visible:outline-2 focus-visible:outline-white/50 shadow-sm"
             aria-label="Menu da conta"
             aria-expanded={isUserMenuOpen}
           >
