@@ -69,7 +69,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
   const [selectedComic, setSelectedComic] = useState<Comic | null>(rememberedView.selectedComic);
   const [comicForProgress, setComicForProgress] = useState<Comic | null>(null);
   const [featuredIndex, setFeaturedIndex] = useState(rememberedView.featuredIndex);
-  const [heroMode, setHeroMode] = useState<"cinema" | "coverflow">("cinema");
+  const [heroMode, setHeroMode] = useState<"coverflow" | "cinema">("coverflow");
   const [showExtras, setShowExtras] = useState(false);
   const [catalogPage, setCatalogPage] = useState(rememberedView.catalogPage);
 
@@ -118,23 +118,23 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
           )}
           <div className="catalog-hero-vignette" />
 
-          {/* Toggle de Modo no Topo do Hero: Cinema vs Cover Flow 3D */}
-          <div className="catalog-hero-mode-toggle" aria-label="Modo de visualização do destaque">
-            <button
-              type="button"
-              className={heroMode === "cinema" ? "active" : ""}
-              onClick={() => setHeroMode("cinema")}
-              title="Exibição cinematográfica"
-            >
-              Cinema
-            </button>
+          {/* Toggle de Modo no Topo do Hero: Cover Flow (1º padrão) vs Modo Cinema (2º) */}
+          <div className="catalog-hero-mode-toggle" aria-label="Modo de exibição do destaque">
             <button
               type="button"
               className={heroMode === "coverflow" ? "active" : ""}
               onClick={() => setHeroMode("coverflow")}
-              title="Exibição em Cover Flow 3D"
+              title="Exibição em Cover Flow 3D (Configuração padrão)"
             >
               Cover Flow
+            </button>
+            <button
+              type="button"
+              className={heroMode === "cinema" ? "active" : ""}
+              onClick={() => setHeroMode("cinema")}
+              title="Exibição em Modo Cinema (2ª opção)"
+            >
+              Modo Cinema
             </button>
           </div>
 
