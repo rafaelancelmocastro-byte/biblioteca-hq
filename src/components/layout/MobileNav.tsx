@@ -1,17 +1,6 @@
 import React, { useState } from "react";
-import {
-  BookOpen,
-  Clock,
-  Layers,
-  Heart,
-  ShieldCheck,
-  Compass,
-  Sparkles,
-  HardDriveDownload,
-  MoreHorizontal,
-  X,
-  ChevronRight,
-} from "lucide-react";
+import { MoreHorizontal, X, ChevronRight } from "lucide-react";
+import { MOBILE_PRIMARY_PATHS, NAVIGATION_ITEMS } from "./navigationItems";
 
 interface MobileNavProps {
   currentPath: string;
@@ -22,24 +11,8 @@ interface MobileNavProps {
 export const MobileNav: React.FC<MobileNavProps> = ({ currentPath, onNavigate, isOwner = false }) => {
   const [isMoreOpen, setIsMoreOpen] = useState(false);
 
-  // 4 itens primários essenciais com rótulos compactos e objetivos (nunca cortam em telas pequenas)
-  const primaryItems = [
-    { label: "Acervo", path: "/biblioteca", icon: BookOpen },
-    { label: "Lendo", path: "/continuar", icon: Clock },
-    { label: "Séries", path: "/series", icon: Layers },
-    { label: "Favoritos", path: "/favoritos", icon: Heart },
-  ];
-
-  // Itens secundários acessíveis via gaveta "Mais" no estilo Apple TV+
-  const secondaryItems = [
-    { label: "Lançamentos", path: "/lancamentos", icon: Sparkles, description: "Edições e volumes recém-chegados" },
-    { label: "Mangás & Indie", path: "/multiverso", icon: Compass, description: "Obras orientais e independentes" },
-    { label: "Guia de Leitura", path: "/guia", icon: Compass, description: "Ordem cronológica e sagas" },
-    { label: "Baixados Offline", path: "/offline", icon: HardDriveDownload, description: "HQs disponíveis sem conexão" },
-    ...(isOwner
-      ? [{ label: "Gerenciar Acervo", path: "/configuracoes", icon: ShieldCheck, description: "Configurações e painel do acervo" }]
-      : []),
-  ];
+  const primaryItems = NAVIGATION_ITEMS.filter((item) => MOBILE_PRIMARY_PATHS.has(item.path));
+  const secondaryItems = NAVIGATION_ITEMS.filter((item) => !MOBILE_PRIMARY_PATHS.has(item.path) && (!item.ownerOnly || isOwner));
 
   const isSecondaryActive = secondaryItems.some((item) => item.path === currentPath);
 
@@ -65,13 +38,13 @@ export const MobileNav: React.FC<MobileNavProps> = ({ currentPath, onNavigate, i
                 key={item.path}
                 id={`mobile-nav-${item.path.replace("/", "")}`}
                 onClick={() => onNavigate(item.path)}
-                className={`flex flex-col items-center justify-center h-full py-1 cursor-pointer transition-all relative ${
+                className={`flex min-w-0 flex-col items-center justify-center h-full py-1 cursor-pointer transition-all relative ${
                   isActive ? "text-white font-bold" : "text-neutral-400 hover:text-neutral-200"
                 }`}
                 aria-current={isActive ? "page" : undefined}
               >
                 <Icon className={`w-4 h-4 mb-0.5 transition-transform ${isActive ? "scale-110 text-white" : ""}`} />
-                <span className="text-[10px] font-semibold tracking-tight truncate max-w-full px-0.5">
+                <span className="max-w-full px-0.5 text-center text-[9px] font-semibold leading-tight tracking-tight">
                   {item.label}
                 </span>
                 {isActive && (
@@ -142,7 +115,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ currentPath, onNavigate, i
                       </div>
                       <div className="flex flex-col min-w-0">
                         <span className="text-xs font-bold text-white truncate">{item.label}</span>
-                        <span className="text-[10.5px] text-neutral-400 truncate">{item.description}</span>
+                        {item.description && <span className="text-[10.5px] text-neutral-400 truncate">{item.description}</span>}
                       </div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-neutral-500 shrink-0 ml-2" />

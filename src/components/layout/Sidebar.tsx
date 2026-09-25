@@ -1,18 +1,8 @@
 import React from "react";
-import {
-  BookOpen,
-  Clock,
-  Layers,
-  Heart,
-  ShieldCheck,
-  ChevronLeft,
-  ChevronRight,
-  Compass,
-  Sparkles,
-  HardDriveDownload,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { APP_CONFIG } from "../../config/app";
 import { BrandLogo } from "../ui/BrandLogo";
+import { NAVIGATION_ITEMS } from "./navigationItems";
 
 interface SidebarProps {
   currentPath: string;
@@ -32,37 +22,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   totalComicsCount = 0,
   isOwner = false,
 }) => {
-  // Nomenclaturas alinhadas ao padrão de streaming Apple TV+
-  const navItems = [
-    {
-      label: "Biblioteca",
-      path: "/biblioteca",
-      icon: BookOpen,
-      badge: totalComicsCount > 0 ? String(totalComicsCount) : undefined,
-      section: "Explorar",
-    },
-    { label: "Lançamentos", path: "/lancamentos", icon: Sparkles },
-    { label: "Séries & Sagas", path: "/series", icon: Layers },
-    { label: "Mangás & Indie", path: "/multiverso", icon: Compass },
-    { label: "Guia de Leitura", path: "/guia", icon: Compass },
-    {
-      label: "Continuar Lendo",
-      path: "/continuar",
-      icon: Clock,
-      section: "Sua Coleção",
-    },
-    { label: "Favoritos", path: "/favoritos", icon: Heart },
-    { label: "Baixados Offline", path: "/offline", icon: HardDriveDownload },
-    {
-      label: "Configurações",
-      path: "/configuracoes",
-      icon: ShieldCheck,
-      tag: "Dono",
-      ownerOnly: true,
-      section: "Gestão",
-    },
-  ];
-
   return (
     <aside
       className={`app-sidebar hidden md:flex flex-col flex-shrink-0 transition-all duration-300 ease-in-out z-30 select-none bg-[#06080d]/90 backdrop-blur-3xl border-r border-white/[0.08] ${
@@ -117,7 +76,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Navigation Links com scroll invisível para evitar barras cortando texto ou badges */}
       <nav className="sidebar-nav flex-1 px-2.5 py-2 overflow-y-auto space-y-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {navItems
+        {NAVIGATION_ITEMS
           .filter((item) => !item.ownerOnly || isOwner)
           .map((item) => {
             const Icon = item.icon;
@@ -152,15 +111,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </span>
                   )}
 
-                  {!isCollapsed && item.badge && (
+                  {!isCollapsed && item.path === "/biblioteca" && totalComicsCount > 0 && (
                     <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold font-mono bg-white/10 text-neutral-300 border border-white/10 shrink-0 ml-auto">
-                      {item.badge}
+                      {totalComicsCount}
                     </span>
                   )}
 
-                  {!isCollapsed && item.tag && (
+                  {!isCollapsed && item.ownerOnly && (
                     <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wide bg-blue-500/20 text-blue-300 border border-blue-500/30 shrink-0 ml-auto">
-                      {item.tag}
+                      Dono
                     </span>
                   )}
                 </button>
