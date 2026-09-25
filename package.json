@@ -4,11 +4,14 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --port=3000 --host=0.0.0.0",
+    "dev": "tsx server.ts",
     "build": "vite build && node scripts/finalize-sw.mjs",
+    "start": "tsx server.ts",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "restore:checkpoint": "git reset --hard checkpoint-before-redesign && npm run build",
+    "restore:backup": "cp -r .local-backups/checkpoint-before-redesign/* . && npm run build"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1137.0",
