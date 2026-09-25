@@ -51,50 +51,62 @@ button, input, select { font: inherit; }
 .app-search:hover, .app-search:focus { background: rgba(210, 221, 235, .1); border-color: rgba(125, 151, 183, .55); }
 
 .app-sidebar {
-  border-right: 1px solid rgba(210, 221, 235, .07);
-  background: rgba(9, 12, 16, .94);
-  backdrop-filter: blur(18px);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(6, 8, 13, 0.94);
+  backdrop-filter: blur(28px) saturate(140%);
 }
 
 .sidebar-nav {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.25rem;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.sidebar-nav::-webkit-scrollbar {
+  display: none;
 }
 
 .sidebar-section-label {
-  margin: 1.05rem 0.75rem 0.25rem;
-  color: #8291a3;
-  font-size: 0.62rem;
+  margin: 1rem 0.75rem 0.25rem;
+  color: #71717a;
+  font-size: 0.625rem;
   font-weight: 800;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
 .sidebar-section-label:first-child { margin-top: 0.25rem; }
 
-.sidebar-nav-item { min-height: 2.75rem; border: 1px solid transparent; }
-.sidebar-nav-item:hover { background: rgba(168, 186, 207, 0.07); }
-.sidebar-nav-item.active {
-  border-color: rgba(168, 186, 207, 0.18);
-  background: linear-gradient(90deg, rgba(168, 186, 207, 0.14), rgba(168, 186, 207, 0.04));
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.04);
+.sidebar-nav-item {
+  min-height: 2.6rem;
+  border: 1px solid transparent;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.sidebar-active-rail { width: 2px; height: 1.1rem; background: #a8bacf; }
+.sidebar-nav-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+.sidebar-nav-item.active {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 2px 12px rgba(255, 255, 255, 0.06);
+}
+.sidebar-active-rail { width: 2px; height: 1.1rem; background: #ffffff; }
 .sidebar-collapse-toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
   min-height: 2rem;
-  margin-top: 0.55rem;
+  margin-top: 0.25rem;
   padding: 0.3rem 0.6rem;
   border-radius: 0.6rem;
-  color: #9aaabc;
+  color: #a1a1aa;
   font-size: 0.7rem;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
-.sidebar-collapse-toggle:hover { background: rgba(168, 186, 207, 0.08); color: #eef3f9; }
+.sidebar-collapse-toggle:hover { background: rgba(255, 255, 255, 0.08); color: #ffffff; }
 
 .guide-related { margin: 1.25rem 0; padding: 1rem; border: 1px solid rgba(168,186,207,.16); border-radius: 1rem; background: rgba(168,186,207,.05); }
 .guide-related h3 { font-size: .9rem; font-weight: 700; color: #edf2f7; }
@@ -312,28 +324,29 @@ button, input, select { font: inherit; }
 .cover-flow:focus-visible { outline: 2px solid #93c5fd; outline-offset: 3px; border-radius: 1rem; }
 .cover-flow-stage {
   position: relative;
-  height: clamp(21rem, 34vw, 27rem);
+  height: clamp(22rem, 36vw, 29rem);
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  overflow: visible;
   perspective: 1200px;
+  padding: 1.5rem 0;
 }
 .cover-flow-card {
   position: absolute;
   top: 50%;
   left: 50%;
-  height: 78%;
-  max-height: calc(100% - 3.5rem);
+  height: 72%;
+  max-height: calc(100% - 3.8rem);
   width: auto;
   aspect-ratio: 2 / 3;
   padding: 0;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 0.85rem;
+  border-radius: 0.95rem;
   background: #0d1118;
   color: white;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65);
   cursor: pointer;
   opacity: var(--flow-opacity);
   transform: translate3d(calc(-50% + var(--flow-x)), -50%, var(--flow-z)) rotateY(var(--flow-rotate)) scale(var(--flow-scale));
@@ -550,15 +563,17 @@ button, input, select { font: inherit; }
   }
   /* Palco de Cover Flow 3D para mobile na vista Cover Flow */
   .catalog-hero-full-stage {
-    padding: 3.25rem 0.5rem 1.5rem;
+    padding: 3.5rem 0.5rem 1.75rem;
     min-height: 0;
   }
   .catalog-hero-full-stage .cover-flow-stage {
-    height: clamp(17.5rem, 58vw, 22.5rem);
+    height: clamp(19.5rem, 62vw, 24.5rem);
+    overflow: visible;
+    padding: 1.25rem 0;
   }
   .catalog-hero-full-stage .cover-flow-card {
-    height: 78%;
-    max-height: calc(100% - 2.8rem);
+    height: 70%;
+    max-height: calc(100% - 3.6rem);
     width: auto;
     aspect-ratio: 2 / 3;
   }
