@@ -42,11 +42,13 @@ const ContinuousPdfPage: React.FC<{
   pageNumber: number;
   width: number;
   brightness: number;
+  coverUrl?: string;
   onVisible: (page: number) => void;
-}> = ({ pdf, pageNumber, width, brightness, onVisible }) => {
+}> = ({ pdf, pageNumber, width, brightness, coverUrl, onVisible }) => {
   const holderRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [shouldRender, setShouldRender] = useState(pageNumber <= 2);
+  const [shouldRender, setShouldRender] = useState(pageNumber === 1);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     const holder = holderRef.current;
@@ -56,7 +58,7 @@ const ContinuousPdfPage: React.FC<{
         if (entry.isIntersecting) setShouldRender(true);
         if (entry.intersectionRatio > 0.55) onVisible(pageNumber);
       }
-    }, { rootMargin: "900px 0px", threshold: [0.1, 0.55] });
+    }, { rootMargin: "250px 0px", threshold: [0.1, 0.55] });
     observer.observe(holder);
     return () => observer.disconnect();
   }, [onVisible, pageNumber]);
@@ -78,7 +80,7 @@ const ContinuousPdfPage: React.FC<{
       canvas.style.width = `${viewport.width / ratio}px`;
       canvas.style.height = `${viewport.height / ratio}px`;
       task = page.render({ canvas, canvasContext: context, viewport });
-      return task.promise;
+      return task.promise.then(() => { if (active) setIsReady(true); });
     }).catch((renderError) => {
       if ((renderError as Error).name !== "RenderingCancelledException") console.error(renderError);
     });
@@ -87,7 +89,8 @@ const ContinuousPdfPage: React.FC<{
 
   return (
     <div ref={holderRef} data-reader-page={pageNumber} className="reader-continuous-page" style={{ width, filter: `brightness(${brightness}%)` }}>
-      <canvas ref={canvasRef} />
+      {shouldRender && <canvas ref={canvasRef} />}
+      {pageNumber === 1 && coverUrl && !isReady && <img className="reader-cover-preview" src={coverUrl} alt="Prévia da capa enquanto a página carrega" />}
       {!shouldRender && <span className="reader-page-placeholder">Página {pageNumber}</span>}
     </div>
   );
@@ -137,7 +140,7 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, pdfData
       if (!pdfUrl) throw new Error("Arquivo indisponível.");
       const source = await createRemoteArchiveSource(comic.id, pdfUrl);
       const length = await source.getLength();
-      const firstPageData = await source.read(0, Math.min(256 * 1024, length));
+      const firstPageData = await source.read(0, Math.min(1024 * 1024, length));
       if (!new TextDecoder().decode(firstPageData.subarray(0, 1024)).includes("%PDF-")) throw new Error("Este arquivo não contém um PDF válido.");
       if (!active) return undefined;
       const transport = new class extends PDFDataRangeTransport {
@@ -151,7 +154,7 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, pdfData
           });
         }
       }(length, firstPageData);
-      return getDocument({ range: transport, disableAutoFetch: true, disableStream: true, rangeChunkSize: 256 * 1024 });
+      return getDocument({ range: transport, disableAutoFetch: true, disableStream: true, rangeChunkSize: 1024 * 1024 });
     })().then(async (loadingTask) => {
       if (!loadingTask || !active) { await loadingTask?.destroy(); return; }
       task = loadingTask;
@@ -537,13 +540,15 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, pdfData
                 pageNumber={index + 1}
                 width={Math.max(1, Math.min(920, stageSize.width - 12)) * zoom}
                 brightness={brightness}
+                coverUrl={comic.coverUrl}
                 onVisible={setCurrentPage}
               />
             ))}
           </div>
         ) : (
-          <div key={`${currentPage}-${readerMode}`} className={`reader-page ${readerMode === "spread" ? "reader-spread" : ""} turn-${turnDirection}`} dir={readingDirection} style={{ filter: `brightness(${brightness}%)` }}>
+          <div key={`${currentPage}-${readerMode}`} className={`reader-page ${readerMode === "spread" ? "reader-spread" : ""} ${currentPage === 1 && comic.coverUrl && (!pdf || isRendering) ? "reader-page-preview" : ""} turn-${turnDirection}`} dir={readingDirection} style={{ filter: `brightness(${brightness}%)` }}>
             <canvas ref={canvasRef} />
+            {currentPage === 1 && comic.coverUrl && (!pdf || isRendering) && <img className="reader-cover-preview" src={comic.coverUrl} alt="Prévia da capa enquanto a página carrega" />}
             {readerMode === "spread" && currentPage > 1 && currentPage + 1 <= totalPages && <canvas ref={secondCanvasRef} />}
             <div className="reader-paper-grain" />
           </div>

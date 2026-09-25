@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Comic } from "../../types/comic";
-import { getSupabaseCatalog, getSupabaseComicById } from "../../services/supabaseCatalogRepository";
+import { getCoverUrls, getSupabaseCatalog, getSupabaseComicById } from "../../services/supabaseCatalogRepository";
 import { getComicReadUrl } from "../../services/comicRead";
 import { ComicReader } from "../../components/reader/ComicReader";
 import { PublicationReader } from "../../components/reader/PublicationReader";
@@ -59,7 +59,15 @@ export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack, onOpenR
       if (navigator.onLine) {
         try {
           const [data, url] = await Promise.all([getSupabaseComicById(comicId), getComicReadUrl(comicId)]);
-          if (data && isMounted) { setComic(auth.session ? applyQueuedProgress(auth.session.user.id, [data])[0] : data); setPdfUrl(url); setIsLoading(false); return; }
+          if (data && isMounted) {
+            setComic(auth.session ? applyQueuedProgress(auth.session.user.id, [data])[0] : data);
+            setPdfUrl(url);
+            setIsLoading(false);
+            if (!data.coverUrl) void getCoverUrls([data]).then((urls) => {
+              if (isMounted && urls[data.id]) setComic((current) => current?.id === data.id ? { ...current, coverUrl: urls[data.id] } : current);
+            }).catch(() => { /* A edição continua disponível sem prévia. */ });
+            return;
+          }
         } catch { /* Use uma cópia offline quando a rede falhar. */ }
       }
       const offline = auth.session ? await readOffline(auth.session.user.id, comicId) : null;
