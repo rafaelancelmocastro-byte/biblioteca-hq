@@ -34,7 +34,9 @@ export async function createRemoteArchiveSource(comicId: string, signedUrl: stri
     }
     const response = await fetchChunk(comicId, token, start, end);
     if (!response.ok) throw new Error("Não foi possível carregar um trecho da HQ.");
-    return new Uint8Array(await response.arrayBuffer());
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (response.status !== 206 || bytes.length !== end - start + 1) throw new Error("O arquivo recebido está incompleto. Tente novamente.");
+    return bytes;
   };
   return {
     getLength: async () => total,
@@ -69,8 +71,10 @@ export async function downloadComicBlob(comicId: string, signedUrl: string, onPr
       total = Number(response.headers.get("Content-Length"));
       if (!Number.isSafeInteger(total) || total <= CHUNK_SIZE * 4) {
         const blob = await response.blob();
-        onProgress?.(blob.size, blob.size);
-        return blob;
+        if (!Number.isSafeInteger(total) || blob.size === total) {
+          onProgress?.(blob.size, blob.size);
+          return blob;
+        }
       }
       await response.body?.cancel();
     }
@@ -83,11 +87,16 @@ export async function downloadComicBlob(comicId: string, signedUrl: string, onPr
   const readPart = async (start: number, end: number): Promise<Blob> => {
     try {
       const response = await fetch(signedUrl, { headers: { Range: `bytes=${start}-${end}` } });
-      if (response.status === 206) return await response.blob();
+      if (response.status === 206) {
+        const part = await response.blob();
+        if (part.size === end - start + 1) return part;
+      }
     } catch { /* Try the same-origin route below. */ }
     const response = await fetchChunk(comicId, token, start, end);
     if (!response.ok) throw new Error("Não foi possível baixar a edição. Tente novamente.");
-    return response.blob();
+    const part = await response.blob();
+    if (response.status !== 206 || part.size !== end - start + 1) throw new Error("O arquivo recebido está incompleto. Tente novamente.");
+    return part;
   };
   const first = await fetchChunk(comicId, token, 0, CHUNK_SIZE - 1);
   if (!first.ok) throw new Error("Não foi possível baixar a edição. Tente novamente.");
@@ -95,6 +104,7 @@ export async function downloadComicBlob(comicId: string, signedUrl: string, onPr
   if (!Number.isSafeInteger(total) || total < 1) throw new Error("O tamanho da edição não pôde ser confirmado.");
   const chunks: Blob[] = new Array(Math.ceil(total / CHUNK_SIZE));
   chunks[0] = await first.blob();
+  if (first.status !== 206 || chunks[0].size !== Math.min(total, CHUNK_SIZE)) throw new Error("O arquivo recebido está incompleto. Tente novamente.");
   let received = chunks[0].size;
   onProgress?.(received, total);
   const rest = Array.from({ length: chunks.length - 1 }, (_, index) => index + 1);
@@ -106,5 +116,7 @@ export async function downloadComicBlob(comicId: string, signedUrl: string, onPr
       onProgress?.(received, total);
     }));
   }
-  return new Blob(chunks);
+  const blob = new Blob(chunks);
+  if (blob.size !== total) throw new Error("O arquivo recebido está incompleto. Tente novamente.");
+  return blob;
 }

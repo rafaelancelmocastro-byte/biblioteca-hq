@@ -16,11 +16,12 @@ import {
   SunMedium,
   Trash2,
 } from "lucide-react";
-import { GlobalWorkerOptions, getDocument, type PDFDocumentProxy, type RenderTask } from "pdfjs-dist";
+import { GlobalWorkerOptions, PDFDataRangeTransport, getDocument, type PDFDocumentProxy, type PDFDocumentLoadingTask, type RenderTask } from "pdfjs-dist";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import type { Comic } from "../../types/comic";
 import { clearOffline, listOffline } from "../../services/offlineLibrary";
 import { supabase } from "../../services/supabaseClient";
+import { createRemoteArchiveSource } from "../../services/comicDownload";
 
 GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
@@ -128,19 +129,46 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, pdfData
 
   useEffect(() => {
     let active = true;
-    const task = pdfData ? getDocument({ data: pdfData }) : getDocument({ url: pdfUrl, withCredentials: false, disableAutoFetch: true, disableStream: true, rangeChunkSize: 256 * 1024 });
-    task.promise
-      .then((document) => {
-        if (!active) return;
-        setPdf(document);
-        setCurrentPage((page) => Math.min(page, document.numPages));
-      })
-      .catch(() => active && setError("Não foi possível carregar este PDF."));
+    let task: PDFDocumentLoadingTask | undefined;
+    setPdf(null);
+    setError("");
+    void (async () => {
+      if (pdfData) return getDocument({ data: pdfData });
+      if (!pdfUrl) throw new Error("Arquivo indisponível.");
+      const source = await createRemoteArchiveSource(comic.id, pdfUrl);
+      const length = await source.getLength();
+      const firstPageData = await source.read(0, Math.min(256 * 1024, length));
+      if (!new TextDecoder().decode(firstPageData.subarray(0, 1024)).includes("%PDF-")) throw new Error("Este arquivo não contém um PDF válido.");
+      if (!active) return undefined;
+      const transport = new class extends PDFDataRangeTransport {
+        requestDataRange(begin: number, end: number) {
+          void source.read(begin, end - begin).then((bytes) => {
+            if (active) this.onDataRange(begin, bytes);
+          }).catch((cause) => {
+            if (!active) return;
+            setError(cause instanceof Error ? cause.message : "Não foi possível carregar esta página.");
+            void task?.destroy();
+          });
+        }
+      }(length, firstPageData);
+      return getDocument({ range: transport, disableAutoFetch: true, disableStream: true, rangeChunkSize: 256 * 1024 });
+    })().then(async (loadingTask) => {
+      if (!loadingTask || !active) { await loadingTask?.destroy(); return; }
+      task = loadingTask;
+      const document = await loadingTask.promise;
+      if (!active) return;
+      setPdf(document);
+      setCurrentPage((page) => Math.min(page, document.numPages));
+    }).catch((cause) => {
+      if (active && (cause as Error)?.name !== "AbortException") {
+        setError((previous) => previous || (cause instanceof Error && cause.message ? cause.message : "Não foi possível carregar este PDF."));
+      }
+    });
     return () => {
       active = false;
-      task.destroy();
+      void task?.destroy();
     };
-  }, [pdfUrl, pdfData]);
+  }, [comic.id, pdfUrl, pdfData]);
 
   const renderPage = useCallback(async () => {
     if (readerMode === "continuous" || !pdf || !canvasRef.current || !stageRef.current) return;
@@ -520,7 +548,7 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, pdfData
             <div className="reader-paper-grain" />
           </div>
         )}
-        {isRendering && readerMode !== "continuous" && <div className="reader-loading"><span /></div>}
+        {isRendering && !error && readerMode !== "continuous" && <div className="reader-loading"><span /></div>}
         {error && <div className="reader-error">{error}</div>}
       </main>
 
