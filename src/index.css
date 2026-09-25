@@ -1168,3 +1168,118 @@ body { padding-top: env(safe-area-inset-top); }
   .collection-hub-info .catalog-primary-action { width: 100%; }
 }
 @media (max-width: 640px) { .app-header { backdrop-filter: blur(10px); }.app-mobile-nav { backdrop-filter: blur(12px); }.streaming-page::before { display: none; }.login-card { border-radius: 1.2rem; }.reader-settings { max-width: calc(100vw - 1rem); } }
+
+/* Lançamentos e guia seguem as superfícies e a hierarquia editorial da biblioteca. */
+.launches-page::before, .reading-guide-page::before {
+  background: radial-gradient(ellipse at 50% 0%, rgba(89,115,147,.13), transparent 68%);
+}
+.launches-spotlight, .guide-spotlight {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: .6rem;
+  background: radial-gradient(circle at 84% 8%, rgba(89,115,147,.2), transparent 32rem), linear-gradient(115deg,#121820,#080c13 70%);
+  border-color: rgba(168,186,207,.14);
+}
+.launches-spotlight .page-kicker, .guide-spotlight .page-kicker { color: #a8bacf; margin-bottom: .2rem; }
+.launches-spotlight p, .guide-spotlight p { margin: 0; line-height: 1.55; }
+.launches-total, .guide-path-count {
+  width: fit-content;
+  padding: .4rem .7rem;
+  border: 1px solid rgba(168,186,207,.18);
+  border-radius: 999px;
+  background: rgba(168,186,207,.07);
+  color: #c4d2e2;
+  font-size: .72rem;
+  font-weight: 700;
+}
+.launches-total { margin-top: .7rem; }
+.launches-feature { background: radial-gradient(circle at 50% 0,rgba(89,115,147,.14),transparent 65%),#0d121a; }
+.launches-section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  color: #a8bacf;
+  font-size: .67rem;
+  font-weight: 800;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+.launches-section-label svg { width: .9rem; height: .9rem; }
+.launches-feature-info { border-top: 1px solid rgba(168,186,207,.11); padding-top: 1.25rem; }
+.launches-feature-info p { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.launches-feature-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .55rem; flex: none; }
+.launches-feature-actions button { white-space: nowrap; }
+.launches-list-heading, .guide-issues-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.launches-list-heading h2 { margin-top: .3rem; font-size: clamp(1.25rem,2vw,1.6rem); }
+.launches-list-heading p { margin-top: .2rem; color: #9ea9b6; font-size: .8rem; }
+.launches-list-heading > span, .guide-issues-heading > span { color: #9ea9b6; font-size: .72rem; white-space: nowrap; }
+
+.reading-guide-page { gap: clamp(1.25rem,2.5vw,2rem); }
+.reading-guide-page .guide-search-panel,
+.reading-guide-page .guide-paths-panel,
+.reading-guide-page .guide-detail {
+  border: 1px solid rgba(168,186,207,.12);
+  border-radius: 1.35rem;
+  background: rgba(16,22,30,.88);
+  box-shadow: 0 18px 42px rgba(0,0,0,.13);
+}
+.reading-guide-page .guide-search-panel { padding: clamp(1rem,2.4vw,1.5rem); gap: .8rem; }
+.guide-search-panel > div { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.reading-guide-page .guide-search-panel label { color: #f3f4f6; font-size: .93rem; }
+.reading-guide-page .guide-search-panel label svg { color: #a8bacf; }
+.reading-guide-page .guide-search-panel input {
+  border-color: rgba(168,186,207,.2);
+  border-radius: .85rem;
+  background: #080d14;
+  outline: none;
+}
+.reading-guide-page .guide-search-panel input:focus { border-color: #91a9c5; box-shadow: 0 0 0 3px rgba(145,169,197,.12); }
+.reading-guide-page .guide-search-panel p { max-width: 55rem; color: #9ea9b6; }
+.reading-guide-page .guide-layout { gap: 1.25rem; grid-template-columns: minmax(15rem,.75fr) minmax(0,1.4fr); }
+.guide-paths-panel { min-width: 0; padding: clamp(.85rem,2vw,1.25rem); }
+.guide-column-heading { margin: .2rem .2rem 1rem; }
+.guide-column-heading h2 { margin-top: .35rem; }
+.reading-guide-page .guide-paths { padding: .15rem; gap: .6rem; }
+.reading-guide-page .guide-path {
+  border-color: rgba(168,186,207,.1);
+  border-radius: .9rem;
+  background: rgba(255,255,255,.025);
+  transition: background .2s, border-color .2s;
+}
+.reading-guide-page .guide-path:hover { border-color: rgba(168,186,207,.3); background: rgba(168,186,207,.07); }
+.reading-guide-page .guide-path.active { border-color: rgba(168,186,207,.6); background: rgba(168,186,207,.11); }
+.reading-guide-page .guide-path > svg, .reading-guide-page .guide-issues svg { color: #a8bacf; }
+.reading-guide-page .guide-detail { padding: clamp(1rem,2.5vw,1.75rem); }
+.reading-guide-page .guide-detail-header { border-bottom: 1px solid rgba(168,186,207,.1); padding-bottom: 1rem; }
+.reading-guide-page .guide-detail-header .page-kicker { color: #a8bacf; }
+.reading-guide-page .guide-detail-header p { max-width: 48rem; color: #aeb9c6; }
+.reading-guide-page .guide-related { border-color: rgba(168,186,207,.14); background: rgba(168,186,207,.045); }
+.reading-guide-page .guide-related button { cursor: pointer; }
+.reading-guide-page .guide-start { margin-top: 1.25rem; border-color: rgba(168,186,207,.16); border-radius: 1rem; background: linear-gradient(125deg,rgba(89,115,147,.15),rgba(255,255,255,.025)); }
+.reading-guide-page .guide-start small { color: #a8bacf; font-weight: 800; letter-spacing: .08em; }
+.reading-guide-page .guide-start p { color: #aeb9c6; }
+.reading-guide-page .guide-issues-heading { margin: 1.5rem .15rem .7rem; }
+.reading-guide-page .guide-issues { margin-top: 0; }
+.reading-guide-page .guide-issues button { border-color: rgba(168,186,207,.1); border-radius: .75rem; background: rgba(255,255,255,.02); }
+.reading-guide-page .guide-issues button:hover { border-color: rgba(168,186,207,.35); background: rgba(168,186,207,.06); }
+.reading-guide-page .guide-issues button > span:first-child { color: #a8bacf; }
+
+@media (max-width: 900px) {
+  .reading-guide-page .guide-layout { grid-template-columns: minmax(0,1fr); }
+  .launches-feature-actions { width: 100%; justify-content: stretch; }
+  .launches-feature-actions button { flex: 1 1 10rem; }
+}
+@media (max-width: 640px) {
+  .launches-spotlight, .guide-spotlight { min-height: 13rem; }
+  .launches-list-heading, .guide-issues-heading { align-items: start; }
+  .guide-search-panel > div { flex-wrap: wrap; }
+  .reading-guide-page .guide-start { align-items: flex-start; }
+  .reading-guide-page .guide-paths { max-height: 19rem; }
+}
