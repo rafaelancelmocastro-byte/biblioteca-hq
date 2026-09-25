@@ -18,8 +18,8 @@ interface LibraryPageProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   isFilterDrawerOpen?: boolean;
-  onToggleFilterDrawer?: () => void;
   onCloseFilterDrawer?: () => void;
+  onToggleFilterDrawer?: () => void;
   onOpenGuide?: () => void;
   onOpenLaunches?: () => void;
 }
@@ -31,8 +31,8 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
   searchQuery,
   onSearchChange,
   isFilterDrawerOpen,
-  onToggleFilterDrawer,
   onCloseFilterDrawer,
+  onToggleFilterDrawer,
   onOpenGuide,
   onOpenLaunches,
 }) => {
@@ -321,10 +321,11 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
           )}
         </div>
 
-        {/* Controles do catálogo */}
+        {/* Barra de Filtros Minimalista com Segmented Controls */}
         <LibraryFilterBar
           filters={filters}
           onFilterChange={setFilters}
+          onResetFilters={resetFilters}
           seriesList={seriesList}
           charactersList={charactersList}
           publishers={publishers}
@@ -333,8 +334,8 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
           onDensityChange={setGridDensity}
           totalFilteredCount={filteredComics.length}
           isFilterDrawerOpen={isFilterDrawerOpen}
-          onToggleFilterDrawer={onToggleFilterDrawer}
           onCloseFilterDrawer={onCloseFilterDrawer}
+          onToggleFilterDrawer={onToggleFilterDrawer}
         />
 
         {/* Grid de Capas */}
