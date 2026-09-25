@@ -5,6 +5,7 @@ import { getComicReadUrl } from "../../services/comicRead";
 import { ComicReader } from "../../components/reader/ComicReader";
 import { PublicationReader } from "../../components/reader/PublicationReader";
 import { CbrReader } from "../../components/reader/CbrReader";
+import type { NextIssue } from "../../components/reader/ReaderChrome";
 import { publicationFormat } from "../../services/publicationFormats";
 import { applyQueuedProgress, saveReadingProgress } from "../../services/offlineProgress";
 import { Button } from "../../components/ui/Button";
@@ -25,6 +26,7 @@ export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack, onOpenR
   const [userId, setUserId] = useState("");
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [nextComicId, setNextComicId] = useState<string | null>(null);
+  const [nextIssue, setNextIssue] = useState<NextIssue | null>(null);
   const [findNextNow, setFindNextNow] = useState(false);
   const updateProgress = useCallback((id: string, page: number, total: number) => {
     void saveReadingProgress(userId, id, page, total);
@@ -37,17 +39,35 @@ export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack, onOpenR
       if (!comic?.seriesId) return;
       type Issue = { id: string; issue_number: number; volume: number | null; publication_year: number };
       let issues: Issue[] = [];
+      let offlineIssues: Comic[] = [];
       if (navigator.onLine && supabase) {
         try {
           const { data, error } = await supabase.from("comics").select("id,issue_number,volume,publication_year").eq("series_id", comic.seriesId);
           if (!error) issues = data || [];
         } catch { /* A cópia offline ainda pode fornecer o próximo capítulo. */ }
       }
-      if (!issues.length && userId) issues = (await listOffline(userId)).filter(({ comic: item }) => item.seriesId === comic.seriesId).map(({ comic: item }) => ({ id: item.id, issue_number: item.issueNumber, volume: item.volume ?? null, publication_year: item.year }));
+      if (!issues.length && userId) {
+        offlineIssues = (await listOffline(userId)).map(({ comic: item }) => item).filter((item) => item.seriesId === comic.seriesId);
+        issues = offlineIssues.map((item) => ({ id: item.id, issue_number: item.issueNumber, volume: item.volume ?? null, publication_year: item.year }));
+      }
       if (!active) return;
       issues.sort((a, b) => (a.volume || 0) - (b.volume || 0) || a.issue_number - b.issue_number || a.publication_year - b.publication_year);
       const currentIndex = issues.findIndex((item) => item.id === comicId);
-      setNextComicId(currentIndex < 0 ? null : issues[currentIndex + 1]?.id || null);
+      const nextId = currentIndex < 0 ? null : issues[currentIndex + 1]?.id || null;
+      setNextComicId(nextId);
+      const offlineNext = offlineIssues.find((item) => item.id === nextId);
+      setNextIssue(offlineNext ? { title: offlineNext.title, issueNumber: offlineNext.issueNumber, coverUrl: offlineNext.coverUrl } : null);
+      if (nextId && navigator.onLine) {
+        try {
+          const next = await getSupabaseComicById(nextId);
+          if (next && active) {
+            setNextIssue({ title: next.title, issueNumber: next.issueNumber, coverUrl: next.coverUrl });
+            if (!next.coverUrl) void getCoverUrls([next]).then((urls) => {
+              if (active && urls[nextId]) setNextIssue({ title: next.title, issueNumber: next.issueNumber, coverUrl: urls[nextId] });
+            }).catch(() => { /* A próxima edição permanece acessível sem capa. */ });
+          }
+        } catch { /* O botão continua disponível sem a prévia da capa. */ }
+      }
     };
     if (findNextNow) void findNext();
     return () => { active = false; };
@@ -58,6 +78,7 @@ export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack, onOpenR
     setIsLoading(true);
     setFindNextNow(false);
     setNextComicId(null);
+    setNextIssue(null);
 
     (async () => {
       const authPromise = supabase!.auth.getSession();
@@ -119,7 +140,7 @@ export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack, onOpenR
     );
   }
 
-  if (["cbr", "cbz"].includes(publicationFormat(comic.fileName) || "")) return <CbrReader comic={comic} fileUrl={pdfUrl} fileData={pdfData} onBack={onBack} onNextChapter={nextComicId ? () => onOpenReader(nextComicId) : undefined} onUpdateProgress={updateProgress} />;
+  if (["cbr", "cbz"].includes(publicationFormat(comic.fileName) || "")) return <CbrReader comic={comic} fileUrl={pdfUrl} fileData={pdfData} onBack={onBack} onNextChapter={nextComicId ? () => onOpenReader(nextComicId) : undefined} nextIssue={nextIssue} onUpdateProgress={updateProgress} />;
   if (publicationFormat(comic.fileName) && publicationFormat(comic.fileName) !== "pdf") return <PublicationReader comic={comic} fileUrl={pdfUrl} fileData={pdfData} onBack={onBack} onNextChapter={nextComicId ? () => onOpenReader(nextComicId) : undefined} onUpdateProgress={updateProgress} />;
 
   return (
@@ -129,6 +150,7 @@ export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack, onOpenR
       pdfData={pdfData}
       onBack={onBack}
       onNextChapter={nextComicId ? () => onOpenReader(nextComicId) : undefined}
+      nextIssue={nextIssue}
       onUpdateProgress={updateProgress}
     />
   );
