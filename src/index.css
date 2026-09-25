@@ -81,6 +81,27 @@ button, input, select { font: inherit; }
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.04);
 }
 .sidebar-active-rail { width: 2px; height: 1.1rem; background: #a8bacf; }
+.sidebar-collapse-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 2rem;
+  margin-top: 0.55rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.6rem;
+  color: #9aaabc;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+.sidebar-collapse-toggle:hover { background: rgba(168, 186, 207, 0.08); color: #eef3f9; }
+
+.guide-related { margin: 1.25rem 0; padding: 1rem; border: 1px solid rgba(168,186,207,.16); border-radius: 1rem; background: rgba(168,186,207,.05); }
+.guide-related h3 { font-size: .9rem; font-weight: 700; color: #edf2f7; }
+.guide-related p { margin: .3rem 0 .8rem; font-size: .77rem; color: #9eacbc; line-height: 1.5; }
+.guide-related > div { display: flex; flex-wrap: wrap; gap: .5rem; }
+.guide-related button { display: inline-flex; align-items: center; gap: .35rem; padding: .4rem .65rem; border: 1px solid rgba(168,186,207,.2); border-radius: .6rem; color: #d5dfeb; font-size: .76rem; }
+.guide-related button:hover { background: rgba(168,186,207,.11); }
 
 .import-organization { grid-column: 1 / -1; }
 .import-organization-toggle {

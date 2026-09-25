@@ -241,6 +241,21 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, pdfData
     return () => window.clearTimeout(timer);
   }, [comic.id, comic.totalPages, currentPage, onUpdateProgress, pdf?.numPages, readerMode]);
 
+  useEffect(() => {
+    const savePosition = () => {
+      if (document.visibilityState !== "hidden") return;
+      const total = pdf?.numPages ?? comic.totalPages;
+      onUpdateProgress(comic.id, Math.min(currentPage + (readerMode === "spread" && currentPage > 1 ? 1 : 0), total), total);
+    };
+    const onPageHide = () => {
+      const total = pdf?.numPages ?? comic.totalPages;
+      onUpdateProgress(comic.id, Math.min(currentPage + (readerMode === "spread" && currentPage > 1 ? 1 : 0), total), total);
+    };
+    document.addEventListener("visibilitychange", savePosition);
+    window.addEventListener("pagehide", onPageHide);
+    return () => { document.removeEventListener("visibilitychange", savePosition); window.removeEventListener("pagehide", onPageHide); };
+  }, [comic.id, comic.totalPages, currentPage, onUpdateProgress, pdf?.numPages, readerMode]);
+
   const totalPages = pdf?.numPages ?? comic.totalPages;
   const moveToPage = useCallback((target: number, direction: "next" | "previous") => {
     const page = Math.min(totalPages, Math.max(1, target));

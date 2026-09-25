@@ -19,13 +19,15 @@ export function useAuth() {
     let currentUserId = "";
     const loadProfile = async (userId: string) => {
       let data: AccessProfile | null = null;
+      let unavailable = false;
       try {
         const result = await supabase!.from("profiles").select("id,email,role,access_status,is_active").eq("id", userId).maybeSingle();
+        unavailable = !!result.error;
         data = result.data as AccessProfile | null;
-      } catch { /* use the locally cached profile while offline */ }
+      } catch { unavailable = true; }
       if (data) localStorage.setItem(`biblioteca-hq-profile:${userId}`, JSON.stringify(data));
       let cached: AccessProfile | null = null;
-      if (!data && !navigator.onLine) { try { cached = JSON.parse(localStorage.getItem(`biblioteca-hq-profile:${userId}`) || "null"); } catch { /* ignore invalid cache */ } }
+      if (!data && (unavailable || !navigator.onLine)) { try { cached = JSON.parse(localStorage.getItem(`biblioteca-hq-profile:${userId}`) || "null"); } catch { /* ignore invalid cache */ } }
       if (mounted) setProfile((data as AccessProfile | null) || cached);
     };
     supabase.auth.getSession().then(async ({ data }) => {

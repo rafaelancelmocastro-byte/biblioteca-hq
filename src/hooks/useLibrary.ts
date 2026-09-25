@@ -5,6 +5,8 @@ import { localProgressRepository } from "../services/localProgressRepository";
 import { getCoverUrls, getSupabaseCatalog, invalidateCatalogCache } from "../services/supabaseCatalogRepository";
 import { getLocalStorageItem, setLocalStorageItem } from "../lib/utils";
 import { matchesComicSearch } from "../lib/librarySearch";
+import { applyQueuedProgress } from "../services/offlineProgress";
+import { supabase } from "../services/supabaseClient";
 import {
   applySupabaseLibraryState,
   getSupabaseLibraryState,
@@ -50,7 +52,9 @@ export function useLibrary() {
     try {
       const [{ comics, series, characters, publishers: pubs, years: yrs }, remoteState] = await Promise.all([getSupabaseCatalog(), getSupabaseLibraryState()]);
       if (version !== loadVersion.current) return;
-      const hydrated = remoteState ? applySupabaseLibraryState(comics, remoteState) : comics;
+      const session = (await supabase?.auth.getSession())?.data.session;
+      if (version !== loadVersion.current) return;
+      const hydrated = session ? applyQueuedProgress(session.user.id, remoteState ? applySupabaseLibraryState(comics, remoteState) : comics) : remoteState ? applySupabaseLibraryState(comics, remoteState) : comics;
       setAllComics(hydrated);
       setSeriesList(series);
       setFavoriteSeriesIds(remoteState?.favoriteSeriesIds ?? new Set(getLocalStorageItem<string[]>(SERIES_FAVORITES_KEY, [])));

@@ -35,7 +35,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   userName = "Leitor",
   userId,
 }) => {
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => localStorage.getItem("biblioteca-hq-sidebar-collapsed") === "true");
+  const toggleSidebar = () => setIsSidebarCollapsed((current) => { const next = !current; localStorage.setItem("biblioteca-hq-sidebar-collapsed", String(next)); return next; });
 
   if (hideHeaderAndNav) {
     return <div className="min-h-screen bg-[#0b0e14] text-slate-100">{children}</div>;
@@ -48,7 +49,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         currentPath={currentPath}
         onNavigate={onNavigate}
         isCollapsed={isSidebarCollapsed}
-        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        onToggleCollapse={toggleSidebar}
         totalComicsCount={totalComicsCount}
         isOwner={isOwner}
         userName={userName}

@@ -97,6 +97,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </button>
       </div>
 
+      <button
+        type="button"
+        onClick={onToggleCollapse}
+        className={`sidebar-collapse-toggle ${isCollapsed ? "mx-auto" : "ml-auto mr-3"}`}
+        aria-label={isCollapsed ? "Expandir barra lateral" : "Recolher barra lateral"}
+        title={isCollapsed ? "Expandir menu" : "Recolher menu"}
+      >
+        {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <><span>Recolher menu</span><ChevronLeft className="w-4 h-4" /></>}
+      </button>
+
       {/* Navigation Links */}
       <nav className="sidebar-nav flex-1 px-3 py-4 overflow-y-auto">
         {navItems.filter((item) => !item.ownerOnly || isOwner).map((item) => {
@@ -162,20 +172,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span className="text-[10px] text-slate-500 font-mono">{isOwner ? "Proprietário" : "Leitor"}</span>
           </div>
         )}
-        <button
-          onClick={onToggleCollapse}
-          className={`p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer ${
-            isCollapsed ? "mx-auto" : ""
-          }`}
-          aria-label={isCollapsed ? "Expandir barra lateral" : "Recolher barra lateral"}
-          title={isCollapsed ? "Expandir menu" : "Recolher menu"}
-        >
-          {isCollapsed ? (
-            <ChevronRight className="w-4 h-4" />
-          ) : (
-            <ChevronLeft className="w-4 h-4" />
-          )}
-        </button>
       </div>
     </aside>
   );

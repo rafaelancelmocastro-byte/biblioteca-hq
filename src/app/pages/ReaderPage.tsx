@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Comic } from "../../types/comic";
 import { getSupabaseCatalog, getSupabaseComicById } from "../../services/supabaseCatalogRepository";
 import { getComicReadUrl } from "../../services/comicRead";
@@ -6,7 +6,7 @@ import { ComicReader } from "../../components/reader/ComicReader";
 import { PublicationReader } from "../../components/reader/PublicationReader";
 import { CbrReader } from "../../components/reader/CbrReader";
 import { publicationFormat } from "../../services/publicationFormats";
-import { getQueuedProgress, saveReadingProgress } from "../../services/offlineProgress";
+import { applyQueuedProgress, saveReadingProgress } from "../../services/offlineProgress";
 import { Button } from "../../components/ui/Button";
 import { ArrowLeft, BookX } from "lucide-react";
 import { listOffline, readOffline } from "../../services/offlineLibrary";
@@ -25,6 +25,7 @@ export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack, onOpenR
   const [userId, setUserId] = useState("");
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [nextComic, setNextComic] = useState<Comic | null>(null);
+  const updateProgress = useCallback((id: string, page: number, total: number) => { void saveReadingProgress(userId, id, page, total); }, [userId]);
 
   useEffect(() => {
     let active = true;
@@ -58,11 +59,11 @@ export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack, onOpenR
       if (navigator.onLine) {
         try {
           const [data, url] = await Promise.all([getSupabaseComicById(comicId), getComicReadUrl(comicId)]);
-          if (data && isMounted) { setComic(data); setPdfUrl(url); setIsLoading(false); return; }
+          if (data && isMounted) { setComic(auth.session ? applyQueuedProgress(auth.session.user.id, [data])[0] : data); setPdfUrl(url); setIsLoading(false); return; }
         } catch { /* Use uma cópia offline quando a rede falhar. */ }
       }
       const offline = auth.session ? await readOffline(auth.session.user.id, comicId) : null;
-      if (offline && isMounted) { const queued = getQueuedProgress(auth.session!.user.id, comicId); setComic(queued ? { ...offline.comic, progress: { comicId, currentPage: queued.page, totalPages: queued.total, percentage: Math.round(queued.page / queued.total * 100), status: queued.page >= queued.total ? "completed" : "reading", lastReadAt: queued.updatedAt, updatedAt: queued.updatedAt } } : offline.comic); setPdfData(offline.data); setIsLoading(false); return; }
+      if (offline && isMounted) { setComic(applyQueuedProgress(auth.session!.user.id, [offline.comic])[0]); setPdfData(offline.data); setIsLoading(false); return; }
       if (isMounted) setIsLoading(false);
     })()
       .catch(() => {
@@ -99,8 +100,8 @@ export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack, onOpenR
     );
   }
 
-  if (["cbr", "cbz"].includes(publicationFormat(comic.fileName) || "")) return <CbrReader comic={comic} fileUrl={pdfUrl} fileData={pdfData} onBack={onBack} onNextChapter={nextComic ? () => onOpenReader(nextComic.id) : undefined} onUpdateProgress={(id, page, total) => { void saveReadingProgress(userId, id, page, total); }} />;
-  if (publicationFormat(comic.fileName) && publicationFormat(comic.fileName) !== "pdf") return <PublicationReader comic={comic} fileUrl={pdfUrl} fileData={pdfData} onBack={onBack} onNextChapter={nextComic ? () => onOpenReader(nextComic.id) : undefined} onUpdateProgress={(id, page, total) => { void saveReadingProgress(userId, id, page, total); }} />;
+  if (["cbr", "cbz"].includes(publicationFormat(comic.fileName) || "")) return <CbrReader comic={comic} fileUrl={pdfUrl} fileData={pdfData} onBack={onBack} onNextChapter={nextComic ? () => onOpenReader(nextComic.id) : undefined} onUpdateProgress={updateProgress} />;
+  if (publicationFormat(comic.fileName) && publicationFormat(comic.fileName) !== "pdf") return <PublicationReader comic={comic} fileUrl={pdfUrl} fileData={pdfData} onBack={onBack} onNextChapter={nextComic ? () => onOpenReader(nextComic.id) : undefined} onUpdateProgress={updateProgress} />;
 
   return (
     <ComicReader
@@ -109,7 +110,7 @@ export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack, onOpenR
       pdfData={pdfData}
       onBack={onBack}
       onNextChapter={nextComic ? () => onOpenReader(nextComic.id) : undefined}
-      onUpdateProgress={(id, page, total) => { void saveReadingProgress(userId, id, page, total); }}
+      onUpdateProgress={updateProgress}
     />
   );
 };
