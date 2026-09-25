@@ -52,6 +52,8 @@ export function CbrReader({ comic, fileUrl, fileData, onBack, onNextChapter, onU
   const [error, setError] = useState("");
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [page, setPage] = useState(Math.max(1, comic.progress?.currentPage || 1));
+  const resumePageRef = useRef(Math.max(1, comic.progress?.currentPage || 1));
+  const restoringPositionRef = useRef(resumePageRef.current > 1);
   const [mode, setMode] = useState<Mode>(() => (localStorage.getItem("biblioteca_reader_mode") as Mode) || "page");
   const [direction, setDirection] = useState<"ltr" | "rtl">(comic.readingDirection || "ltr");
   const [zoom, setZoom] = useState(1);
@@ -124,7 +126,12 @@ export function CbrReader({ comic, fileUrl, fileData, onBack, onNextChapter, onU
     return () => window.removeEventListener("keydown", key);
   }, [direction, mode, next, previous]);
   useEffect(() => { const handler = () => setFullscreen(!!document.fullscreenElement); document.addEventListener("fullscreenchange", handler); return () => document.removeEventListener("fullscreenchange", handler); }, []);
-  useEffect(() => { if (mode === "continuous") stageRef.current?.querySelector(`[data-cbr-page="${page}"]`)?.scrollIntoView({ block: "start" }); }, [mode]);
+  useEffect(() => {
+    if (mode !== "continuous" || !book) return;
+    const frame = requestAnimationFrame(() => stageRef.current?.querySelector(`[data-cbr-page="${Math.min(resumePageRef.current, book.sections.length)}"]`)?.scrollIntoView({ block: "start" }));
+    const timer = window.setTimeout(() => { restoringPositionRef.current = false; }, 400);
+    return () => { cancelAnimationFrame(frame); window.clearTimeout(timer); };
+  }, [book, mode]);
   const changeMode = (value: Mode) => { setMode(value); if (value === "spread" && page > 1 && page % 2 === 1) setPage(page - 1); };
   const toggleFullscreen = () => { if (document.fullscreenElement) void document.exitFullscreen(); else void shellRef.current?.requestFullscreen(); };
   const shown = mode === "spread" && visiblePage > 1 && visiblePage < total ? [visiblePage - 1, visiblePage] : [visiblePage - 1];
@@ -142,7 +149,7 @@ export function CbrReader({ comic, fileUrl, fileData, onBack, onNextChapter, onU
       onTouchMove={(event) => { if (event.touches.length === 2 && startTouch.current?.distance) { const distance = Math.hypot(event.touches[0].clientX - event.touches[1].clientX, event.touches[0].clientY - event.touches[1].clientY); setZoom(Math.min(3, Math.max(.7, startTouch.current.zoom! * distance / startTouch.current.distance))); } }}
       onTouchEnd={(event) => { if (mode === "continuous" || zoom > 1.05 || !startTouch.current || startTouch.current.distance || !event.changedTouches.length) return; const dx = event.changedTouches[0].clientX - startTouch.current.x, dy = event.changedTouches[0].clientY - startTouch.current.y; if (mode === "page" && Math.abs(dy) > 55 && Math.abs(dy) > Math.abs(dx)) dy < 0 ? next() : previous(); else if (mode !== "page" && Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy)) dx < 0 ? (direction === "rtl" ? previous() : next()) : (direction === "rtl" ? next() : previous()); }}
       onWheel={(event) => { if (mode === "continuous" || zoom > 1.05 || Date.now() - lastWheelTurn.current < 420) return; if (mode === "page" && Math.abs(event.deltaY) > 30) { lastWheelTurn.current = Date.now(); event.preventDefault(); event.deltaY > 0 ? next() : previous(); } else if (mode !== "page" && Math.abs(event.deltaX) > 30) { lastWheelTurn.current = Date.now(); event.preventDefault(); event.deltaX > 0 ? next() : previous(); } }}>
-      {!activeBook ? <div className="reader-loading" role="status">{error || (downloadProgress > 0 && downloadProgress < 100 ? `Carregando HQ… ${downloadProgress}%` : "Preparando HQ…")}</div> : mode === "continuous" ? <div className="cbr-continuous" style={{ width: `${Math.round(zoom * 100)}%`, maxWidth: `${56 * zoom}rem` }}>{activeBook.sections.map((_, index) => <CbrImage key={index} book={activeBook} index={index} onVisible={book ? progress : undefined} />)}</div> : <div className={`cbr-page ${mode === "spread" ? "cbr-spread" : ""}`} style={{ width: `${Math.round(zoom * 100)}%` }}>{shown.filter((index) => index < activeBook.sections.length).map((index) => <CbrImage key={index} book={activeBook} index={index} />)}</div>}
+      {!activeBook ? <div className="reader-loading" role="status">{error || (downloadProgress > 0 && downloadProgress < 100 ? `Carregando HQ… ${downloadProgress}%` : "Preparando HQ…")}</div> : mode === "continuous" ? <div className="cbr-continuous" style={{ width: `${Math.round(zoom * 100)}%`, maxWidth: `${56 * zoom}rem` }}>{activeBook.sections.map((_, index) => <CbrImage key={index} book={activeBook} index={index} onVisible={book ? (visiblePage) => { if (!restoringPositionRef.current) progress(visiblePage); } : undefined} />)}</div> : <div className={`cbr-page ${mode === "spread" ? "cbr-spread" : ""}`} style={{ width: `${Math.round(zoom * 100)}%` }}>{shown.filter((index) => index < activeBook.sections.length).map((index) => <CbrImage key={index} book={activeBook} index={index} />)}</div>}
       {previewOnly && <div className="reader-preview-status" role="status">Primeiras páginas disponíveis · preparando o restante</div>}
       {book && page >= total && onNextChapter && <button className="reader-next-chapter" onClick={onNextChapter}>Ler o próximo capítulo <ChevronRight /></button>}
     </main>

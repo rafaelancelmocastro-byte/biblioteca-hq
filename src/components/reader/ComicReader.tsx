@@ -99,6 +99,8 @@ const ContinuousPdfPage: React.FC<{
 export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, pdfData, onBack, onNextChapter, onUpdateProgress }) => {
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [currentPage, setCurrentPage] = useState(() => Math.max(1, comic.progress?.currentPage || 1));
+  const resumePageRef = useRef(Math.max(1, comic.progress?.currentPage || 1));
+  const restoringPositionRef = useRef(resumePageRef.current > 1);
   const [zoom, setZoom] = useState(1);
   const [readerMode, setReaderMode] = useState<ReaderMode>(() => (localStorage.getItem("biblioteca_reader_mode") as ReaderMode) || "page");
   const [readingDirection, setReadingDirection] = useState<"ltr" | "rtl">(comic.readingDirection || (comic.contentType === "manga" ? "rtl" : "ltr"));
@@ -228,6 +230,15 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, pdfData
   useEffect(() => {
     if (stageSize.width > 0 && stageSize.height > 0) void renderPage();
   }, [renderPage]);
+
+  useEffect(() => {
+    if (!pdf || readerMode !== "continuous" || !restoringPositionRef.current) return;
+    const frame = requestAnimationFrame(() => {
+      stageRef.current?.querySelector(`[data-reader-page="${Math.min(resumePageRef.current, pdf.numPages)}"]`)?.scrollIntoView({ block: "start" });
+    });
+    const timer = window.setTimeout(() => { restoringPositionRef.current = false; }, 400);
+    return () => { cancelAnimationFrame(frame); window.clearTimeout(timer); };
+  }, [pdf, readerMode]);
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -541,7 +552,7 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, pdfData
                 width={Math.max(1, Math.min(920, stageSize.width - 12)) * zoom}
                 brightness={brightness}
                 coverUrl={comic.coverUrl}
-                onVisible={setCurrentPage}
+                onVisible={(page) => { if (!restoringPositionRef.current) setCurrentPage(page); }}
               />
             ))}
           </div>
