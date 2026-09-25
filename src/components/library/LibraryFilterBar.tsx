@@ -195,27 +195,27 @@ export const LibraryFilterBar: React.FC<LibraryFilterBarProps> = ({
   return (
     <div id="library-filter-panel" className="mb-8 space-y-3.5 scroll-mt-24">
       {/* Barra de Filtros Minimalista Estilo Apple TV+ */}
-      <div className="flex flex-wrap items-center justify-between gap-3.5 p-2.5 sm:p-3 bg-white/[0.035] border border-white/[0.08] backdrop-blur-2xl rounded-2xl shadow-sm">
-        {/* Lado Esquerdo: Segmented Control (Padrão tvOS / iOS) */}
-        <div className="apple-segmented-control flex-wrap">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-2.5 sm:p-3 bg-white/[0.035] border border-white/[0.08] backdrop-blur-2xl rounded-2xl shadow-sm">
+        {/* Lado Esquerdo: Segmented Control (Padrão tvOS / iOS com scroll suave sem barra) */}
+        <div className="apple-segmented-control flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5 max-w-full">
           <button
             type="button"
             onClick={() => handleSegmentChange("all")}
-            className={`apple-segmented-button ${currentSegment === "all" ? "active" : ""}`}
+            className={`apple-segmented-button shrink-0 ${currentSegment === "all" ? "active" : ""}`}
           >
             Todas as HQs
           </button>
           <button
             type="button"
             onClick={() => handleSegmentChange("reading")}
-            className={`apple-segmented-button ${currentSegment === "reading" ? "active" : ""}`}
+            className={`apple-segmented-button shrink-0 ${currentSegment === "reading" ? "active" : ""}`}
           >
             Lendo
           </button>
           <button
             type="button"
             onClick={() => handleSegmentChange("favorites")}
-            className={`apple-segmented-button flex items-center gap-1.5 ${currentSegment === "favorites" ? "active" : ""}`}
+            className={`apple-segmented-button shrink-0 flex items-center gap-1.5 ${currentSegment === "favorites" ? "active" : ""}`}
           >
             <Heart className={`w-3 h-3 ${currentSegment === "favorites" ? "fill-current" : ""}`} />
             Favoritas
@@ -223,19 +223,19 @@ export const LibraryFilterBar: React.FC<LibraryFilterBarProps> = ({
           <button
             type="button"
             onClick={() => handleSegmentChange("completed")}
-            className={`apple-segmented-button ${currentSegment === "completed" ? "active" : ""}`}
+            className={`apple-segmented-button shrink-0 ${currentSegment === "completed" ? "active" : ""}`}
           >
             Concluídas
           </button>
         </div>
 
         {/* Lado Direito: Refinar, Ordenação e Densidade */}
-        <div className="flex items-center flex-wrap gap-2.5 ml-auto">
+        <div className="flex items-center justify-between sm:justify-end gap-2.5 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-white/5">
           {/* Botão Refinar / Filtros Avançados */}
           <button
             type="button"
             onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-            className={`hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold cursor-pointer transition-all ${
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold cursor-pointer transition-all ${
               hasAdvancedFilters || showAdvancedFilters
                 ? "bg-white text-black border-white shadow-xs"
                 : "bg-white/[0.06] hover:bg-white/[0.12] text-neutral-300 border-white/10"
