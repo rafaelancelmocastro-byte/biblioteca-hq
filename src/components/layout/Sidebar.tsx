@@ -8,7 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Compass,
-  Star,
+  Sparkles,
   HardDriveDownload,
 } from "lucide-react";
 import { APP_CONFIG } from "../../config/app";
@@ -31,8 +31,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onToggleCollapse,
   totalComicsCount = 0,
   isOwner = false,
-  userName = "Leitor",
 }) => {
+  // Nomenclaturas alinhadas ao padrão de streaming Apple TV+
   const navItems = [
     {
       label: "Biblioteca",
@@ -41,22 +41,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
       badge: totalComicsCount > 0 ? String(totalComicsCount) : undefined,
       section: "Explorar",
     },
-    { label: "Novidades 2026", path: "/lancamentos", icon: Star },
-    { label: "Coleções e sagas", path: "/series", icon: Layers },
-    { label: "Indie e mangás", path: "/multiverso", icon: Compass },
-    { label: "Guia de leitura", path: "/guia", icon: Compass },
+    { label: "Lançamentos", path: "/lancamentos", icon: Sparkles },
+    { label: "Séries & Sagas", path: "/series", icon: Layers },
+    { label: "Mangás & Indie", path: "/multiverso", icon: Compass },
+    { label: "Guia de Leitura", path: "/guia", icon: Compass },
     {
-      label: "Continuar lendo",
+      label: "Continuar Lendo",
       path: "/continuar",
       icon: Clock,
-      section: "Minha leitura",
+      section: "Sua Coleção",
     },
-    { label: "Salvos offline", path: "/offline", icon: HardDriveDownload },
-    {
-      label: "Favoritos",
-      path: "/favoritos",
-      icon: Heart,
-    },
+    { label: "Favoritos", path: "/favoritos", icon: Heart },
+    { label: "Baixados Offline", path: "/offline", icon: HardDriveDownload },
     {
       label: "Configurações",
       path: "/configuracoes",
@@ -69,110 +65,109 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside
-      className={`app-sidebar hidden md:flex flex-col flex-shrink-0 transition-all duration-300 ease-in-out z-30 select-none ${
-        isCollapsed ? "w-20" : "w-64"
+      className={`app-sidebar hidden md:flex flex-col flex-shrink-0 transition-all duration-300 ease-in-out z-30 select-none bg-[#06080d]/90 backdrop-blur-3xl border-r border-white/[0.08] ${
+        isCollapsed ? "w-[4.5rem]" : "w-64"
       }`}
       aria-label="Navegação Principal"
     >
       {/* Brand Header */}
-      <div className="h-16 flex items-center px-4 border-b border-[#1e2535] justify-between">
+      <div className="h-16 flex items-center px-3.5 border-b border-white/[0.08] justify-between flex-shrink-0">
         <button
           onClick={() => onNavigate("/biblioteca")}
-          className={`flex items-center gap-3 text-left overflow-hidden group cursor-pointer focus-visible:outline-2 focus-visible:outline-amber-400 rounded-md p-1 ${
+          className={`flex items-center gap-3 text-left overflow-hidden group cursor-pointer focus-visible:outline-2 focus-visible:outline-white/40 rounded-xl p-1.5 transition-colors ${
             isCollapsed ? "justify-center w-full" : ""
           }`}
           title={APP_CONFIG.name}
         >
-          <BrandLogo compact className="sidebar-brand-mark" />
+          <BrandLogo compact className="sidebar-brand-mark shrink-0" />
           {!isCollapsed && (
-            <div className="flex flex-col overflow-hidden">
-              <span className="font-extrabold text-white text-base tracking-tight leading-none group-hover:text-amber-400 transition-colors">
+            <div className="flex flex-col min-w-0">
+              <span className="font-extrabold text-white text-sm tracking-tight leading-none group-hover:text-blue-300 transition-colors truncate">
                 {APP_CONFIG.name}
               </span>
-              <span className="text-[10px] text-slate-400 tracking-wider font-semibold uppercase mt-0.5">
-                HQs, livros e mangás
+              <span className="text-[9.5px] text-neutral-400 tracking-wider font-semibold uppercase mt-1 truncate">
+                Streaming de HQs
               </span>
             </div>
           )}
         </button>
       </div>
 
-      <button
-        type="button"
-        onClick={onToggleCollapse}
-        className={`sidebar-collapse-toggle ${isCollapsed ? "mx-auto" : "ml-auto mr-3"}`}
-        aria-label={isCollapsed ? "Expandir barra lateral" : "Recolher barra lateral"}
-        title={isCollapsed ? "Expandir menu" : "Recolher menu"}
-      >
-        {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <><span>Recolher menu</span><ChevronLeft className="w-4 h-4" /></>}
-      </button>
-
-      {/* Navigation Links */}
-      <nav className="sidebar-nav flex-1 px-3 py-4 overflow-y-auto">
-        {navItems.filter((item) => !item.ownerOnly || isOwner).map((item) => {
-          const Icon = item.icon;
-          const isActive = currentPath === item.path;
-
-          return <React.Fragment key={item.path}>
-            {item.section && !isCollapsed && <span className="sidebar-section-label">{item.section}</span>}
-            <button
-              id={`nav-link-${item.path.replace("/", "")}`}
-              onClick={() => onNavigate(item.path)}
-              className={`sidebar-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer relative group ${
-                isActive
-                  ? "active text-slate-100 font-semibold"
-                  : "text-slate-400 hover:text-slate-100"
-              } ${isCollapsed ? "justify-center px-0" : ""}`}
-              title={isCollapsed ? item.label : undefined}
-            >
-              <Icon
-                className={`w-5 h-5 flex-shrink-0 transition-colors ${
-                  isActive ? "text-[#a8bacf]" : "text-slate-400 group-hover:text-slate-200"
-                }`}
-              />
-
-              {!isCollapsed && (
-                <span className="flex-1 text-left truncate">{item.label}</span>
-              )}
-
-              {!isCollapsed && item.badge && (
-                <span
-                  className={`text-[11px] px-1.5 py-0.5 rounded-full font-mono font-medium ${
-                    isActive
-                      ? "bg-amber-500/20 text-amber-200"
-                      : "bg-slate-800 text-slate-400"
-                  }`}
-                >
-                  {item.badge}
-                </span>
-              )}
-
-              {!isCollapsed && item.tag && (
-                <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-slate-800/90 text-amber-300/80 border border-amber-500/20 font-bold">
-                  {item.tag}
-                </span>
-              )}
-
-              {/* Indicador lateral sutil ativo */}
-              {isActive && (
-                <span className="sidebar-active-rail absolute left-0 top-1/2 -translate-y-1/2 rounded-r-full" />
-              )}
-            </button>
-          </React.Fragment>;
-        })}
-      </nav>
-
-      {/* Footer com Toggle de Recolher */}
-      <div className="p-3 border-t border-[#1e2535] flex items-center justify-between">
-        {!isCollapsed && (
-          <div className="flex flex-col px-1">
-            <span className="text-[11px] font-medium text-slate-300 truncate">
-              {userName}
-            </span>
-            <span className="text-[10px] text-slate-500 font-mono">{isOwner ? "Proprietário" : "Leitor"}</span>
-          </div>
-        )}
+      {/* Collapse Toggle */}
+      <div className="px-3 pt-2 pb-1 flex-shrink-0">
+        <button
+          type="button"
+          onClick={onToggleCollapse}
+          className={`sidebar-collapse-toggle flex items-center gap-1.5 text-xs text-neutral-400 hover:text-white px-2.5 py-1.5 rounded-lg hover:bg-white/[0.06] transition-colors cursor-pointer ${
+            isCollapsed ? "mx-auto justify-center" : "ml-auto"
+          }`}
+          aria-label={isCollapsed ? "Expandir barra lateral" : "Recolher barra lateral"}
+          title={isCollapsed ? "Expandir menu" : "Recolher menu"}
+        >
+          {isCollapsed ? (
+            <ChevronRight className="w-4 h-4" />
+          ) : (
+            <>
+              <span className="text-[11px] font-medium">Recolher</span>
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </>
+          )}
+        </button>
       </div>
+
+      {/* Navigation Links com scroll invisível para evitar barras cortando texto ou badges */}
+      <nav className="sidebar-nav flex-1 px-2.5 py-2 overflow-y-auto space-y-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {navItems
+          .filter((item) => !item.ownerOnly || isOwner)
+          .map((item) => {
+            const Icon = item.icon;
+            const isActive = currentPath === item.path;
+
+            return (
+              <React.Fragment key={item.path}>
+                {item.section && !isCollapsed && (
+                  <span className="sidebar-section-label block px-3 pt-3.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-neutral-500">
+                    {item.section}
+                  </span>
+                )}
+                <button
+                  id={`nav-link-${item.path.replace("/", "")}`}
+                  onClick={() => onNavigate(item.path)}
+                  className={`sidebar-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer relative group ${
+                    isActive
+                      ? "bg-white/[0.12] text-white font-semibold border border-white/[0.16] shadow-[0_2px_12px_rgba(255,255,255,0.06)]"
+                      : "text-neutral-400 hover:text-white hover:bg-white/[0.05]"
+                  } ${isCollapsed ? "justify-center px-0 h-11" : ""}`}
+                  title={isCollapsed ? item.label : undefined}
+                >
+                  <Icon
+                    className={`w-4 h-4 flex-shrink-0 transition-colors ${
+                      isActive ? "text-white" : "text-neutral-400 group-hover:text-neutral-200"
+                    }`}
+                  />
+
+                  {!isCollapsed && (
+                    <span className="flex-1 text-left truncate text-xs font-semibold leading-normal min-w-0">
+                      {item.label}
+                    </span>
+                  )}
+
+                  {!isCollapsed && item.badge && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold font-mono bg-white/10 text-neutral-300 border border-white/10 shrink-0 ml-auto">
+                      {item.badge}
+                    </span>
+                  )}
+
+                  {!isCollapsed && item.tag && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wide bg-blue-500/20 text-blue-300 border border-blue-500/30 shrink-0 ml-auto">
+                      {item.tag}
+                    </span>
+                  )}
+                </button>
+              </React.Fragment>
+            );
+          })}
+      </nav>
     </aside>
   );
 };
