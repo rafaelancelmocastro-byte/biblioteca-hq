@@ -24,7 +24,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   return (
     <aside
-      className={`app-sidebar hidden md:flex flex-col flex-shrink-0 transition-all duration-300 ease-in-out z-30 select-none bg-[#06080d]/90 backdrop-blur-3xl border-r border-white/[0.08] ${
+      className={`app-sidebar hidden lg:flex flex-col flex-shrink-0 transition-all duration-300 ease-in-out z-30 select-none bg-[#06080d]/90 backdrop-blur-3xl border-r border-white/[0.08] ${
         isCollapsed ? "w-[4.5rem]" : "w-64"
       }`}
       aria-label="Navegação Principal"
@@ -94,14 +94,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onClick={() => onNavigate(item.path)}
                   className={`sidebar-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer relative group ${
                     isActive
-                      ? "bg-white/[0.12] text-white font-semibold border border-white/[0.16] shadow-[0_2px_12px_rgba(255,255,255,0.06)]"
-                      : "text-neutral-400 hover:text-white hover:bg-white/[0.05]"
+                      ? "bg-white/[0.07] text-white font-semibold"
+                      : "text-neutral-400 hover:text-white hover:bg-white/[0.04]"
                   } ${isCollapsed ? "justify-center px-0 h-11" : ""}`}
                   title={isCollapsed ? item.label : undefined}
                 >
+                  {isActive && <span className="absolute left-0 h-5 w-0.5 rounded-full bg-white/80" aria-hidden="true" />}
                   <Icon
-                    className={`w-4 h-4 flex-shrink-0 transition-colors ${
-                      isActive ? "text-white" : "text-neutral-400 group-hover:text-neutral-200"
+                    strokeWidth={1.75}
+                    className={`w-[17px] h-[17px] flex-shrink-0 transition-colors ${
+                      isActive ? "text-white" : "text-neutral-500 group-hover:text-neutral-200"
                     }`}
                   />
 
