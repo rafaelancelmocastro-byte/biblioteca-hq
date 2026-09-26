@@ -17,6 +17,7 @@ import { formatFileSize, formatPercentage, getStatusLabel } from "../../lib/form
 import { hasOffline, saveOffline } from "../../services/offlineLibrary";
 import { addOfflineLibraryItem } from "../../services/offlineManifest";
 import { supabase } from "../../services/supabaseClient";
+import { shouldConfirmCellularDownload } from "../../services/userPreferences";
 
 interface ComicDetailModalProps {
   comic: Comic | null;
@@ -63,6 +64,7 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
     try {
       const { data } = await supabase.auth.getSession();
       if (!data.session) throw new Error("Entre na sua conta.");
+      if (await shouldConfirmCellularDownload(data.session.user.id) && !window.confirm(`Baixar ${comic.title} (${formatFileSize(comic.fileSizeMb)}) usando esta conexão móvel?`)) { setOfflineMessage("Download cancelado."); return; }
       await saveOffline(data.session.user.id, comic, (bytes) =>
         setOfflineMessage(`Salvando... ${(bytes / 1048576).toFixed(1)} MB`)
       );
