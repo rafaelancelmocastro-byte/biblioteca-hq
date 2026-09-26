@@ -1914,3 +1914,183 @@ body { padding-top: env(safe-area-inset-top); }
     border-radius: 1rem 1rem .75rem .75rem;
   }
 }
+
+
+/* Synced user preferences */
+.preferences-grid {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: .9rem;
+}
+.preferences-card {
+  min-width: 0;
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 1rem;
+  background: rgba(255,255,255,.025);
+}
+.preferences-card-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+  min-width: 0;
+}
+.preferences-card-heading > svg {
+  width: 1.05rem;
+  margin-top: .15rem;
+  flex: none;
+  color: #8fa2b8;
+}
+.preferences-card-heading h2 {
+  margin: 0;
+  color: #f4f6f8;
+  font-size: .95rem;
+  font-weight: 750;
+}
+.preferences-card-heading p {
+  margin: .2rem 0 0;
+  color: #818b97;
+  font-size: .7rem;
+  line-height: 1.45;
+}
+.preferences-fields {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: .7rem;
+}
+.preferences-fields label {
+  display: grid;
+  gap: .35rem;
+  min-width: 0;
+  color: #9ba5b0;
+  font-size: .68rem;
+  font-weight: 650;
+}
+.preferences-fields select {
+  width: 100%;
+  min-width: 0;
+  min-height: 2.65rem;
+  padding: .6rem .75rem;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: .7rem;
+  outline: none;
+  background: #0b1016;
+  color: #edf1f5;
+  font-size: .75rem;
+}
+.preferences-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-width: 0;
+  padding-top: .8rem;
+  border-top: 1px solid rgba(255,255,255,.06);
+}
+.preferences-toggle > span { min-width: 0; }
+.preferences-toggle strong {
+  display: block;
+  color: #e8edf2;
+  font-size: .75rem;
+}
+.preferences-toggle small {
+  display: block;
+  margin-top: .15rem;
+  color: #7c8793;
+  font-size: .65rem;
+  line-height: 1.4;
+}
+.preferences-toggle input {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: none;
+  accent-color: #dbe4ee;
+}
+.preferences-theme-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .7rem .8rem;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: .7rem;
+  background: rgba(255,255,255,.02);
+  color: #89939f;
+  font-size: .7rem;
+}
+.preferences-theme-row strong { color: #f0f3f6; }
+.preferences-sync-card { grid-column: 1 / -1; }
+.preferences-sync-copy {
+  margin: 0;
+  color: #818b97;
+  font-size: .7rem;
+  line-height: 1.5;
+}
+.preferences-save-bar {
+  position: sticky;
+  z-index: 15;
+  bottom: calc(4.5rem + env(safe-area-inset-bottom,0px));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .7rem;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: .9rem;
+  background: rgba(8,12,18,.9);
+  backdrop-filter: blur(18px);
+}
+.preferences-save-bar > div {
+  min-width: 0;
+  color: #9aa5b1;
+  font-size: .68rem;
+}
+.preferences-save-bar button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .45rem;
+  min-height: 2.55rem;
+  padding: 0 1rem;
+  flex: none;
+  border-radius: .7rem;
+  background: #f1f4f7;
+  color: #0a0e13;
+  font-size: .72rem;
+  font-weight: 750;
+}
+.preferences-save-bar button svg { width: .9rem; }
+.preferences-save-bar button:disabled { opacity: .55; }
+
+html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after {
+  scroll-behavior: auto !important;
+  animation-duration: .01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: .01ms !important;
+}
+html.reduce-transparency .app-header,
+html.reduce-transparency .app-sidebar,
+html.reduce-transparency .app-mobile-nav,
+html.reduce-transparency .preferences-save-bar,
+html.reduce-transparency .catalog-secondary-action {
+  backdrop-filter: none !important;
+  background-color: #0b0f15 !important;
+}
+
+@media (min-width: 1024px) {
+  .preferences-save-bar { bottom: 1rem; }
+}
+@media (max-width: 760px) {
+  .preferences-grid { grid-template-columns: 1fr; }
+  .preferences-sync-card { grid-column: 1; }
+}
+@media (max-width: 520px) {
+  .preferences-fields { grid-template-columns: 1fr; }
+  .preferences-save-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .preferences-save-bar button { width: 100%; }
+}
