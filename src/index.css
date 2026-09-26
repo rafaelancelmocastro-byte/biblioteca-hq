@@ -1716,3 +1716,155 @@ body { padding-top: env(safe-area-inset-top); }
   .admin-studio .manager-row-menu > div { left: 0; right: auto; width: min(14rem,calc(100vw - 3rem)); }
   .admin-series-picker-options { position: fixed; top: auto; left: 1rem; right: 1rem; bottom: calc(5rem + env(safe-area-inset-bottom)); max-height: 50dvh; }
 }
+
+
+.admin-global-search {
+  position: relative;
+  z-index: 35;
+  min-width: 0;
+}
+.admin-global-search > svg {
+  position: absolute;
+  z-index: 2;
+  left: .85rem;
+  top: 50%;
+  width: 1rem;
+  transform: translateY(-50%);
+  color: #76808c;
+  pointer-events: none;
+}
+.admin-global-search > input {
+  width: 100%;
+  min-height: 3rem;
+  padding: .7rem 2.6rem .7rem 2.45rem;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: .9rem;
+  outline: none;
+  background: rgba(255,255,255,.035);
+  color: #eef2f6;
+  font-size: .82rem;
+}
+.admin-global-search > input:focus {
+  border-color: rgba(168,186,207,.42);
+  background: rgba(255,255,255,.05);
+}
+.admin-global-search > button {
+  position: absolute;
+  z-index: 3;
+  right: .55rem;
+  top: .58rem;
+  display: grid;
+  place-items: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: .45rem;
+  color: #8d97a2;
+}
+.admin-global-search > button svg { width: .85rem; }
+.admin-global-results {
+  position: absolute;
+  top: calc(100% + .4rem);
+  left: 0;
+  right: 0;
+  max-height: min(32rem,70dvh);
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: .4rem;
+  padding: .55rem;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: .9rem;
+  background: #0e131a;
+  box-shadow: 0 22px 55px #000c;
+}
+.admin-global-results section { min-width: 0; }
+.admin-global-results section > span {
+  display: block;
+  padding: .45rem .5rem;
+  color: #7f8995;
+  font-size: .62rem;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.admin-global-results section > button {
+  display: grid;
+  gap: .1rem;
+  width: 100%;
+  min-width: 0;
+  padding: .55rem .6rem;
+  text-align: left;
+  border-radius: .55rem;
+}
+.admin-global-results section > button:hover { background: rgba(255,255,255,.055); }
+.admin-global-results strong,
+.admin-global-results small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-global-results strong { color: #edf2f7; font-size: .72rem; }
+.admin-global-results small { color: #7e8893; font-size: .62rem; }
+.admin-global-results > p {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 1rem;
+  color: #7e8893;
+  text-align: center;
+  font-size: .72rem;
+}
+
+.admin-series-row.root { border-left: 2px solid rgba(168,186,207,.22); }
+.admin-series-row.child { margin-left: 1rem; border-left: 2px solid rgba(168,186,207,.1); }
+.admin-series-row.child::before {
+  content: "";
+  position: absolute;
+  left: -.05rem;
+  top: 50%;
+  width: .65rem;
+  height: 1px;
+  background: rgba(168,186,207,.16);
+}
+.admin-series-row { position: relative; }
+
+.admin-status-grid {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: .75rem;
+}
+.admin-status-grid > * {
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 1rem;
+  background: rgba(255,255,255,.025);
+  text-align: left;
+}
+.admin-status-grid button:hover { background: rgba(255,255,255,.045); }
+.admin-status-grid svg { width: 1.1rem; color: #8fa2b8; flex: none; }
+.admin-status-grid span { min-width: 0; color: #8d97a2; font-size: .7rem; }
+.admin-status-grid strong {
+  display: block;
+  color: #edf2f7;
+  font-size: 1.25rem;
+  line-height: 1.1;
+}
+
+@media (max-width: 900px) {
+  .admin-global-results { grid-template-columns: 1fr; }
+  .admin-status-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 640px) {
+  .admin-global-results {
+    position: fixed;
+    top: 5rem;
+    left: .75rem;
+    right: .75rem;
+    max-height: calc(100dvh - 10rem);
+  }
+  .admin-series-row.child { margin-left: .45rem; }
+  .admin-status-grid { grid-template-columns: 1fr; }
+}
