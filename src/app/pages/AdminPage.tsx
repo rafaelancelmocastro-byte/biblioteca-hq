@@ -168,6 +168,13 @@ export const AdminPage: React.FC = () => {
 
   useEffect(() => { const timer = window.setTimeout(() => setDebouncedSearch(managerSearch.trim().toLocaleLowerCase("pt-BR")), 300); return () => window.clearTimeout(timer); }, [managerSearch]);
   useEffect(() => { if (!allComics.length) return; let active = true; checkStorageStatuses(allComics.map((comic) => comic.id)).then((statuses) => { if (active) setStorageStatuses(statuses); }).catch(() => {}); return () => { active = false; }; }, [allComics]);
+  const suspiciousAssignments = useMemo(() => allComics.filter((comic) => {
+    const chosen = seriesList.find((series) => series.id === comic.seriesId);
+    if (!chosen) return false;
+    const suggested = suggestIssueSeries(comic.fileName, comic.title, seriesList);
+    return !!suggested && !directlyRelatedSeries(chosen, suggested);
+  }), [allComics, seriesList]);
+  const suspiciousAssignmentIds = useMemo(() => new Set(suspiciousAssignments.map((comic) => comic.id)), [suspiciousAssignments]);
   const managedComics = useMemo(() => allComics.filter((comic) => {
     const haystack = [comic.title, comic.seriesTitle, comic.fileName, ...comic.writers, ...comic.pencillers, ...comic.characters].join(" ").toLocaleLowerCase("pt-BR");
     const issueOk = managerIssue === "all" || (managerIssue === "missing_cover" && !comic.coverUrl) || (managerIssue === "missing_synopsis" && !comic.synopsis.trim()) || (managerIssue === "unassigned" && !comic.seriesId) || (managerIssue === "storage_error" && storageStatuses[comic.id] === "error") || (managerIssue === "series_mismatch" && suspiciousAssignmentIds.has(comic.id));
@@ -211,13 +218,6 @@ export const AdminPage: React.FC = () => {
   useEffect(() => setManagerPage(1), [debouncedSearch, managerFormat, managerPublisher, managerSeries, managerYear, managerStorage, managerSort, managerIssue]);
 
   const totalMb = useMemo(() => allComics.reduce((sum, item) => sum + item.fileSizeMb, 0), [allComics]);
-  const suspiciousAssignments = useMemo(() => allComics.filter((comic) => {
-    const chosen = seriesList.find((series) => series.id === comic.seriesId);
-    if (!chosen) return false;
-    const suggested = suggestIssueSeries(comic.fileName, comic.title, seriesList);
-    return !!suggested && !directlyRelatedSeries(chosen, suggested);
-  }), [allComics, seriesList]);
-  const suspiciousAssignmentIds = useMemo(() => new Set(suspiciousAssignments.map((comic) => comic.id)), [suspiciousAssignments]);
   const missingCoverCount = useMemo(() => allComics.filter((comic) => !comic.coverUrl).length, [allComics]);
   const missingSynopsisCount = useMemo(() => allComics.filter((comic) => !comic.synopsis.trim()).length, [allComics]);
   const storageErrorCount = useMemo(() => allComics.filter((comic) => storageStatuses[comic.id] === "error").length, [allComics, storageStatuses]);
