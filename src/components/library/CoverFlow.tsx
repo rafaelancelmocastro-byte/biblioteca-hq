@@ -46,13 +46,12 @@ export const CoverFlow: React.FC<Props> = ({ items, activeIndex, onChange, onAct
         if (distance < -count / 2) distance += count;
         const visible = Math.abs(distance) <= 2;
         return <button key={item.id} type="button" className={`cover-flow-card ${distance === 0 ? "active" : ""}`}
-          style={{ "--flow-x": `${distance * 69}%`, "--flow-x-mobile": `${distance * 100}%`, "--flow-z": `${Math.abs(distance) * -65}px`, "--flow-rotate": `${distance * -10}deg`, "--flow-scale": 1.07 - Math.abs(distance) * .15, "--flow-opacity": 1 - Math.min(Math.abs(distance) * .33, .7), zIndex: count - Math.abs(distance), visibility: visible ? "visible" : "hidden" } as React.CSSProperties}
+          style={{ "--flow-x": `${distance * 62}%`, "--flow-x-mobile": `${distance * 92}%`, "--flow-z": `${Math.abs(distance) * -50}px`, "--flow-rotate": `${distance * -6}deg`, "--flow-scale": 1.04 - Math.abs(distance) * .12, "--flow-opacity": 1 - Math.min(Math.abs(distance) * .35, .75), zIndex: count - Math.abs(distance), visibility: visible ? "visible" : "hidden" } as React.CSSProperties}
           aria-label={`${item.title}${item.subtitle ? `, ${item.subtitle}` : ""}`}
           aria-current={distance === 0 ? "true" : undefined}
           tabIndex={visible ? 0 : -1}
           onClick={() => distance === 0 ? onActivate?.(item) : select(index)}>
           {item.image ? <img src={item.image} alt="" loading={Math.abs(distance) <= 1 ? "eager" : "lazy"} /> : <span className="cover-flow-placeholder">{item.title}</span>}
-          <span className="cover-flow-card-label"><strong>{item.title}</strong>{item.subtitle && <small>{item.subtitle}</small>}</span>
         </button>;
       })}
     </div>

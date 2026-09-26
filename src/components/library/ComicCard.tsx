@@ -24,6 +24,7 @@ interface ComicCardProps {
   onMarkCompleted: (comicId: string, totalPages: number) => void;
   onResetProgress: (comicId: string) => void;
   density?: "compact" | "comfortable";
+  showReadingBadge?: boolean;
 }
 
 export const ComicCard: React.FC<ComicCardProps> = ({
@@ -35,6 +36,7 @@ export const ComicCard: React.FC<ComicCardProps> = ({
   onMarkCompleted,
   onResetProgress,
   density = "comfortable",
+  showReadingBadge = false,
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
@@ -73,14 +75,14 @@ export const ComicCard: React.FC<ComicCardProps> = ({
   return (
     <>
     <div
-      className="comic-tile group relative flex flex-col focus-within:ring-2 focus-within:ring-blue-400/50 rounded-2xl"
+      className="comic-tile group relative flex flex-col focus-within:ring-2 focus-within:ring-white/40 rounded-xl"
       id={`comic-card-${comic.id}`}
     >
-      {/* Container da Capa com proporção de HQ */}
-      <div className="comic-cover relative aspect-[2/3] w-full rounded-2xl overflow-hidden bg-neutral-900 border border-white/10 transition-all duration-300 shadow-md">
-        {/* Placeholder de Capa Vetorial Elegante */}
+      {/* Container da Capa com proporção clássica de HQ */}
+      <div className="comic-cover relative aspect-[2/3] w-full rounded-xl overflow-hidden bg-neutral-900 shadow-md group-hover:shadow-2xl transition-all duration-300">
+        {/* Capa ou Placeholder Editorial */}
         {comic.coverUrl ? (
-          <img src={comic.coverUrl} alt={`Capa de ${comic.title}`} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy" />
+          <img src={comic.coverUrl} alt={`Capa de ${comic.title}`} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-103" loading="lazy" />
         ) : (
           <CoverPlaceholder
             title={comic.title}
@@ -92,12 +94,12 @@ export const ComicCard: React.FC<ComicCardProps> = ({
         )}
 
         {isOffline && (
-          <span className="absolute bottom-2 left-2 z-20 inline-flex items-center gap-1 rounded-full bg-emerald-950/80 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-semibold text-emerald-200 backdrop-blur-md">
-            <HardDriveDownload className="w-3 h-3" /> Offline
+          <span className="absolute bottom-2 left-2 z-20 inline-flex items-center gap-1 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold text-neutral-200 backdrop-blur-md">
+            <HardDriveDownload className="w-3 h-3 text-emerald-400" /> Offline
           </span>
         )}
 
-        {/* Botão de Favorito Sobreposto (Canto Superior Direito) */}
+        {/* Botão de Favorito (visível quando ativo ou no hover) */}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -105,8 +107,8 @@ export const ComicCard: React.FC<ComicCardProps> = ({
           }}
           className={`absolute top-2 right-2 z-20 w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-md transition-all cursor-pointer ${
             comic.isFavorite
-              ? "bg-rose-500/90 text-white shadow-md shadow-rose-500/30 scale-100"
-              : "bg-black/40 text-white/60 hover:text-white hover:bg-black/70 opacity-0 group-hover:opacity-100"
+              ? "bg-rose-500 text-white shadow-md shadow-rose-500/30 scale-100"
+              : "bg-black/50 text-white/70 hover:text-white hover:bg-black/80 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
           }`}
           aria-label={comic.isFavorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}
           title={comic.isFavorite ? "Favorito" : "Favoritar"}
@@ -114,14 +116,14 @@ export const ComicCard: React.FC<ComicCardProps> = ({
           <Heart className={`w-3.5 h-3.5 ${comic.isFavorite ? "fill-current" : ""}`} />
         </button>
 
-        {/* Botão de Menu Contextual (Canto Superior Esquerdo) */}
+        {/* Botão de Menu Contextual (somente no hover ou foco) */}
         <div className="absolute top-2 left-2 z-20" ref={menuRef}>
           <button
             onClick={(e) => {
               e.stopPropagation();
               setIsMenuOpen(!isMenuOpen);
             }}
-            className="w-8 h-8 rounded-full bg-black/40 hover:bg-black/70 text-white/70 hover:text-white flex items-center justify-center backdrop-blur-md transition-all cursor-pointer opacity-0 group-hover:opacity-100"
+            className="w-8 h-8 rounded-full bg-black/50 hover:bg-black/80 text-white/80 hover:text-white flex items-center justify-center backdrop-blur-md transition-all cursor-pointer opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
             aria-label="Opções da HQ"
             aria-expanded={isMenuOpen}
           >
@@ -134,50 +136,43 @@ export const ComicCard: React.FC<ComicCardProps> = ({
         {/* Hover Action Overlay: Botão rápido para Ler estilo Apple TV */}
         <div
           onClick={() => onOpenReader(comic.id)}
-          className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2.5 z-10 cursor-pointer p-4 backdrop-blur-[2px]"
+          className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 z-10 cursor-pointer p-4 backdrop-blur-[2px]"
         >
-          <div className="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center font-bold shadow-xl transform scale-90 group-hover:scale-100 transition-transform">
-            <BookOpen className="w-5 h-5 ml-0.5" />
+          <div className="w-11 h-11 rounded-full bg-white text-black flex items-center justify-center font-bold shadow-xl transform scale-95 group-hover:scale-100 transition-transform">
+            <BookOpen className="w-4 h-4 ml-0.5" />
           </div>
-          <span className="text-xs font-semibold text-white bg-white/10 px-3 py-1 rounded-full border border-white/20 backdrop-blur-md">
-            {isReading ? "Retomar" : isCompleted ? "Reler" : "Ler Agora"}
+          <span className="text-xs font-semibold text-white/90">
+            {isReading ? "Continuar" : isCompleted ? "Reler" : "Ler"}
           </span>
         </div>
 
-        {/* Barra de Progresso no pé da Capa */}
+        {/* Progresso como linha fina na base da capa */}
         {percentage > 0 && (
-          <div className="absolute bottom-0 left-0 right-0 z-15 bg-black/85 backdrop-blur-xs px-2.5 py-1.5 border-t border-white/10">
-            <div className="flex items-center justify-between text-[10px] text-neutral-400 mb-1">
-              <span className="truncate">
-                Pág. {comic.progress?.currentPage || 0}/{Math.max(comic.totalPages, comic.progress?.totalPages || 0, comic.progress?.currentPage || 0)}
-              </span>
-              <span className={isCompleted ? "text-emerald-400 font-semibold" : "text-blue-400 font-semibold"}>
-                {formatPercentage(percentage)}
-              </span>
-            </div>
-            <ProgressBar percentage={percentage} status={status} size="sm" />
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/70 overflow-hidden z-20">
+            <div
+              className={`h-full transition-all duration-300 ${isCompleted ? "bg-emerald-400" : "bg-white"}`}
+              style={{ width: `${Math.min(100, Math.max(0, percentage))}%` }}
+            />
           </div>
         )}
       </div>
 
-      {/* Metadados e Título Abaixo da Capa (Zero-Pill) */}
+      {/* Metadados e Título Abaixo da Capa */}
       <div className="pt-2 px-0.5 flex flex-col flex-1">
-        <div className="flex items-center gap-1.5 text-[11px] text-neutral-400 mb-0.5">
-          <span className="font-semibold text-neutral-300 truncate">{comic.seriesTitle}</span>
-          <span className="text-neutral-600">·</span>
-          <span className="shrink-0 text-neutral-400">#{comic.issueNumber}</span>
-        </div>
+        <span className="text-[12px] text-neutral-400 font-medium truncate mb-0.5">
+          {comic.seriesTitle} · #{comic.issueNumber}
+        </span>
 
         <button
           onClick={() => onOpenDetails(comic)}
-          className="text-left text-xs font-semibold text-white hover:text-blue-300 transition-colors line-clamp-1 leading-snug cursor-pointer"
+          className="text-left text-[13px] sm:text-[14px] font-semibold text-white hover:text-neutral-300 transition-colors line-clamp-1 leading-snug cursor-pointer"
           title={comic.title}
         >
           {comic.title}
         </button>
 
         {density === "comfortable" && (
-          <div className="mt-1 flex items-center gap-1.5 text-[11px] text-neutral-400">
+          <div className="mt-1 flex items-center gap-1.5 text-[12px] text-neutral-400">
             <span>{comic.year}</span>
             <span className="text-neutral-600">·</span>
             <span className="truncate text-neutral-400">

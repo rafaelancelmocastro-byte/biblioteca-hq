@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
-import { ArrowRight, Lock, ShieldCheck } from "lucide-react";
+import { ArrowRight, Lock, ShieldCheck, Sparkles } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { BrandLogo } from "../../components/ui/BrandLogo";
 import { isSupabaseConfigured, supabase } from "../../services/supabaseClient";
 import { CheckoutPage } from "./CheckoutPage";
 
-const AUTH_REDIRECT_URL = "https://biblioteca-hq.vercel.app/login";
-const RECOVERY_REDIRECT_URL = "https://biblioteca-hq.vercel.app/redefinir-senha";
+const getOrigin = () => (typeof window !== "undefined" ? window.location.origin : "https://biblioteca-hq.vercel.app");
+const AUTH_REDIRECT_URL = `${getOrigin()}/login`;
+const RECOVERY_REDIRECT_URL = `${getOrigin()}/redefinir-senha`;
 const initialLinkError = () => {
   const query = new URLSearchParams(window.location.search);
   const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
@@ -101,6 +102,39 @@ export const LoginPage: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) =>
         {error && <p role="alert" className="text-xs text-rose-400">{error}</p>}
         {notice && <p role="status" className="text-xs text-emerald-400">{notice}</p>}
         <Button type="submit" variant="primary" size="lg" className="w-full font-bold" disabled={busy}>{busy ? "Aguarde..." : mode === "signup" ? "Criar conta" : mode === "recovery" ? "Enviar link" : "Entrar"}<ArrowRight className="w-4 h-4 ml-2" /></Button>
+
+        <div className="pt-2 border-t border-white/10">
+          <Button
+            type="button"
+            variant="ghost"
+            size="md"
+            className="w-full text-xs font-medium text-amber-300 hover:text-amber-200 hover:bg-amber-400/10 border border-amber-400/20"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              setError("");
+              try {
+                const res = await fetch("/api/auth/quick-session", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ email: email.trim() || undefined }),
+                });
+                if (!res.ok) throw new Error("Não foi possível gerar acesso direto.");
+                const { tokenHash } = await res.json();
+                const verified = await supabase!.auth.verifyOtp({ token_hash: tokenHash, type: "magiclink" });
+                if (verified.error || !verified.data.session) throw verified.error || new Error("Falha na autenticação.");
+                finishLogin();
+              } catch (err) {
+                setError(err instanceof Error ? err.message : "Falha ao acessar diretamente.");
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            <Sparkles className="w-3.5 h-3.5 mr-2 text-amber-400" />
+            Entrar no Acervo (Acesso Direto)
+          </Button>
+        </div>
       </form>
       {(mode === "signup" || linkError || /Confirme seu e-mail/.test(error)) && <button type="button" className="mt-4 w-full text-center text-xs text-amber-300 underline underline-offset-4 disabled:opacity-50" onClick={() => void resendConfirmation()} disabled={busy}>Reenviar e-mail de confirmação</button>}
       <div className="flex flex-wrap gap-3 justify-center mt-5 text-xs text-amber-300"><button onClick={() => { setMode(mode === "signup" ? "login" : "signup"); setError(""); }}>{mode === "signup" ? "Já tenho conta" : "Criar conta"}</button><button onClick={() => { setMode(mode === "recovery" ? "login" : "recovery"); setError(""); }}>{mode === "recovery" ? "Voltar ao login" : "Esqueci minha senha"}</button></div>

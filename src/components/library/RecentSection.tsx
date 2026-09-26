@@ -28,13 +28,9 @@ export const RecentSection: React.FC<RecentSectionProps> = ({
     <section className="mb-10 streaming-section" aria-labelledby="section-recent-comics">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-[#7896b8]" />
-          <h2 id="section-recent-comics" className="streaming-heading">
-            Novidades no acervo
+          <h2 id="section-recent-comics" className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+            Adicionados recentemente
           </h2>
-          <span className="text-xs text-slate-400 font-mono">
-            Últimas aquisições do acervo
-          </span>
         </div>
       </div>
 

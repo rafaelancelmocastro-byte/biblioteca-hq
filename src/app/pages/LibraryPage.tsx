@@ -11,7 +11,7 @@ import { ReadingInsights } from "../../components/library/ReadingInsights";
 import { CoverFlow } from "../../components/library/CoverFlow";
 import { ComicCard } from "../../components/library/ComicCard";
 import { useLibrary } from "../../hooks/useLibrary";
-import { BookOpen, Compass, Info, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
+import { BookOpen, Sparkles } from "lucide-react";
 
 interface LibraryPageProps {
   onOpenReader: (comicId: string) => void;
@@ -71,8 +71,6 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
   const [selectedComic, setSelectedComic] = useState<Comic | null>(rememberedView.selectedComic);
   const [comicForProgress, setComicForProgress] = useState<Comic | null>(null);
   const [featuredIndex, setFeaturedIndex] = useState(rememberedView.featuredIndex);
-  const [heroMode, setHeroMode] = useState<"coverflow" | "cinema">("coverflow");
-  const [showExtras, setShowExtras] = useState(false);
   const [catalogPage, setCatalogPage] = useState(rememberedView.catalogPage);
 
   React.useEffect(() => {
@@ -104,139 +102,77 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
   const featuredComic = featuredCandidates[featuredIndex % Math.max(featuredCandidates.length, 1)];
   const launches = React.useMemo(() => allComics.filter((comic) => comic.year === 2026).slice(0, 12), [allComics]);
 
-  React.useEffect(() => {
-    if (featuredCandidates.length < 2 || searchQuery || heroMode === "coverflow") return;
-    const timer = window.setInterval(() => setFeaturedIndex((index) => (index + 1) % featuredCandidates.length), 8500);
-    return () => window.clearInterval(timer);
-  }, [featuredCandidates.length, searchQuery, heroMode]);
-
   return (
     <div className="streaming-page library-page space-y-12">
-      {/* 1. Hero Billboard Cinematográfico com Cover Flow Integrado */}
+      {/* 1. Hero Cover Flow Definitivo: Capa como protagonista central */}
       {featuredComic && !searchQuery && (
-        <section className={`catalog-hero ${heroMode === "cinema" ? "catalog-hero-flow" : ""}`} aria-label="Destaque da biblioteca">
+        <section className="relative pt-2 pb-6 overflow-hidden" aria-label="Destaque da biblioteca">
+          {/* Fundo suave com iluminação sutil baseada na capa ativa */}
           {featuredComic.coverUrl && (
-            <img src={featuredComic.coverUrl} alt="" className="catalog-hero-art" aria-hidden="true" />
-          )}
-          <div className="catalog-hero-vignette" />
-
-          {/* Toggle de Modo no Topo do Hero: Cover Flow (1º padrão) vs Modo Cinema (2º) */}
-          <div className="catalog-hero-mode-toggle" aria-label="Modo de exibição do destaque">
-            <button
-              type="button"
-              className={heroMode === "coverflow" ? "active" : ""}
-              onClick={() => setHeroMode("coverflow")}
-              title="Exibição em Cover Flow 3D (Configuração padrão)"
-            >
-              Cover Flow
-            </button>
-            <button
-              type="button"
-              className={heroMode === "cinema" ? "active" : ""}
-              onClick={() => setHeroMode("cinema")}
-              title="Exibição em Modo Cinema (2ª opção)"
-            >
-              Modo Cinema
-            </button>
-          </div>
-
-          {heroMode === "cinema" ? (
-            <>
-              <div className="catalog-hero-content">
-                <div className="catalog-eyebrow">
-                  <BookOpen /> Destaque do Acervo
-                </div>
-                <p className="catalog-kicker">{featuredComic.seriesTitle} · #{featuredComic.issueNumber}</p>
-                <h1>{featuredComic.title}</h1>
-                <p className="catalog-hero-copy">
-                  {featuredComic.synopsis || `${featuredComic.totalPages} páginas em alta definição, disponíveis no seu acervo pessoal.`}
-                </p>
-                <div className="catalog-hero-meta">
-                  <span>{featuredComic.year}</span><i />
-                  <span>{featuredComic.publisher}</span><i />
-                  <span>{featuredComic.totalPages} páginas</span>
-                  {featuredComic.tags.slice(0, 2).map((tag) => (
-                    <React.Fragment key={tag}>
-                      <i />
-                      <span>{tag}</span>
-                    </React.Fragment>
-                  ))}
-                </div>
-                <div className="catalog-hero-actions">
-                  <button onClick={() => onOpenReader(featuredComic.id)} className="catalog-primary-action">
-                    <BookOpen /> {featuredComic.progress?.percentage ? "Continuar leitura" : "Ler agora"}
-                  </button>
-                  <button onClick={() => setSelectedComic(featuredComic)} className="catalog-secondary-action">
-                    <Info /> Detalhes
-                  </button>
-                  {onOpenGuide && (
-                    <button onClick={onOpenGuide} className="catalog-secondary-action">
-                      <Compass /> Guia
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Cover Flow sutil e responsivo na lateral direita em telas médias/largas */}
-              <div className="catalog-hero-flow-slot">
-                <CoverFlow
-                  items={featuredCandidates.map((comic) => ({
-                    id: comic.id,
-                    title: comic.title,
-                    image: comic.coverUrl,
-                    subtitle: `${comic.year} · ${comic.totalPages} páginas`,
-                  }))}
-                  activeIndex={featuredIndex}
-                  onChange={setFeaturedIndex}
-                  onActivate={(item) => setSelectedComic(featuredCandidates.find((comic) => comic.id === item.id) || null)}
-                  label="HQs recomendadas em Cover Flow"
-                />
-              </div>
-            </>
-          ) : (
-            /* Modo Cover Flow 3D Expandido com Foco Total na Interação */
-            <div className="catalog-hero-full-stage">
-              <div className="text-center mb-4 max-w-xl mx-auto px-4 z-10">
-                <p className="text-xs uppercase tracking-widest text-blue-400 font-bold mb-1">
-                  {featuredComic.seriesTitle} · #{featuredComic.issueNumber}
-                </p>
-                <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                  {featuredComic.title}
-                </h2>
-                <div className="flex items-center justify-center gap-2 text-xs text-neutral-400 mt-1">
-                  <span>{featuredComic.year}</span>
-                  <span>·</span>
-                  <span>{featuredComic.publisher}</span>
-                  <span>·</span>
-                  <span>{featuredComic.totalPages} páginas</span>
-                </div>
-              </div>
-
-              <div className="w-full max-w-4xl mx-auto z-10 px-2">
-                <CoverFlow
-                  items={featuredCandidates.map((comic) => ({
-                    id: comic.id,
-                    title: comic.title,
-                    image: comic.coverUrl,
-                    subtitle: `${comic.year} · ${comic.totalPages} páginas`,
-                  }))}
-                  activeIndex={featuredIndex}
-                  onChange={setFeaturedIndex}
-                  onActivate={(item) => setSelectedComic(featuredCandidates.find((comic) => comic.id === item.id) || null)}
-                  label="HQs em Cover Flow 3D"
-                />
-              </div>
-
-              <div className="flex items-center justify-center gap-3 mt-4 z-10">
-                <button onClick={() => onOpenReader(featuredComic.id)} className="catalog-primary-action">
-                  <BookOpen /> {featuredComic.progress?.percentage ? "Continuar leitura" : "Ler agora"}
-                </button>
-                <button onClick={() => setSelectedComic(featuredComic)} className="catalog-secondary-action">
-                  <Info /> Ver detalhes
-                </button>
-              </div>
+            <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-20 blur-3xl -z-10">
+              <img
+                src={featuredComic.coverUrl}
+                alt=""
+                className="w-full h-full object-cover scale-150 transform -translate-y-1/4"
+                aria-hidden="true"
+              />
+              <div className="absolute inset-0 bg-gradient-to-b from-[#05090f]/50 via-[#05090f]/80 to-[#05090f]" />
             </div>
           )}
+
+          {/* Palco do Cover Flow Centralizado */}
+          <div className="w-full max-w-4xl mx-auto px-2">
+            <CoverFlow
+              items={featuredCandidates.map((comic) => ({
+                id: comic.id,
+                title: comic.title,
+                image: comic.coverUrl,
+                subtitle: `${comic.seriesTitle} #${comic.issueNumber}`,
+              }))}
+              activeIndex={featuredIndex}
+              onChange={setFeaturedIndex}
+              onActivate={(item) => setSelectedComic(featuredCandidates.find((comic) => comic.id === item.id) || null)}
+              label="HQs em destaque"
+            />
+          </div>
+
+          {/* Título, Metadados e CTAs Posicionados Abaixo do Carrossel */}
+          <div className="text-center mt-5 max-w-xl mx-auto px-4">
+            <span className="text-xs uppercase tracking-wider text-neutral-400 font-semibold block mb-1">
+              {featuredComic.seriesTitle} · #{featuredComic.issueNumber}
+            </span>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight leading-tight">
+              {featuredComic.title}
+            </h1>
+            <div className="flex flex-wrap items-center justify-center gap-2 text-xs sm:text-sm text-neutral-400 mt-1.5">
+              <span>{featuredComic.year}</span>
+              <span>·</span>
+              <span>{featuredComic.publisher}</span>
+              <span>·</span>
+              <span>{featuredComic.totalPages} páginas</span>
+            </div>
+
+            {/* CTAs principais */}
+            <div className="flex flex-wrap items-center justify-center gap-3 mt-4">
+              <button
+                onClick={() => onOpenReader(featuredComic.id)}
+                className="h-11 px-6 sm:px-7 rounded-full bg-white text-black font-semibold text-xs sm:text-sm hover:bg-neutral-200 transition-colors shadow-lg cursor-pointer flex items-center justify-center gap-2 max-w-full"
+              >
+                <BookOpen className="w-4 h-4 shrink-0" />
+                <span>
+                  {((featuredComic.progress?.currentPage || 0) > 0 || (featuredComic.progress?.percentage || 0) > 0)
+                    ? "Retomar"
+                    : "Iniciar Leitura"}
+                </span>
+              </button>
+              <button
+                onClick={() => setSelectedComic(featuredComic)}
+                className="h-11 px-5 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-white font-medium text-xs sm:text-sm transition-colors cursor-pointer shrink-0"
+              >
+                Detalhes
+              </button>
+            </div>
+          </div>
         </section>
       )}
 
@@ -305,20 +241,17 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
 
       {/* 5. Catálogo Completo com Segmented Controls e Grade Fluida */}
       <div id="catalogo-completo" className="pt-2">
-        <div className="flex flex-wrap items-end justify-between gap-3 mb-5">
-          <div>
+        <div className="flex items-baseline justify-between mb-4">
+          <div className="flex items-baseline gap-2">
             <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-              Catálogo Completo
+              Catálogo completo
             </h2>
-            <p className="text-xs sm:text-sm text-neutral-400 mt-1">
-              Explore todo o acervo por coleção, status de leitura e filtros
-            </p>
+            {!isLoading && allComics.length > 0 && (
+              <span className="text-sm text-neutral-400 font-normal">
+                · {filteredComics.length} {filteredComics.length === 1 ? "título" : "títulos"}
+              </span>
+            )}
           </div>
-          {!isLoading && allComics.length > 0 && (
-            <div className="text-xs text-neutral-400 font-medium">
-              <strong className="text-white font-bold">{allComics.length}</strong> títulos disponíveis
-            </div>
-          )}
         </div>
 
         {/* Barra de Filtros Minimalista com Segmented Controls */}
@@ -379,36 +312,14 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
         )}
       </div>
 
-      {/* 6. Curadoria Especial & Estatísticas (Gaveta discreta no rodapé para não poluir o feed principal) */}
+      {/* 5. Bloco Editorial "Não sabe o que ler?" abaixo do catálogo */}
       {!searchQuery && allComics.length > 0 && (
-        <section className="pt-8 border-t border-white/5">
-          <button
-            type="button"
-            onClick={() => setShowExtras(!showExtras)}
-            className="w-full flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 transition-colors cursor-pointer text-left"
-          >
-            <div className="flex items-center gap-2.5">
-              <Sparkles className="w-4 h-4 text-blue-400" />
-              <span className="text-sm font-semibold text-white">
-                Descobertas Personalizadas & Estatísticas de Leitura
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5 text-xs text-neutral-400">
-              <span>{showExtras ? "Ocultar" : "Explorar"}</span>
-              {showExtras ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </div>
-          </button>
-
-          {showExtras && (
-            <div className="mt-4 space-y-6 animate-in fade-in duration-200">
-              <RecommendationRoulette
-                comics={allComics}
-                onOpenReader={onOpenReader}
-                onOpenDetails={setSelectedComic}
-              />
-              <ReadingInsights comics={allComics} />
-            </div>
-          )}
+        <section className="pt-8 border-t border-white/5 space-y-6">
+          <RecommendationRoulette
+            comics={allComics}
+            onOpenReader={onOpenReader}
+            onOpenDetails={setSelectedComic}
+          />
         </section>
       )}
 

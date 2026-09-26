@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from "react";
-import { BookOpen, Dices, Heart, Sparkles } from "lucide-react";
+import { BookOpen, Dices } from "lucide-react";
 import type { Comic } from "../../types/comic";
 import { readingInsights } from "../../lib/readingInsights";
 
@@ -54,37 +54,76 @@ export const RecommendationRoulette: React.FC<RecommendationRouletteProps> = ({ 
 
   if (!recommendation || comics.length === 0) return null;
 
-  const spin = () => {
+  const pickNext = () => {
     if (spinning) return;
     setSpinning(true);
-    setRotation((value) => value + 1440 + Math.floor(Math.random() * 720));
     if (timerRef.current) window.clearTimeout(timerRef.current);
     timerRef.current = window.setTimeout(() => {
       setRecommendation(weightedPick(comics, signals, insights.favoriteCharacters, insights.favoritePublishers, recommendation.id));
       setSpinning(false);
-    }, 1250);
+    }, 200);
   };
 
   return (
-    <section className="recommendation-roulette" aria-labelledby="roulette-title">
-      <div className="roulette-copy">
-        <span className="page-kicker"><Sparkles /> Descubra sua próxima leitura</span>
-        <h2 id="roulette-title">Gire a roleta do acervo</h2>
-        <p>{signals.length ? "A escolha considera suas leituras, favoritos, autores e categorias preferidas." : "A primeira escolha é uma surpresa. Conforme você lê e favorita, as sugestões aprendem suas preferências."}</p>
-        <div className="roulette-result" aria-live="polite">
-          {recommendation.coverUrl && <img src={recommendation.coverUrl} alt="" />}
-          <div><small>{signals.length ? "Recomendado para você" : "Escolha aleatória"}</small><strong>{recommendation.title}</strong><span>{recommendation.seriesTitle} · #{recommendation.issueNumber}</span></div>
+    <section className="p-5 sm:p-7 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-md" aria-labelledby="recommendation-card-title">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+        <div className="flex items-start sm:items-center gap-4 flex-1 min-w-0">
+          {recommendation.coverUrl ? (
+            <img
+              src={recommendation.coverUrl}
+              alt=""
+              className="w-16 sm:w-20 aspect-[2/3] object-cover rounded-xl shadow-md border border-white/10 shrink-0"
+            />
+          ) : (
+            <div className="w-16 sm:w-20 aspect-[2/3] rounded-xl bg-neutral-800 flex items-center justify-center text-xs font-bold text-neutral-400 shrink-0">
+              HQ
+            </div>
+          )}
+
+          <div className="flex flex-col min-w-0">
+            <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-1">
+              Não sabe o que ler?
+            </span>
+            <h3 id="recommendation-card-title" className="text-base sm:text-lg font-bold text-white tracking-tight truncate">
+              {recommendation.title}
+            </h3>
+            <p className="text-xs text-neutral-400 mt-0.5 truncate">
+              {recommendation.seriesTitle} · #{recommendation.issueNumber} · {recommendation.publisher} ({recommendation.year})
+            </p>
+            {recommendation.synopsis && (
+              <p className="text-xs text-neutral-400 line-clamp-2 mt-1.5 max-w-xl">
+                {recommendation.synopsis}
+              </p>
+            )}
+          </div>
         </div>
-        <div className="roulette-actions">
-          <button className="catalog-primary-action" onClick={spin} disabled={spinning}><Dices /> {spinning ? "Girando..." : "Girar roleta"}</button>
-          <button className="catalog-secondary-action" onClick={() => onOpenDetails(recommendation)}>Ver detalhes</button>
-          <button className="roulette-read" onClick={() => onOpenReader(recommendation.id)}><BookOpen /> Ler indicação</button>
+
+        <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto shrink-0">
+          <button
+            onClick={() => onOpenReader(recommendation.id)}
+            className="flex-1 md:flex-none h-10 px-5 rounded-full bg-white text-black font-semibold text-xs hover:bg-neutral-200 transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-1.5"
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            <span>Ler agora</span>
+          </button>
+
+          <button
+            onClick={pickNext}
+            disabled={spinning}
+            className="h-10 px-4 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-white font-medium text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+          >
+            <Dices className={`w-3.5 h-3.5 text-neutral-400 ${spinning ? "animate-spin" : ""}`} />
+            <span>Sugerir outra</span>
+          </button>
+
+          <button
+            onClick={() => onOpenDetails(recommendation)}
+            className="h-10 px-3.5 rounded-full text-neutral-400 hover:text-white text-xs font-medium transition-colors cursor-pointer"
+          >
+            Detalhes
+          </button>
         </div>
       </div>
-      <button className="roulette-wheel" onClick={spin} disabled={spinning} aria-label="Girar roleta de recomendações" style={{ transform: `rotate(${rotation}deg)` }}>
-        <span className="roulette-center"><Dices /></span>
-        {Array.from({ length: 8 }, (_, index) => <i key={index} style={{ transform: `rotate(${index * 45}deg) translateY(-42%)` }}><Heart /></i>)}
-      </button>
     </section>
   );
 };

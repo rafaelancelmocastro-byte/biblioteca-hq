@@ -33,13 +33,12 @@ export const ContinueReadingSection: React.FC<ContinueReadingSectionProps> = ({
   return (
     <section className="mb-12" aria-labelledby="section-continue-reading">
       <div className="flex items-center justify-between mb-4 gap-3">
-        <div className="flex items-center gap-2.5">
-          <Clock className="w-4 h-4 text-blue-400" />
-          <h2 id="section-continue-reading" className="text-lg font-bold text-white tracking-tight">
-            Seguir Lendo
+        <div className="flex items-center gap-2">
+          <h2 id="section-continue-reading" className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+            Continuar lendo
           </h2>
-          <span className="text-xs text-neutral-400 font-medium">
-            · {comics.length} {comics.length === 1 ? "em andamento" : "em andamento"}
+          <span className="text-sm text-neutral-400 font-normal">
+            · {comics.length}
           </span>
         </div>
         {canScroll && (
@@ -112,24 +111,24 @@ export const ContinueReadingSection: React.FC<ContinueReadingSectionProps> = ({
               {/* Informações à Direita */}
               <div className="flex-1 min-w-0 ml-3.5 flex flex-col justify-between py-0.5">
                 <div>
-                  <div className="flex items-center gap-1.5 text-[11px] text-blue-400 font-semibold mb-1">
+                  <div className="flex items-center gap-1.5 text-[12px] text-neutral-400 font-medium mb-1">
                     <span className="truncate">{comic.seriesTitle}</span>
                     <span className="text-neutral-500 font-normal">·</span>
-                    <span className="text-neutral-400 font-medium">#{comic.issueNumber}</span>
+                    <span className="text-neutral-400">#{comic.issueNumber}</span>
                   </div>
 
                   <h3
                     onClick={() => onOpenDetails(comic)}
-                    className="text-xs sm:text-sm font-bold text-white hover:text-blue-300 cursor-pointer line-clamp-1 transition-colors leading-tight"
+                    className="text-sm font-semibold text-white hover:text-neutral-200 cursor-pointer line-clamp-1 transition-colors leading-snug"
                     title={comic.title}
                   >
                     {comic.title}
                   </h3>
 
-                  <p className="text-[11px] text-neutral-400 mt-1.5 flex items-center gap-1.5">
+                  <p className="text-[12px] text-neutral-400 mt-1 flex items-center gap-1.5">
                     <span>Pág. {currentPage}/{totalPages}</span>
                     <span className="text-neutral-600">·</span>
-                    <span className="text-white font-semibold">{formatPercentage(percentage)}</span>
+                    <span className="text-neutral-200 font-medium">{formatPercentage(percentage)}</span>
                   </p>
                 </div>
 

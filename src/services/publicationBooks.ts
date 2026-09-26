@@ -39,8 +39,9 @@ export async function openPublicationBook(file: File, remoteSource?: { getLength
         if (!entry) throw new Error("Página não encontrada no CBZ.");
         const extension = entry.filename.split(".").pop()?.toLowerCase();
         const type = extension === "png" ? "image/png" : extension === "webp" ? "image/webp" : extension === "gif" ? "image/gif" : extension === "bmp" ? "image/bmp" : extension === "avif" ? "image/avif" : "image/jpeg";
-        if (!entry.getData) throw new Error("Página inválida no CBZ.");
-        return entry.getData(new BlobWriter(type));
+        const fileEntry = entry as { getData?: (writer: unknown) => Promise<Blob> };
+        if (!fileEntry.getData) throw new Error("Página inválida no CBZ.");
+        return fileEntry.getData(new BlobWriter(type));
       };
       const loader = {
         entries: [...names.keys()].map((filename) => ({ filename })),

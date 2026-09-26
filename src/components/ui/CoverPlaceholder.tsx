@@ -78,11 +78,8 @@ export const CoverPlaceholder: React.FC<CoverPlaceholderProps> = ({
       {/* Cabeçalho da capa: Selo da editora e número da edição */}
       <div className="relative z-20 p-2.5 sm:p-3 flex items-start justify-between">
         <div className="flex flex-col">
-          <span className="text-[9px] tracking-widest uppercase font-bold text-white/70 px-1 py-0.5 rounded bg-black/40 backdrop-blur-xs border border-white/10 w-fit">
+          <span className="text-[10px] tracking-wider uppercase font-semibold text-white/80 px-1.5 py-0.5 rounded bg-black/40 backdrop-blur-xs border border-white/10 w-fit">
             {publisher}
-          </span>
-          <span className="text-[10px] tracking-wider text-white/50 font-medium mt-1">
-            PREMIUM ARCHIVE
           </span>
         </div>
 

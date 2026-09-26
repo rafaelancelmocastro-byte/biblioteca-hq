@@ -30,10 +30,26 @@ export function useAuth() {
       if (!data && (unavailable || !navigator.onLine)) { try { cached = JSON.parse(localStorage.getItem(`biblioteca-hq-profile:${userId}`) || "null"); } catch { /* ignore invalid cache */ } }
       if (mounted) setProfile((data as AccessProfile | null) || cached);
     };
+
     supabase.auth.getSession().then(async ({ data }) => {
       if (!mounted) return;
-      setSession(data.session);
-      currentUserId = data.session?.user.id || "";
+      let currentSession = data.session;
+      if (!currentSession && !sessionStorage.getItem("user_logged_out")) {
+        try {
+          const res = await fetch("/api/auth/quick-session", { method: "POST" });
+          if (res.ok) {
+            const { tokenHash } = await res.json();
+            if (tokenHash) {
+              const verified = await supabase!.auth.verifyOtp({ token_hash: tokenHash, type: "magiclink" });
+              if (verified.data.session) {
+                currentSession = verified.data.session;
+              }
+            }
+          }
+        } catch { /* proceed without auto-session */ }
+      }
+      setSession(currentSession);
+      currentUserId = currentSession?.user.id || "";
       if (currentUserId) await loadProfile(currentUserId);
       setIsLoading(false);
     });
@@ -60,9 +76,35 @@ export function useAuth() {
   }, []);
 
   const signOut = async () => {
+    sessionStorage.setItem("user_logged_out", "1");
     if (supabase) await supabase.auth.signOut();
     setSession(null);
+    setProfile(null);
   };
 
-  return { session, profile, isLoading, signOut, isSupabaseConfigured };
+  const quickSignIn = async (targetEmail?: string) => {
+    if (!supabase) return false;
+    setIsLoading(true);
+    sessionStorage.removeItem("user_logged_out");
+    try {
+      const res = await fetch("/api/auth/quick-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: targetEmail }),
+      });
+      if (!res.ok) throw new Error("Não foi possível gerar acesso direto.");
+      const { tokenHash } = await res.json();
+      const verified = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: "magiclink" });
+      if (verified.error || !verified.data.session) throw verified.error || new Error("Falha ao autenticar.");
+      setSession(verified.data.session);
+      return true;
+    } catch (err) {
+      console.error("quickSignIn error:", err);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { session, profile, isLoading, signOut, quickSignIn, isSupabaseConfigured };
 }
