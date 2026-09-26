@@ -7,6 +7,22 @@
       "destination": "/api/integrations/health"
     },
     {
+      "source": "/api/storage/presign-read",
+      "destination": "/api/storage/presign?action=read"
+    },
+    {
+      "source": "/api/storage/presign-upload",
+      "destination": "/api/storage/presign?action=upload"
+    },
+    {
+      "source": "/api/series/upsert",
+      "destination": "/api/series/manage?action=upsert"
+    },
+    {
+      "source": "/api/series/delete",
+      "destination": "/api/series/manage?action=delete"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
