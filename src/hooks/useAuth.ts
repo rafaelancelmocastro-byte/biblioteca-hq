@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { ensureActiveSession, isSupabaseConfigured, supabase } from "../services/supabaseClient";
+import { forgetOfflineUser, getRememberedOfflineUser, rememberOfflineUser } from "../services/offlineIdentity";
 
 export type AccessProfile = { id: string; email: string; role: "master" | "user"; access_status: "pending_payment" | "lifetime" | "blocked"; is_active: boolean };
 
@@ -8,6 +9,7 @@ export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<AccessProfile | null>(null);
   const [isLoading, setIsLoading] = useState(isSupabaseConfigured);
+  const [offlineUserId, setOfflineUserId] = useState(() => getRememberedOfflineUser());
 
   useEffect(() => {
     if (!supabase) {
@@ -41,7 +43,16 @@ export function useAuth() {
       if (!mounted) return;
       setSession(currentSession);
       currentUserId = currentSession?.user.id || "";
-      if (currentUserId) await loadProfile(currentUserId);
+      if (currentUserId) {
+        rememberOfflineUser(currentUserId);
+        setOfflineUserId(currentUserId);
+        await loadProfile(currentUserId);
+      } else if (!navigator.onLine) {
+        const remembered = getRememberedOfflineUser();
+        currentUserId = remembered;
+        setOfflineUserId(remembered);
+        if (remembered) await loadProfile(remembered);
+      }
       setIsLoading(false);
     };
     void initAuth();
@@ -50,19 +61,37 @@ export function useAuth() {
       setSession(nextSession);
       const changedUser = currentUserId !== (nextSession?.user.id || "");
       currentUserId = nextSession?.user.id || "";
-      if (currentUserId) { if (changedUser) setIsLoading(true); void loadProfile(currentUserId).finally(() => { if (mounted) setIsLoading(false); }); }
-      else { setProfile(null); setIsLoading(false); }
+      if (currentUserId) {
+        rememberOfflineUser(currentUserId);
+        setOfflineUserId(currentUserId);
+        if (changedUser) setIsLoading(true);
+        void loadProfile(currentUserId).finally(() => { if (mounted) setIsLoading(false); });
+      } else if (navigator.onLine) {
+        setProfile(null);
+        setIsLoading(false);
+      }
     });
     const refreshAccess = () => { if (currentUserId && navigator.onLine) void loadProfile(currentUserId); };
+    const restoreOnlineSession = () => {
+      if (!navigator.onLine) return;
+      void ensureActiveSession().then((restored) => {
+        if (!mounted || !restored) return;
+        setSession(restored);
+        currentUserId = restored.user.id;
+        rememberOfflineUser(currentUserId);
+        setOfflineUserId(currentUserId);
+        void loadProfile(currentUserId);
+      }).catch(() => {});
+    };
     window.addEventListener("focus", refreshAccess);
-    window.addEventListener("online", refreshAccess);
+    window.addEventListener("online", restoreOnlineSession);
     const refreshTimer = window.setInterval(refreshAccess, 15000);
 
     return () => {
       mounted = false;
       window.clearInterval(refreshTimer);
       window.removeEventListener("focus", refreshAccess);
-      window.removeEventListener("online", refreshAccess);
+      window.removeEventListener("online", restoreOnlineSession);
       listener.subscription.unsubscribe();
     };
   }, []);
@@ -70,6 +99,8 @@ export function useAuth() {
   const signOut = async () => {
     sessionStorage.setItem("user_logged_out", "1");
     if (supabase) await supabase.auth.signOut();
+    forgetOfflineUser();
+    setOfflineUserId("");
     setSession(null);
     setProfile(null);
   };
@@ -89,6 +120,8 @@ export function useAuth() {
       const verified = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: "magiclink" });
       if (verified.error || !verified.data.session) throw verified.error || new Error("Falha ao autenticar.");
       setSession(verified.data.session);
+      rememberOfflineUser(verified.data.session.user.id);
+      setOfflineUserId(verified.data.session.user.id);
       return true;
     } catch (err) {
       console.error("quickSignIn error:", err);
@@ -98,5 +131,5 @@ export function useAuth() {
     }
   };
 
-  return { session, profile, isLoading, signOut, quickSignIn, isSupabaseConfigured };
+  return { session, profile, offlineUserId, isLoading, signOut, quickSignIn, isSupabaseConfigured };
 }
