@@ -7,6 +7,7 @@ import {
   Layers3,
   Map,
   Settings,
+  SlidersHorizontal,
   BookMarked,
   type LucideIcon,
 } from "lucide-react";
@@ -29,7 +30,8 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
   { label: "Guia de Leitura", path: "/guia", icon: Map, description: "Rotas e ordens de leitura" },
   { label: "Favoritos", path: "/favoritos", icon: Heart, section: "Sua coleção", description: "Obras que você salvou" },
   { label: "Baixados Offline", path: "/offline", icon: Download, description: "Disponíveis sem conexão" },
-  { label: "Configurações", path: "/configuracoes", icon: Settings, section: "Gestão", description: "Preferências e acervo", ownerOnly: true },
+  { label: "Preferências", path: "/preferencias", icon: SlidersHorizontal, section: "Conta", description: "Leitura, interface e sincronização" },
+  { label: "Administração", path: "/configuracoes", icon: Settings, section: "Gestão", description: "Acervo, usuários e sistema", ownerOnly: true },
 ];
 
 export const MOBILE_PRIMARY_PATHS = new Set(["/biblioteca", "/continuar", "/lancamentos", "/series"]);
