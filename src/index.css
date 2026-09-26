@@ -1868,3 +1868,49 @@ body { padding-top: env(safe-area-inset-top); }
   .admin-series-row.child { margin-left: .45rem; }
   .admin-status-grid { grid-template-columns: 1fr; }
 }
+
+
+.admin-advanced-fields {
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: .85rem;
+  background: rgba(255,255,255,.02);
+  overflow: hidden;
+}
+.admin-advanced-fields > summary {
+  padding: .8rem .9rem;
+  color: #c5ced8;
+  font-size: .72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.admin-advanced-fields[open] > summary { border-bottom: 1px solid rgba(255,255,255,.07); }
+.admin-advanced-fields > .form-grid { padding: .9rem; }
+
+.admin-studio .manager-bulk-editor {
+  position: fixed;
+  z-index: 110;
+  top: 5rem;
+  right: 1rem;
+  width: min(32rem,calc(100vw - 2rem));
+  max-height: calc(100dvh - 6rem);
+  overflow-y: auto;
+  padding: 1rem;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 1rem;
+  background: #10151c;
+  box-shadow: 0 26px 70px #000d;
+}
+.admin-studio .manager-bulk-editor h3 { color: #f1f4f7; font-size: 1rem; }
+.admin-studio .manager-bulk-editor > p { color: #88939f; font-size: .72rem; line-height: 1.45; }
+
+@media (max-width: 640px) {
+  .admin-studio .manager-bulk-editor {
+    top: auto;
+    right: .5rem;
+    left: .5rem;
+    bottom: calc(4.5rem + env(safe-area-inset-bottom));
+    width: auto;
+    max-height: 72dvh;
+    border-radius: 1rem 1rem .75rem .75rem;
+  }
+}
