@@ -5,6 +5,9 @@ export type UserPreferences = {
   readerFit: "height" | "width";
   readingDirection: "auto" | "ltr" | "rtl";
   homeSection: "/biblioteca" | "/continuar" | "/lancamentos" | "/series" | "/favoritos";
+  librarySort: "title_asc" | "title_desc" | "issue_asc" | "issue_desc" | "year_desc" | "year_asc" | "added_at_desc" | "last_read_desc";
+  cardDensity: "compact" | "comfortable";
+  hideCompleted: boolean;
   confirmMobileDownloads: boolean;
   reduceMotion: boolean;
   reduceTransparency: boolean;
@@ -16,6 +19,9 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   readerFit: "height",
   readingDirection: "auto",
   homeSection: "/biblioteca",
+  librarySort: "added_at_desc",
+  cardDensity: "comfortable",
+  hideCompleted: false,
   confirmMobileDownloads: true,
   reduceMotion: false,
   reduceTransparency: false,
@@ -47,9 +53,13 @@ export function applyUserPreferences(value: UserPreferences) {
   localStorage.setItem("biblioteca_reader_mode", value.readerMode);
   localStorage.setItem("biblioteca_reader_fit", value.readerFit);
   localStorage.setItem("biblioteca_reading_direction", value.readingDirection);
+  localStorage.setItem("biblioteca_library_sort", value.librarySort);
+  localStorage.setItem("biblioteca_hq_density", value.cardDensity);
+  localStorage.setItem("biblioteca_hide_completed", String(value.hideCompleted));
   document.documentElement.classList.toggle("reduce-motion", value.reduceMotion);
   document.documentElement.classList.toggle("reduce-transparency", value.reduceTransparency);
   document.documentElement.dataset.theme = "dark";
+  window.dispatchEvent(new CustomEvent("biblioteca-preferences-changed", { detail: value }));
 }
 
 function fromRow(row: Record<string, unknown>): UserPreferences {
@@ -58,6 +68,9 @@ function fromRow(row: Record<string, unknown>): UserPreferences {
     readerFit: row.reader_fit as UserPreferences["readerFit"],
     readingDirection: row.reading_direction as UserPreferences["readingDirection"],
     homeSection: row.home_section as UserPreferences["homeSection"],
+    librarySort: row.library_sort as UserPreferences["librarySort"],
+    cardDensity: row.card_density as UserPreferences["cardDensity"],
+    hideCompleted: Boolean(row.hide_completed),
     confirmMobileDownloads: Boolean(row.confirm_mobile_downloads),
     reduceMotion: Boolean(row.reduce_motion),
     reduceTransparency: Boolean(row.reduce_transparency),
@@ -72,6 +85,9 @@ function toRow(userId: string, value: UserPreferences) {
     reader_fit: value.readerFit,
     reading_direction: value.readingDirection,
     home_section: value.homeSection,
+    library_sort: value.librarySort,
+    card_density: value.cardDensity,
+    hide_completed: value.hideCompleted,
     confirm_mobile_downloads: value.confirmMobileDownloads,
     reduce_motion: value.reduceMotion,
     reduce_transparency: value.reduceTransparency,
@@ -93,7 +109,7 @@ export async function loadUserPreferences(userId: string): Promise<UserPreferenc
     }
     const { data, error } = await supabase
       .from("user_preferences")
-      .select("reader_mode,reader_fit,reading_direction,home_section,confirm_mobile_downloads,reduce_motion,reduce_transparency,theme")
+      .select("reader_mode,reader_fit,reading_direction,home_section,library_sort,card_density,hide_completed,confirm_mobile_downloads,reduce_motion,reduce_transparency,theme")
       .eq("user_id", userId)
       .maybeSingle();
 
