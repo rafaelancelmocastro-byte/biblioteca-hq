@@ -17,9 +17,10 @@ interface ReaderPageProps {
   comicId: string;
   onBack: () => void;
   onOpenReader: (id: string) => void;
+  fallbackUserId?: string;
 }
 
-export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack, onOpenReader }) => {
+export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack, onOpenReader, fallbackUserId = "" }) => {
   const [comic, setComic] = useState<Comic | null>(null);
   const [pdfUrl, setPdfUrl] = useState("");
   const [pdfData, setPdfData] = useState<Uint8Array | undefined>();
@@ -87,7 +88,8 @@ export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack, onOpenR
       } catch {
         // activeSession failed
       }
-      if (isMounted) setUserId(activeSession?.user.id || "");
+      const resolvedUserId = activeSession?.user.id || fallbackUserId;
+      if (isMounted) setUserId(resolvedUserId);
 
       if (navigator.onLine) {
         try {
@@ -117,9 +119,10 @@ export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack, onOpenR
       if (isMounted) {
         try {
           const session = activeSession || (await supabase?.auth.getSession())?.data.session;
-          const offline = session ? await readOffline(session.user.id, comicId) : null;
+          const offlineUserId = session?.user.id || fallbackUserId;
+          const offline = offlineUserId ? await readOffline(offlineUserId, comicId) : null;
           if (offline && isMounted) {
-            setComic(applyQueuedProgress(session!.user.id, [offline.comic])[0]);
+            setComic(applyQueuedProgress(offlineUserId, [offline.comic])[0]);
             setPdfData(offline.data);
             setIsLoading(false);
             return;
@@ -137,7 +140,7 @@ export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack, onOpenR
     return () => {
       isMounted = false;
     };
-  }, [comicId]);
+  }, [comicId, fallbackUserId]);
 
   if (isLoading) {
     return (
