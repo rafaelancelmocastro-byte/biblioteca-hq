@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { BookOpen, Download, Monitor, Navigation, Save, ShieldCheck } from "lucide-react";
+import { BookOpen, Download, LibraryBig, Monitor, Navigation, Save, ShieldCheck } from "lucide-react";
 import {
   DEFAULT_USER_PREFERENCES,
   loadUserPreferences,
@@ -72,6 +72,34 @@ export const PreferencesPage: React.FC<{ userId: string }> = ({ userId }) => {
               </select>
             </label>
           </div>
+        </section>
+
+
+        <section className="preferences-card">
+          <div className="preferences-card-heading"><LibraryBig /><div><h2>Biblioteca</h2><p>Defina como o catálogo deve aparecer por padrão.</p></div></div>
+          <div className="preferences-fields">
+            <label>Ordenação padrão
+              <select value={prefs.librarySort} onChange={(e) => update("librarySort", e.target.value as UserPreferences["librarySort"])}>
+                <option value="added_at_desc">Adicionadas recentemente</option>
+                <option value="last_read_desc">Lidas recentemente</option>
+                <option value="title_asc">Título A–Z</option>
+                <option value="title_desc">Título Z–A</option>
+                <option value="year_desc">Ano mais recente</option>
+                <option value="year_asc">Ano mais antigo</option>
+                <option value="issue_asc">Número da edição</option>
+              </select>
+            </label>
+            <label>Densidade dos cards
+              <select value={prefs.cardDensity} onChange={(e) => update("cardDensity", e.target.value as UserPreferences["cardDensity"])}>
+                <option value="comfortable">Confortável</option>
+                <option value="compact">Compacta</option>
+              </select>
+            </label>
+          </div>
+          <label className="preferences-toggle">
+            <span><strong>Ocultar concluídas no catálogo</strong><small>As edições concluídas continuam acessíveis ao selecionar esse status nos filtros.</small></span>
+            <input type="checkbox" checked={prefs.hideCompleted} onChange={(e) => update("hideCompleted", e.target.checked)} />
+          </label>
         </section>
 
         <section className="preferences-card">
