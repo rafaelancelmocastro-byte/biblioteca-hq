@@ -4,6 +4,7 @@ import { useLibrary } from "../../hooks/useLibrary";
 import { clearOffline, listOffline, removeOffline, saveOffline, verifyOffline } from "../../services/offlineLibrary";
 import { addOfflineLibraryItem, getOfflineLibraryIds, removeOfflineLibraryItem } from "../../services/offlineManifest";
 import type { Comic } from "../../types/comic";
+import { shouldConfirmCellularDownload } from "../../services/userPreferences";
 
 type Saved = { comic: Comic; size: number; savedAt: string; cover?: Blob };
 
@@ -96,6 +97,7 @@ export function OfflinePage({ userId, onOpenReader }: { userId: string; onOpenRe
   };
 
   const downloadComic = async (comic: Comic) => {
+    if (await shouldConfirmCellularDownload(userId) && !window.confirm(`Baixar ${comic.title} (${comic.fileSizeMb.toFixed(1)} MB) usando esta conexão móvel?`)) return;
     setSyncBusy(true);
     setCheck(`Baixando ${comic.title}...`);
     try {
@@ -114,6 +116,7 @@ export function OfflinePage({ userId, onOpenReader }: { userId: string; onOpenRe
 
   const downloadPending = async () => {
     if (!pendingComics.length) return;
+    if (await shouldConfirmCellularDownload(userId) && !window.confirm(`Baixar ${pendingComics.length} ${pendingComics.length === 1 ? "edição" : "edições"}${pendingMb > 0 ? ` (cerca de ${pendingMb.toFixed(1)} MB)` : ""} usando esta conexão móvel?`)) return;
     setSyncBusy(true);
     let done = 0;
     try {
