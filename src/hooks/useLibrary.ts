@@ -45,6 +45,19 @@ export function useLibrary(initialFilters: LibraryFilters = DEFAULT_FILTERS) {
   const [gridDensity, setGridDensityState] = useState<"compact" | "comfortable">(() =>
     getLocalStorageItem<"compact" | "comfortable">(DENSITY_STORAGE_KEY, "comfortable")
   );
+  const [hideCompleted, setHideCompleted] = useState(() => localStorage.getItem("biblioteca_hide_completed") === "true");
+
+  useEffect(() => {
+    const applyPreferences = (event: Event) => {
+      const detail = (event as CustomEvent<{ librarySort?: LibraryFilters["sortBy"]; cardDensity?: "compact" | "comfortable"; hideCompleted?: boolean }>).detail;
+      if (!detail) return;
+      if (detail.cardDensity) setGridDensityState(detail.cardDensity);
+      if (typeof detail.hideCompleted === "boolean") setHideCompleted(detail.hideCompleted);
+      if (detail.librarySort) setFilters((current) => ({ ...current, sortBy: detail.librarySort! }));
+    };
+    window.addEventListener("biblioteca-preferences-changed", applyPreferences);
+    return () => window.removeEventListener("biblioteca-preferences-changed", applyPreferences);
+  }, []);
 
   const reloadData = useCallback(async (fresh = false) => {
     const version = ++loadVersion.current;
@@ -182,6 +195,8 @@ export function useLibrary(initialFilters: LibraryFilters = DEFAULT_FILTERS) {
   const filteredComics = useMemo(() => {
     let result = [...allComics];
 
+    if (hideCompleted && filters.status === "all") result = result.filter((comic) => comic.progress?.status !== "completed");
+
     if (filters.searchQuery.trim()) result = result.filter((comic) => matchesComicSearch(comic, filters.searchQuery));
 
     if (filters.series !== "all") {
@@ -237,7 +252,7 @@ export function useLibrary(initialFilters: LibraryFilters = DEFAULT_FILTERS) {
     });
 
     return result;
-  }, [allComics, filters]);
+  }, [allComics, filters, hideCompleted]);
 
   const activeFiltersCount = useMemo(() => {
     let count = 0;
