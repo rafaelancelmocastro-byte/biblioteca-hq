@@ -13,6 +13,7 @@ import { CheckoutPage } from "./app/pages/CheckoutPage";
 import { PasswordResetPage } from "./app/pages/PasswordResetPage";
 import { flushReadingProgress } from "./services/offlineProgress";
 import { syncLocalOfflineLibrary } from "./services/offlineManifest";
+import { loadUserPreferences } from "./services/userPreferences";
 
 const legacyRecoveryLink = /(?:[?&#])type=recovery(?:[&#]|$)/.test(window.location.search + window.location.hash);
 
@@ -27,6 +28,7 @@ const ReaderPage = React.lazy(() =>
   import("./app/pages/ReaderPage").then((module) => ({ default: module.ReaderPage }))
 );
 const AdminPage = React.lazy(() => import("./app/pages/AdminPage").then((module) => ({ default: module.AdminPage })));
+const PreferencesPage = React.lazy(() => import("./app/pages/PreferencesPage").then((module) => ({ default: module.PreferencesPage })));
 
 export default function App() {
   const { pathname, activeRoute, comicId, navigate, openReader, backFromReader } = useNavigation();
@@ -40,6 +42,11 @@ export default function App() {
   const [restrictedNotice, setRestrictedNotice] = useState(false);
   const [legacyRecoveryHandled, setLegacyRecoveryHandled] = useState(false);
   useEffect(() => { if (!restrictedNotice) return; const timer = window.setTimeout(() => setRestrictedNotice(false), 4000); return () => window.clearTimeout(timer); }, [restrictedNotice]);
+  useEffect(() => {
+    const userId = session?.user.id || offlineUserId;
+    if (userId) void loadUserPreferences(userId);
+  }, [session?.user.id, offlineUserId]);
+
   useEffect(() => {
     const userId = session?.user.id || offlineUserId;
     if (!userId) return;
@@ -138,6 +145,8 @@ export default function App() {
       {activeRoute === "/lancamentos" && <LaunchesPage onOpenReader={openReader} />}
       {activeRoute === "/offline" && <OfflinePage userId={effectiveUserId || ""} onOpenReader={openReader} />}
       {activeRoute === "/multiverso" && <IndieMangaPage onOpenReader={openReader} />}
+
+      {activeRoute === "/preferencias" && <PreferencesPage userId={effectiveUserId || ""} />}
 
       {activeRoute === "/favoritos" && (
         <FavoritesPage
