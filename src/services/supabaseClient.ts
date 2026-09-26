@@ -12,18 +12,20 @@ export const isSupabaseConfigured = Boolean(supabase);
 
 let activeSessionPromise: Promise<Session | null> | null = null;
 
-export async function ensureActiveSession(): Promise<Session | null> {
+export async function ensureActiveSession(forceRefresh = false): Promise<Session | null> {
   if (!supabase) return null;
 
-  try {
-    const { data } = await supabase.auth.getSession();
-    const current = data.session;
-    // Check if session exists and is valid for at least 30 more seconds
-    if (current && (!current.expires_at || current.expires_at * 1000 > Date.now() + 30_000)) {
-      return current;
+  if (!forceRefresh) {
+    try {
+      const { data } = await supabase.auth.getSession();
+      const current = data.session;
+      // Check if session exists and is valid for at least 30 more seconds
+      if (current && (!current.expires_at || current.expires_at * 1000 > Date.now() + 30_000)) {
+        return current;
+      }
+    } catch {
+      // getSession check failed
     }
-  } catch {
-    // getSession check failed
   }
 
   if (activeSessionPromise) return activeSessionPromise;

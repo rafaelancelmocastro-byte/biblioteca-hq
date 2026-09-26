@@ -109,6 +109,20 @@ let catalogCache: { value: SupabaseCatalog; expiresAt: number } | null = null;
 let pendingCatalog: Promise<SupabaseCatalog> | null = null;
 let pendingCovers: Promise<Record<string, string>> | null = null;
 
+export function invalidateCoverCache() {
+  coverCache.clear();
+}
+
+// Invalida cache de URLs de capas assinadas quando a autenticação mudar
+if (supabase) {
+  supabase.auth.onAuthStateChange((event) => {
+    if (event === "SIGNED_OUT" || event === "USER_UPDATED") {
+      invalidateCoverCache();
+      invalidateCatalogCache();
+    }
+  });
+}
+
 export function invalidateCatalogCache() {
   catalogCache = null;
   pendingCatalog = null;
@@ -120,19 +134,47 @@ export async function getCoverUrls(comics: Comic[]): Promise<Record<string, stri
   const missing = comics.filter((comic) => !coverCache.has(comic.id) || coverCache.get(comic.id)!.expiresAt < now);
   if (missing.length && !pendingCovers) {
     pendingCovers = (async () => {
-      const session = await ensureActiveSession();
+      let session = await ensureActiveSession();
       if (!session) return {};
       const urls: Record<string, string> = {};
-      for (let offset = 0; offset < missing.length; offset += 100) {
-        const response = await fetch("/api/storage/cover-urls", {
+
+      const fetchComicBatch = async (comicBatch: Comic[], token: string): Promise<Response> => {
+        return fetch("/api/storage/cover-urls", {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-          body: JSON.stringify({ comicIds: missing.slice(offset, offset + 100).map((comic) => comic.id) }),
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ comicIds: comicBatch.map((comic) => comic.id) }),
         });
-        if (!response.ok) continue;
-        const payload = await response.json();
-        for (const [id, url] of Object.entries(payload.urls || {})) {
-          if (typeof url === "string") { coverCache.set(id, { url, expiresAt: Date.now() + 13 * 60_000 }); urls[id] = url; }
+      };
+
+      for (let offset = 0; offset < missing.length; offset += 100) {
+        const batch = missing.slice(offset, offset + 100);
+        try {
+          let response = await fetchComicBatch(batch, session.access_token);
+
+          // Se 401 ou 403, renova a sessão ativamente e tenta mais uma vez
+          if ((response.status === 401 || response.status === 403) && session) {
+            console.warn("[CoverUrls] 401/403 detectado ao buscar capas das HQs. Renovando sessão e tentando novamente...");
+            const refreshed = await ensureActiveSession(true);
+            if (refreshed?.access_token) {
+              session = refreshed;
+              response = await fetchComicBatch(batch, refreshed.access_token);
+            }
+          }
+
+          if (!response.ok) {
+            console.warn(`[CoverUrls] Falha na requisição cover-urls para lote de HQs (status ${response.status})`);
+            continue;
+          }
+
+          const payload = await response.json();
+          for (const [id, url] of Object.entries(payload.urls || {})) {
+            if (typeof url === "string") {
+              coverCache.set(id, { url, expiresAt: Date.now() + 13 * 60_000 });
+              urls[id] = url;
+            }
+          }
+        } catch (err) {
+          console.warn("[CoverUrls] Erro de rede ou parse ao carregar capas das HQs:", err);
         }
       }
       return urls;
