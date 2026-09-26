@@ -15,6 +15,7 @@ import { CoverPlaceholder } from "../ui/CoverPlaceholder";
 import { ProgressBar } from "../ui/ProgressBar";
 import { formatFileSize, formatPercentage, getStatusLabel } from "../../lib/formatters";
 import { hasOffline, saveOffline } from "../../services/offlineLibrary";
+import { addOfflineLibraryItem } from "../../services/offlineManifest";
 import { supabase } from "../../services/supabaseClient";
 
 interface ComicDetailModalProps {
@@ -48,7 +49,10 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
   useEffect(() => {
     if (!comic || !supabase) return;
     void supabase.auth.getSession().then(async ({ data }) => {
-      if (data.session) setSavedOffline(await hasOffline(data.session.user.id, comic.id));
+      if (!data.session) return;
+      const saved = await hasOffline(data.session.user.id, comic.id);
+      setSavedOffline(saved);
+      if (saved) void addOfflineLibraryItem(comic.id, data.session.user.id);
     });
   }, [comic?.id]);
 
@@ -62,8 +66,13 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
       await saveOffline(data.session.user.id, comic, (bytes) =>
         setOfflineMessage(`Salvando... ${(bytes / 1048576).toFixed(1)} MB`)
       );
+      const synced = await addOfflineLibraryItem(comic.id, data.session.user.id);
       setSavedOffline(true);
-      setOfflineMessage("Disponível offline neste dispositivo.");
+      setOfflineMessage(
+        synced
+          ? "Disponível neste dispositivo e sincronizado com sua biblioteca offline."
+          : "Disponível offline neste dispositivo."
+      );
     } catch (error) {
       setOfflineMessage(error instanceof Error ? error.message : "Não foi possível salvar.");
     } finally {
