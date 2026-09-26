@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { MoreHorizontal, X, ChevronRight } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { ChevronRight, MoreHorizontal, X } from "lucide-react";
 import { MOBILE_PRIMARY_PATHS, NAVIGATION_ITEMS } from "./navigationItems";
 
 interface MobileNavProps {
@@ -13,7 +13,6 @@ export const MobileNav: React.FC<MobileNavProps> = ({ currentPath, onNavigate, i
 
   const primaryItems = NAVIGATION_ITEMS.filter((item) => MOBILE_PRIMARY_PATHS.has(item.path));
   const secondaryItems = NAVIGATION_ITEMS.filter((item) => !MOBILE_PRIMARY_PATHS.has(item.path) && (!item.ownerOnly || isOwner));
-
   const isSecondaryActive = secondaryItems.some((item) => item.path === currentPath);
 
   const handleSelect = (path: string) => {
@@ -21,109 +20,119 @@ export const MobileNav: React.FC<MobileNavProps> = ({ currentPath, onNavigate, i
     onNavigate(path);
   };
 
+  useEffect(() => {
+    if (!isMoreOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const close = (event: KeyboardEvent) => { if (event.key === "Escape") setIsMoreOpen(false); };
+    document.addEventListener("keydown", close);
+    return () => {
+      document.body.style.overflow = previous;
+      document.removeEventListener("keydown", close);
+    };
+  }, [isMoreOpen]);
+
   return (
     <>
-      {/* Barra de Navegação Inferior Fixa com altura dinâmica que respeita safe-area */}
       <nav
-        className="app-mobile-nav md:hidden fixed bottom-0 left-0 right-0 z-40 pb-[env(safe-area-inset-bottom,0px)] bg-[#07090e]/95 backdrop-blur-3xl border-t border-white/[0.09] shadow-[0_-12px_40px_rgba(0,0,0,0.85)]"
+        className="app-mobile-nav lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-white/[0.08] bg-[#07090e]/96 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-2xl"
         aria-label="Navegação móvel"
       >
-        <div className="grid grid-cols-5 h-[3.85rem] w-full max-w-lg mx-auto items-center px-1">
+        <div className="mx-auto grid h-[3.9rem] w-full max-w-xl grid-cols-5 items-stretch px-1.5">
           {primaryItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentPath === item.path;
-
             return (
               <button
                 key={item.path}
                 id={`mobile-nav-${item.path.replace("/", "")}`}
                 onClick={() => onNavigate(item.path)}
-                className={`flex min-w-0 flex-col items-center justify-center h-full py-1 cursor-pointer transition-all relative ${
-                  isActive ? "text-white font-bold" : "text-neutral-400 hover:text-neutral-200"
+                className={`relative flex min-w-0 flex-col items-center justify-center gap-0.5 px-0.5 py-1 transition-colors ${
+                  isActive ? "text-white" : "text-neutral-500 hover:text-neutral-200"
                 }`}
                 aria-current={isActive ? "page" : undefined}
               >
-                <Icon className={`w-4 h-4 mb-0.5 transition-transform ${isActive ? "scale-110 text-white" : ""}`} />
-                <span className="max-w-full px-0.5 text-center text-[9px] font-semibold leading-tight tracking-tight">
+                <Icon strokeWidth={isActive ? 2 : 1.7} className="h-[18px] w-[18px] shrink-0" />
+                <span className="max-w-full truncate text-center text-[9px] font-medium leading-tight tracking-tight sm:text-[10px]">
                   {item.label}
                 </span>
-                {isActive && (
-                  <span className="w-1.5 h-1.5 bg-white rounded-full shadow-[0_0_8px_white] mt-0.5" />
-                )}
+                {isActive && <span className="absolute bottom-1 h-0.5 w-5 rounded-full bg-white/85" aria-hidden="true" />}
               </button>
             );
           })}
 
-          {/* Botão "Mais" */}
           <button
             type="button"
             onClick={() => setIsMoreOpen(true)}
-            className={`flex flex-col items-center justify-center h-full py-1 cursor-pointer transition-all relative ${
-              isMoreOpen || isSecondaryActive ? "text-white font-bold" : "text-neutral-400 hover:text-neutral-200"
+            className={`relative flex min-w-0 flex-col items-center justify-center gap-0.5 px-0.5 py-1 transition-colors ${
+              isMoreOpen || isSecondaryActive ? "text-white" : "text-neutral-500 hover:text-neutral-200"
             }`}
             aria-label="Mais opções de navegação"
             aria-expanded={isMoreOpen}
           >
-            <MoreHorizontal className={`w-4 h-4 mb-0.5 transition-transform ${isSecondaryActive ? "scale-110 text-blue-400" : ""}`} />
-            <span className="text-[10px] font-semibold tracking-tight">Mais</span>
-            {isSecondaryActive && (
-              <span className="w-1.5 h-1.5 bg-blue-400 rounded-full shadow-[0_0_8px_rgba(96,165,250,0.8)] mt-0.5" />
-            )}
+            <MoreHorizontal strokeWidth={1.8} className="h-[18px] w-[18px]" />
+            <span className="text-[9px] font-medium leading-tight sm:text-[10px]">Mais</span>
+            {(isMoreOpen || isSecondaryActive) && <span className="absolute bottom-1 h-0.5 w-5 rounded-full bg-white/85" aria-hidden="true" />}
           </button>
         </div>
       </nav>
 
-      {/* Gaveta Deslizante "Mais" (Sheet em Vidro Fosco Apple TV+) */}
       {isMoreOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex flex-col justify-end bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div
-            className="fixed inset-0"
-            onClick={() => setIsMoreOpen(false)}
-            aria-hidden="true"
-          />
-          <div className="relative bg-[#0c0f16]/98 backdrop-blur-3xl border-t border-white/12 rounded-t-3xl p-5 shadow-2xl z-10 max-h-[82vh] overflow-y-auto pb-[calc(2.5rem+env(safe-area-inset-bottom,0px))]">
-            <div className="flex items-center justify-between pb-3.5 border-b border-white/10 mb-3.5">
-              <span className="text-sm font-bold text-white tracking-tight">Navegação & Coleções</span>
+        <div className="lg:hidden fixed inset-0 z-50 flex items-end bg-black/65 backdrop-blur-sm" role="presentation">
+          <button className="absolute inset-0 cursor-default" onClick={() => setIsMoreOpen(false)} aria-label="Fechar menu" />
+          <section
+            className="relative z-10 w-full max-h-[78dvh] overflow-y-auto rounded-t-[1.6rem] border-t border-white/10 bg-[#0b0e14] px-4 pt-4 shadow-[0_-18px_50px_rgba(0,0,0,.55)] pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:px-6"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Mais opções de navegação"
+          >
+            <div className="mb-2 flex items-center justify-between border-b border-white/[0.08] pb-3">
+              <div>
+                <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-neutral-500">Biblioteca HQ</span>
+                <h2 className="mt-0.5 text-sm font-bold tracking-tight text-white">Mais opções</h2>
+              </div>
               <button
                 type="button"
                 onClick={() => setIsMoreOpen(false)}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-neutral-400 hover:text-white bg-white/5 hover:bg-white/10 transition-colors"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-neutral-400 transition-colors hover:bg-white/[0.06] hover:text-white"
                 aria-label="Fechar menu"
               >
-                <X className="w-4 h-4" />
+                <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="space-y-2">
+            <div className="divide-y divide-white/[0.06]">
               {secondaryItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = currentPath === item.path;
-
                 return (
                   <button
                     key={item.path}
                     onClick={() => handleSelect(item.path)}
-                    className={`w-full flex items-center justify-between p-3.5 rounded-2xl transition-all text-left cursor-pointer border ${
-                      isActive
-                        ? "bg-white/[0.12] text-white font-semibold border-white/20 shadow-md"
-                        : "bg-white/[0.04] hover:bg-white/[0.08] text-neutral-300 border-white/[0.06]"
+                    className={`flex w-full min-w-0 items-center gap-3 py-3.5 text-left transition-colors ${
+                      isActive ? "text-white" : "text-neutral-300 hover:text-white"
                     }`}
+                    aria-current={isActive ? "page" : undefined}
                   >
-                    <div className="flex items-center gap-3.5 min-w-0">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${isActive ? "bg-white text-black" : "bg-white/10 text-neutral-200"}`}>
-                        <Icon className="w-4 h-4" />
-                      </div>
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-xs font-bold text-white truncate">{item.label}</span>
-                        {item.description && <span className="text-[10.5px] text-neutral-400 truncate">{item.description}</span>}
-                      </div>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-neutral-500 shrink-0 ml-2" />
+                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                      isActive ? "bg-white/[0.10] text-white" : "text-neutral-500"
+                    }`}>
+                      <Icon strokeWidth={1.7} className="h-[17px] w-[17px]" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-xs font-semibold">{item.label}</span>
+                      {item.description && <span className="mt-0.5 block truncate text-[10.5px] text-neutral-500">{item.description}</span>}
+                    </span>
+                    {isActive ? (
+                      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-white/80" aria-label="Página atual" />
+                    ) : (
+                      <ChevronRight strokeWidth={1.6} className="h-4 w-4 shrink-0 text-neutral-600" />
+                    )}
                   </button>
                 );
               })}
             </div>
-          </div>
+          </section>
         </div>
       )}
     </>
