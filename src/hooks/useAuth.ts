@@ -20,6 +20,14 @@ export function useAuth() {
     let mounted = true;
     let currentUserId = "";
     const loadProfile = async (userId: string) => {
+      let cached: AccessProfile | null = null;
+      try { cached = JSON.parse(localStorage.getItem(`biblioteca-hq-profile:${userId}`) || "null"); } catch { /* ignore invalid cache */ }
+
+      if (!navigator.onLine) {
+        if (mounted) setProfile(cached);
+        return;
+      }
+
       let data: AccessProfile | null = null;
       let unavailable = false;
       try {
@@ -27,10 +35,9 @@ export function useAuth() {
         unavailable = !!result.error;
         data = result.data as AccessProfile | null;
       } catch { unavailable = true; }
+
       if (data) localStorage.setItem(`biblioteca-hq-profile:${userId}`, JSON.stringify(data));
-      let cached: AccessProfile | null = null;
-      if (!data && (unavailable || !navigator.onLine)) { try { cached = JSON.parse(localStorage.getItem(`biblioteca-hq-profile:${userId}`) || "null"); } catch { /* ignore invalid cache */ } }
-      if (mounted) setProfile((data as AccessProfile | null) || cached);
+      if (mounted) setProfile(data || (unavailable ? cached : null));
     };
 
     const initAuth = async () => {
