@@ -1,4 +1,4 @@
-import { saveSupabaseProgress } from "./supabaseLibrarySync";
+import { getSupabaseProgress, saveSupabaseProgress } from "./supabaseLibrarySync";
 type Entry = { page: number; total: number; updatedAt: string };
 const storageKey = (userId: string) => `biblioteca-hq-offline-progress:${userId}`;
 function load(userId: string): Record<string, Entry> { try { return JSON.parse(localStorage.getItem(storageKey(userId)) || "{}"); } catch { return {}; } }
@@ -19,7 +19,19 @@ async function syncEntry(userId: string, comicId: string) {
   const task = (async () => {
     while (navigator.onLine) {
       const entry = load(userId)[comicId];
-      if (!entry || !(await saveSupabaseProgress(comicId, entry.page, entry.total))) break;
+      if (!entry) break;
+
+      const remote = await getSupabaseProgress(comicId);
+      if (remote?.updatedAt && Date.parse(remote.updatedAt) > Date.parse(entry.updatedAt)) {
+        const entries = load(userId);
+        if (entries[comicId]?.updatedAt === entry.updatedAt) {
+          delete entries[comicId];
+          localStorage.setItem(storageKey(userId), JSON.stringify(entries));
+        }
+        break;
+      }
+
+      if (!(await saveSupabaseProgress(comicId, entry.page, entry.total))) break;
       const entries = load(userId);
       if (entries[comicId]?.updatedAt === entry.updatedAt && entries[comicId]?.page === entry.page && entries[comicId]?.total === entry.total) { delete entries[comicId]; localStorage.setItem(storageKey(userId), JSON.stringify(entries)); break; }
     }
