@@ -13,6 +13,7 @@ import { clearOffline, listOffline } from "../../services/offlineLibrary";
 import { supabase } from "../../services/supabaseClient";
 import { createRemoteArchiveSource } from "../../services/comicDownload";
 import { ReaderCompletion, ReaderDock, ReaderSettings, useReaderChrome, type NextIssue, type ReaderFit, type ReaderMode, type ReaderTexture } from "./ReaderChrome";
+import { saveCurrentUserPreferencePatch } from "../../services/userPreferences";
 
 GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
@@ -92,10 +93,10 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, pdfData
   const restoringPositionRef = useRef(resumePageRef.current > 1);
   const [zoom, setZoom] = useState(1);
   const [readerMode, setReaderMode] = useState<ReaderMode>(() => (localStorage.getItem("biblioteca_reader_mode") as ReaderMode) || "page");
-  const [readingDirection, setReadingDirection] = useState<"ltr" | "rtl">(comic.readingDirection || (comic.contentType === "manga" ? "rtl" : "ltr"));
+  const [readingDirection, setReadingDirection] = useState<"ltr" | "rtl">(() => { const pref = localStorage.getItem("biblioteca_reading_direction"); return pref === "ltr" || pref === "rtl" ? pref : comic.readingDirection || (comic.contentType === "manga" ? "rtl" : "ltr"); });
   const [brightness, setBrightness] = useState(100);
   const [texture, setTexture] = useState<ReaderTexture>("clean");
-  const [fitMode, setFitMode] = useState<ReaderFit>("height");
+  const [fitMode, setFitMode] = useState<ReaderFit>(() => (localStorage.getItem("biblioteca_reader_fit") as ReaderFit) || "height");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { controlsVisible, showControls, toggleControls } = useReaderChrome(isSettingsOpen);
@@ -469,7 +470,7 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, pdfData
         </button>
       </header>
 
-      {isSettingsOpen && <ReaderSettings mode={readerMode} onModeChange={setReaderMode} direction={readingDirection} onDirectionChange={setReadingDirection} brightness={brightness} onBrightnessChange={setBrightness} texture={texture} onTextureChange={setTexture}>
+      {isSettingsOpen && <ReaderSettings mode={readerMode} onModeChange={(mode) => { setReaderMode(mode); localStorage.setItem("biblioteca_reader_mode", mode); void saveCurrentUserPreferencePatch({ readerMode: mode }); }} direction={readingDirection} onDirectionChange={(direction) => { setReadingDirection(direction); localStorage.setItem("biblioteca_reading_direction", direction); void saveCurrentUserPreferencePatch({ readingDirection: direction }); }} brightness={brightness} onBrightnessChange={setBrightness} texture={texture} onTextureChange={setTexture}>
         {offlineStorage && <div className="reader-settings-group"><span>Offline · {offlineStorage.megabytes.toFixed(1)} MB usados</span><button type="button" className="reader-offline-action" onClick={async () => { if (!window.confirm("Remover todas as edições offline deste dispositivo?")) return; await clearOffline(offlineStorage.userId); setOfflineStorage({ ...offlineStorage, megabytes: 0 }); }}><Trash2 /> Liberar espaço offline</button></div>}
       </ReaderSettings>}
 
@@ -540,7 +541,7 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, pdfData
 
       {pdf && currentPage + (readerMode === "spread" && currentPage > 1 ? 1 : 0) >= totalPages && <ReaderCompletion nextIssue={nextIssue} onNextChapter={onNextChapter} />}
 
-      <ReaderDock page={currentPage} total={totalPages} onPageChange={(page) => setCurrentPage(readerMode === "spread" && page > 1 && page % 2 === 1 ? page - 1 : page)} onPrevious={readingDirection === "rtl" ? next : previous} onNext={readingDirection === "rtl" ? previous : next} previousDisabled={readingDirection === "rtl" ? currentPage >= totalPages || (readerMode === "spread" && currentPage > 1 && currentPage + 1 >= totalPages) : currentPage <= 1} nextDisabled={readingDirection === "rtl" ? currentPage <= 1 : currentPage >= totalPages || (readerMode === "spread" && currentPage > 1 && currentPage + 1 >= totalPages)} zoom={zoom} onZoomChange={changeZoom} fit={fitMode} onFitChange={(fit) => { setFitMode(fit); changeZoom(1); if (fit === "height" && readerMode === "continuous") setReaderMode("page"); }} />
+      <ReaderDock page={currentPage} total={totalPages} onPageChange={(page) => setCurrentPage(readerMode === "spread" && page > 1 && page % 2 === 1 ? page - 1 : page)} onPrevious={readingDirection === "rtl" ? next : previous} onNext={readingDirection === "rtl" ? previous : next} previousDisabled={readingDirection === "rtl" ? currentPage >= totalPages || (readerMode === "spread" && currentPage > 1 && currentPage + 1 >= totalPages) : currentPage <= 1} nextDisabled={readingDirection === "rtl" ? currentPage <= 1 : currentPage >= totalPages || (readerMode === "spread" && currentPage > 1 && currentPage + 1 >= totalPages)} zoom={zoom} onZoomChange={changeZoom} fit={fitMode} onFitChange={(fit) => { setFitMode(fit); localStorage.setItem("biblioteca_reader_fit", fit); void saveCurrentUserPreferencePatch({ readerFit: fit }); changeZoom(1); if (fit === "height" && readerMode === "continuous") setReaderMode("page"); }} />
     </div>
   );
 };
