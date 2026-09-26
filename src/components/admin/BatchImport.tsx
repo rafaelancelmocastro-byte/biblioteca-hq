@@ -40,6 +40,8 @@ const seriesPath = (item: Series, series: Series[]) => `${item.publisher} → ${
 const split = (value: string) => value.split(",").map((item) => item.trim()).filter(Boolean);
 const draftKey = (file: File) => `${file.name}:${file.size}:${file.lastModified}`;
 const DRAFT_STORAGE_KEY = "biblioteca-hq-batch-review-v1";
+const directlyRelatedSeries = (a: Series, b: Series) =>
+  a.id === b.id || a.parentSeriesId === b.id || b.parentSeriesId === a.id;
 function readSavedDrafts(): Record<string, Partial<Draft>> {
   try { return JSON.parse(localStorage.getItem(DRAFT_STORAGE_KEY) || "{}"); } catch { return {}; }
 }
@@ -73,7 +75,8 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, newlyCreat
   const [sharedMessage, setSharedMessage] = useState("");
   useEffect(() => {
     if (!newlyCreatedSeriesId || !series.some((item) => item.id === newlyCreatedSeriesId)) return;
-    setDrafts((current) => current.map((draft) => draft.seriesId || draft.status === "published" ? draft : { ...draft, seriesId: newlyCreatedSeriesId }));
+    setSharedValues((current) => ({ ...current, seriesId: newlyCreatedSeriesId }));
+    setSharedMessage("Novo agrupamento criado. Ele foi preparado no campo comum, mas nenhum arquivo foi movido automaticamente. Revise e aplique apenas aos itens corretos.");
   }, [newlyCreatedSeriesId, series]);
   const discard = () => { localStorage.removeItem(DRAFT_STORAGE_KEY); savedDrafts.current = {}; onClear(); };
   useEffect(() => {
@@ -170,7 +173,14 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, newlyCreat
       let contentType = draft.contentType;
       let readingDirection = draft.readingDirection;
       for (const field of selected) {
-        if (field === "seriesId") seriesId = sharedValues.seriesId;
+        if (field === "seriesId") {
+          const target = series.find((item) => item.id === sharedValues.seriesId);
+          const suggestion = suggestIssueSeries(draft.file.name, meta.title, series);
+          if (target && suggestion && !directlyRelatedSeries(target, suggestion)) {
+            return { ...draft, status: "incomplete", message: `Não apliquei “${target.title}” porque este arquivo corresponde melhor a “${suggestion.title}”. Revise a coleção individualmente.` };
+          }
+          seriesId = sharedValues.seriesId;
+        }
         else if (field === "contentType") contentType = sharedValues.contentType as Draft["contentType"];
         else if (field === "readingDirection") readingDirection = sharedValues.readingDirection as Draft["readingDirection"];
         else meta[field] = sharedValues[field];
@@ -200,6 +210,14 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, newlyCreat
       const chosen = series.find((item) => item.id === draft.seriesId);
       if (!meta || !chosen || !meta.title.trim() || !/^\d+$/.test(meta.issueNumber.trim()) || !Number(meta.year) || !Number(meta.totalPages)) {
         update(index, { status: "incomplete", message: "Complete título, edição, ano, páginas e coleção antes de publicar." });
+        return;
+      }
+      const suggestedSeries = suggestIssueSeries(draft.file.name, meta.title, series);
+      if (suggestedSeries && !directlyRelatedSeries(chosen, suggestedSeries)) {
+        update(index, {
+          status: "incomplete",
+          message: `Publicação bloqueada: “${draft.file.name}” corresponde melhor a “${suggestedSeries.title}” do que a “${chosen.title}”. Revise a coleção antes de publicar.`,
+        });
         return;
       }
       if (!chosen.parentSeriesId && isPhaseTitle(`${meta.title} ${draft.file.name}`) && series.some((item) => item.parentSeriesId === chosen.id && item.bannerTone === "phase")) {
