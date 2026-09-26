@@ -23,6 +23,7 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
 };
 
 const key = (userId: string) => `biblioteca-hq-preferences:${userId}`;
+const pendingKey = (userId: string) => `biblioteca-hq-preferences-pending:${userId}`;
 
 function normalize(raw?: Partial<UserPreferences> | null): UserPreferences {
   return { ...DEFAULT_USER_PREFERENCES, ...(raw || {}), theme: "dark" };
@@ -85,6 +86,11 @@ export async function loadUserPreferences(userId: string): Promise<UserPreferenc
   if (!supabase || !userId || !navigator.onLine) return cached;
 
   try {
+    if (localStorage.getItem(pendingKey(userId)) === "true") {
+      const { error } = await supabase.from("user_preferences").upsert(toRow(userId, cached), { onConflict: "user_id" });
+      if (!error) localStorage.removeItem(pendingKey(userId));
+      return cached;
+    }
     const { data, error } = await supabase
       .from("user_preferences")
       .select("reader_mode,reader_fit,reading_direction,home_section,confirm_mobile_downloads,reduce_motion,reduce_transparency,theme")
@@ -106,14 +112,18 @@ export async function saveUserPreferences(userId: string, value: UserPreferences
   writeCachedUserPreferences(userId, normalized);
   applyUserPreferences(normalized);
 
-  if (!supabase || !userId || !navigator.onLine) return normalized;
+  if (!supabase || !userId || !navigator.onLine) {
+    if (userId) localStorage.setItem(pendingKey(userId), "true");
+    return normalized;
+  }
   try {
     const { error } = await supabase
       .from("user_preferences")
       .upsert(toRow(userId, normalized), { onConflict: "user_id" });
     if (error) throw error;
+    localStorage.removeItem(pendingKey(userId));
   } catch {
-    // The cached value remains active and can be saved again later.
+    localStorage.setItem(pendingKey(userId), "true");
   }
   return normalized;
 }
@@ -123,4 +133,12 @@ export async function saveCurrentUserPreferencePatch(patch: Partial<UserPreferen
   if (!userId) return;
   const current = readCachedUserPreferences(userId);
   await saveUserPreferences(userId, { ...current, ...patch, theme: "dark" });
+}
+
+
+export async function shouldConfirmCellularDownload(userId: string): Promise<boolean> {
+  const prefs = readCachedUserPreferences(userId);
+  if (!prefs.confirmMobileDownloads) return false;
+  const connection = (navigator as Navigator & { connection?: { type?: string; saveData?: boolean } }).connection;
+  return connection?.type === "cellular" || connection?.saveData === true;
 }
