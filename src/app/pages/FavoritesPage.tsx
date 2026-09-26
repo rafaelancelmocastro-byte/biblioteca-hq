@@ -1,11 +1,10 @@
-import React, { useState } from "react";
-import { Heart, Sparkles } from "lucide-react";
-import { Comic } from "../../types/comic";
+import React, { useMemo, useState } from "react";
+import { Heart, LibraryBig } from "lucide-react";
+import type { Comic } from "../../types/comic";
 import { useLibrary } from "../../hooks/useLibrary";
 import { ComicCard } from "../../components/library/ComicCard";
 import { ComicDetailModal } from "../../components/library/ComicDetailModal";
 import { ProgressUpdateModal } from "../../components/library/ProgressUpdateModal";
-import { Button } from "../../components/ui/Button";
 
 interface FavoritesPageProps {
   onOpenReader: (comicId: string) => void;
@@ -18,77 +17,181 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
   onNavigateToLibrary,
   onNavigateToSeries,
 }) => {
-  const { allComics, seriesList, favoriteSeriesIds, toggleFavorite, toggleSeriesFavorite, updateProgress, setStatus, gridDensity } = useLibrary();
+  const {
+    allComics,
+    seriesList,
+    favoriteSeriesIds,
+    toggleFavorite,
+    toggleSeriesFavorite,
+    updateProgress,
+    setStatus,
+    isLoading,
+  } = useLibrary();
+
   const [selectedComic, setSelectedComic] = useState<Comic | null>(null);
   const [comicForProgress, setComicForProgress] = useState<Comic | null>(null);
   const [favoriteError, setFavoriteError] = useState("");
 
-  const favoriteComics = allComics.filter((c) => c.isFavorite);
-  const favoriteGroups = seriesList.filter((series) => favoriteSeriesIds.has(series.id));
+  const favoriteComics = useMemo(() => allComics.filter((comic) => comic.isFavorite), [allComics]);
+  const favoriteGroups = useMemo(
+    () => seriesList.filter((series) => favoriteSeriesIds.has(series.id)),
+    [favoriteSeriesIds, seriesList]
+  );
+
+  const groupCover = (id: string) =>
+    allComics.find(
+      (comic) =>
+        comic.seriesId === id ||
+        seriesList.some((child) => child.id === comic.seriesId && child.parentSeriesId === id)
+    )?.coverUrl;
+
+  const removeGroup = (id: string) => {
+    setFavoriteError("");
+    void toggleSeriesFavorite(id).catch(() =>
+      setFavoriteError("Não foi possível remover o favorito. Tente novamente.")
+    );
+  };
 
   return (
-    <div className="streaming-page favorites-page space-y-8">
-      {/* Cabeçalho */}
-      <div className="page-spotlight flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-rose-400 mb-1">
-            <Heart className="w-5 h-5 fill-rose-500" />
-            <span className="text-xs font-bold uppercase tracking-wider">Sua seleção</span>
+    <div className="streaming-page favorites-page space-y-10 sm:space-y-12">
+      <header className="px-1 pt-1">
+        <span className="block text-[11px] font-bold uppercase tracking-[0.14em] text-neutral-400">Sua coleção</span>
+        <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">Favoritos</h1>
+            <p className="mt-1 max-w-2xl text-xs leading-relaxed text-neutral-400 sm:text-sm">
+              HQs, coleções e sagas que você marcou para encontrar de novo com facilidade.
+            </p>
           </div>
-          <h1 className="text-2xl font-black text-white tracking-tight">Seus favoritos</h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            HQs, coleções e sagas que você escolheu acompanhar
-          </p>
+          {!isLoading && (
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-400">
+              <span><strong className="font-semibold text-white">{favoriteComics.length}</strong> HQs</span>
+              <span><strong className="font-semibold text-white">{favoriteGroups.length}</strong> coleções e sagas</span>
+            </div>
+          )}
         </div>
+      </header>
 
-        <div className="px-4 py-2 rounded-xl bg-[#141824] border border-slate-700/80">
-          <span className="text-[10px] text-slate-400 font-semibold block uppercase">Total Marcado</span>
-          <span className="text-lg font-black text-rose-400 tabular-nums">
-            {favoriteComics.length + favoriteGroups.length}
-          </span>
-        </div>
-      </div>
-
-      {favoriteError && <p role="alert" className="text-rose-400">{favoriteError}</p>}
-
-      {/* Grid de Favoritos */}
-      {favoriteGroups.length > 0 && <section aria-label="Coleções e sagas favoritas"><h2 className="streaming-heading mb-4">Coleções e sagas</h2><div className="favorite-groups-grid">{favoriteGroups.map((series) => {
-        const cover = allComics.find((comic) => comic.seriesId === series.id || seriesList.some((child) => child.id === comic.seriesId && child.parentSeriesId === series.id))?.coverUrl;
-        return <article className="favorite-group-card" key={series.id}><button type="button" onClick={() => onNavigateToSeries(series.id)} aria-label={`Abrir ${series.title}`}>{cover && <img src={cover} alt="" loading="lazy" />}<div><small>{series.publisher} · {series.bannerTone === "saga" ? "Saga" : series.bannerTone === "phase" ? "Fase" : series.bannerTone === "one_shot" ? "Obra fechada" : "Coleção"}</small><strong>{series.title}</strong><span>Explorar edições</span></div></button><button type="button" className="favorite-group-remove" onClick={() => { setFavoriteError(""); void toggleSeriesFavorite(series.id).catch(() => setFavoriteError("Não foi possível remover o favorito. Tente novamente.")); }} aria-label={`Remover ${series.title} dos favoritos`}><Heart className="w-4 h-4 fill-current" /> Remover</button></article>;
-      })}</div></section>}
-      {favoriteComics.length === 0 && favoriteGroups.length === 0 ? (
-        <div className="py-16 px-4 text-center bg-[#131722]/50 border border-[#1e2535] rounded-2xl">
-          <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
-            <Heart className="w-7 h-7" />
-          </div>
-          <h3 className="text-base font-bold text-white mb-1">Nenhum favorito selecionado</h3>
-          <p className="text-xs sm:text-sm text-slate-400 max-w-sm mx-auto mb-6">
-            Toque no coração de uma HQ, coleção ou saga para guardá-la aqui.
-          </p>
-          <Button variant="primary" onClick={onNavigateToLibrary}>
-            <Sparkles className="w-4 h-4 mr-2" />
-            Explorar Biblioteca
-          </Button>
-        </div>
-      ) : favoriteComics.length > 0 && (
-        <section><h2 className="streaming-heading mb-4">HQs favoritas</h2><div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5 sm:gap-5">
-          {favoriteComics.map((comic) => (
-            <ComicCard
-              key={comic.id}
-              comic={comic}
-              onOpenReader={onOpenReader}
-              onToggleFavorite={toggleFavorite}
-              onOpenDetails={(c) => setSelectedComic(c)}
-              onOpenProgressModal={(c) => setComicForProgress(c)}
-              onMarkCompleted={(id, total) => setStatus(id, "completed", total)}
-              onResetProgress={(id) => setStatus(id, "not_started", 10)}
-              density={gridDensity}
-            />
-          ))}
-        </div></section>
+      {favoriteError && (
+        <p role="alert" className="rounded-xl border border-rose-400/15 bg-rose-400/[0.06] px-3 py-2 text-xs text-rose-300">
+          {favoriteError}
+        </p>
       )}
 
-      {/* Modais */}
+      {isLoading ? (
+        <div className="empty-collection-kind" role="status">Carregando favoritos...</div>
+      ) : favoriteComics.length === 0 && favoriteGroups.length === 0 ? (
+        <div className="empty-collection-kind">
+          <Heart />
+          <h2>Nenhum favorito ainda</h2>
+          <p>Marque HQs, coleções ou sagas para reunir suas escolhas nesta página.</p>
+          <button
+            type="button"
+            className="catalog-primary-action mt-4"
+            onClick={onNavigateToLibrary}
+          >
+            <LibraryBig className="h-4 w-4" /> Explorar Biblioteca
+          </button>
+        </div>
+      ) : (
+        <>
+          {favoriteGroups.length > 0 && (
+            <section className="space-y-4" aria-labelledby="favorite-groups-title">
+              <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-white/[0.08] pb-3">
+                <div>
+                  <h2 id="favorite-groups-title" className="text-xl font-bold tracking-tight text-white">
+                    Coleções e sagas
+                  </h2>
+                  <p className="mt-0.5 text-xs text-neutral-400">Acesse rapidamente os universos que você acompanha.</p>
+                </div>
+                <span className="text-xs text-neutral-500">{favoriteGroups.length}</span>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {favoriteGroups.map((series) => {
+                  const cover = groupCover(series.id);
+                  const kind =
+                    series.bannerTone === "saga"
+                      ? "Saga"
+                      : series.bannerTone === "phase"
+                      ? "Fase"
+                      : series.bannerTone === "one_shot"
+                      ? "Obra fechada"
+                      : "Coleção";
+
+                  return (
+                    <article
+                      key={series.id}
+                      className="grid min-w-0 grid-cols-[4.75rem_minmax(0,1fr)] gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.025] p-3 transition-colors hover:bg-white/[0.045] sm:grid-cols-[5.5rem_minmax(0,1fr)] sm:p-4"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => onNavigateToSeries(series.id)}
+                        className="overflow-hidden rounded-lg bg-neutral-900 shadow-md"
+                        aria-label={`Abrir ${series.title}`}
+                      >
+                        <div className="aspect-[2/3]">
+                          {cover ? <img src={cover} alt="" className="h-full w-full object-cover" loading="lazy" /> : null}
+                        </div>
+                      </button>
+
+                      <div className="flex min-w-0 flex-col justify-between gap-3">
+                        <button type="button" onClick={() => onNavigateToSeries(series.id)} className="min-w-0 text-left">
+                          <span className="block truncate text-[10px] font-semibold uppercase tracking-wide text-neutral-500">
+                            {series.publisher} · {kind}
+                          </span>
+                          <strong className="mt-1 line-clamp-2 block text-sm font-semibold leading-snug text-white sm:text-base">
+                            {series.title}
+                          </strong>
+                          <span className="mt-1 block text-[11px] text-neutral-400">Explorar edições</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => removeGroup(series.id)}
+                          className="inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-3 text-[11px] font-medium text-neutral-300 transition-colors hover:bg-white/[0.06] sm:w-fit"
+                          aria-label={`Remover ${series.title} dos favoritos`}
+                        >
+                          <Heart className="h-3.5 w-3.5 fill-current" /> Remover
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {favoriteComics.length > 0 && (
+            <section className="space-y-4" aria-labelledby="favorite-comics-title">
+              <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-white/[0.08] pb-3">
+                <div>
+                  <h2 id="favorite-comics-title" className="text-xl font-bold tracking-tight text-white">HQs favoritas</h2>
+                  <p className="mt-0.5 text-xs text-neutral-400">Edições que você marcou individualmente.</p>
+                </div>
+                <span className="text-xs text-neutral-500">{favoriteComics.length}</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-6">
+                {favoriteComics.map((comic) => (
+                  <ComicCard
+                    key={comic.id}
+                    comic={comic}
+                    density="compact"
+                    onOpenReader={onOpenReader}
+                    onToggleFavorite={toggleFavorite}
+                    onOpenDetails={setSelectedComic}
+                    onOpenProgressModal={setComicForProgress}
+                    onMarkCompleted={(id, total) => setStatus(id, "completed", total)}
+                    onResetProgress={(id) => setStatus(id, "not_started", 10)}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+        </>
+      )}
+
       <ComicDetailModal
         comic={selectedComic}
         isOpen={selectedComic !== null}
@@ -108,7 +211,6 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
           setSelectedComic(null);
         }}
       />
-
       <ProgressUpdateModal
         comic={comicForProgress}
         isOpen={comicForProgress !== null}
