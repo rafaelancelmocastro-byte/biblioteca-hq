@@ -5,7 +5,8 @@ import { localProgressRepository } from "../services/localProgressRepository";
 import { getCoverUrls, getSupabaseCatalog, invalidateCatalogCache } from "../services/supabaseCatalogRepository";
 import { getLocalStorageItem, setLocalStorageItem } from "../lib/utils";
 import { matchesComicSearch } from "../lib/librarySearch";
-import { applyQueuedProgress } from "../services/offlineProgress";
+import { applyQueuedProgress, saveReadingProgress } from "../services/offlineProgress";
+import { getRememberedOfflineUser } from "../services/offlineIdentity";
 import { supabase } from "../services/supabaseClient";
 import {
   applySupabaseLibraryState,
@@ -126,8 +127,12 @@ export function useLibrary(initialFilters: LibraryFilters = DEFAULT_FILTERS) {
 
   const updateProgress = useCallback(
     async (comicId: string, currentPage: number, totalPages: number) => {
-      const savedRemotely = await saveSupabaseProgress(comicId, currentPage, totalPages);
-      if (!savedRemotely) await localProgressRepository.saveProgress(comicId, currentPage, totalPages);
+      const sessionUserId = (await supabase?.auth.getSession())?.data.session?.user.id || getRememberedOfflineUser();
+      if (sessionUserId) await saveReadingProgress(sessionUserId, comicId, currentPage, totalPages);
+      else {
+        const savedRemotely = await saveSupabaseProgress(comicId, currentPage, totalPages);
+        if (!savedRemotely) await localProgressRepository.saveProgress(comicId, currentPage, totalPages);
+      }
       const now = new Date().toISOString();
       setAllComics((current) => current.map((comic) => comic.id === comicId ? { ...comic, progress: { comicId, currentPage, totalPages, percentage: Math.round(currentPage / Math.max(totalPages, 1) * 100), status: currentPage >= totalPages ? "completed" : "reading", lastReadAt: now, updatedAt: now } } : comic));
     },
@@ -137,8 +142,14 @@ export function useLibrary(initialFilters: LibraryFilters = DEFAULT_FILTERS) {
   const setStatus = useCallback(
     async (comicId: string, status: ComicStatus, totalPages: number) => {
       const currentPage = allComics.find((comic) => comic.id === comicId)?.progress?.currentPage;
-      const savedRemotely = await setSupabaseProgressStatus(comicId, status, totalPages, currentPage);
-      if (!savedRemotely) await localProgressRepository.updateStatus(comicId, status, totalPages);
+      const targetPage =
+        status === "completed" ? totalPages : status === "not_started" ? 0 : Math.max(1, Math.min(currentPage || 1, totalPages - 1));
+      const sessionUserId = (await supabase?.auth.getSession())?.data.session?.user.id || getRememberedOfflineUser();
+      if (sessionUserId) await saveReadingProgress(sessionUserId, comicId, targetPage, totalPages);
+      else {
+        const savedRemotely = await setSupabaseProgressStatus(comicId, status, totalPages, currentPage);
+        if (!savedRemotely) await localProgressRepository.updateStatus(comicId, status, totalPages);
+      }
       const now = new Date().toISOString();
       setAllComics((current) => current.map((comic) => comic.id === comicId ? { ...comic, progress: { comicId, currentPage: status === "completed" ? totalPages : status === "not_started" ? 0 : currentPage || 1, totalPages, percentage: status === "completed" ? 100 : status === "not_started" ? 0 : Math.round((currentPage || 1) / Math.max(totalPages, 1) * 100), status, lastReadAt: now, updatedAt: now } } : comic));
     },
