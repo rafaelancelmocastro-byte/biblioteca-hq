@@ -20,7 +20,7 @@ import { isPhaseTitle, suggestIssueSeries, suggestParentSeries } from "../../ser
 import { runLimited } from "../../services/runLimited";
 import { getComicReadUrl } from "../../services/comicRead";
 
-type Tab = "overview" | "catalog" | "import" | "collections" | "publishers" | "users" | "payments" | "status";
+type Tab = "overview" | "catalog" | "import" | "edit" | "collections" | "publishers" | "users" | "payments" | "status";
 const splitList = (value: string) => value.split(",").map((item) => item.trim()).filter(Boolean);
 const mergeFiles = (files: File[]) => [...new Map(files.map((file) => [`${file.name}:${file.size}:${file.lastModified}`, file])).values()];
 const seriesPath = (series: Series, all: Series[]) => `${series.publisher} → ${series.parentSeriesId ? `${all.find((item) => item.id === series.parentSeriesId)?.title || "Coleção"} → ` : ""}${series.title}`;
@@ -81,15 +81,15 @@ export const AdminPage: React.FC = () => {
     return () => { active = false; };
   }, []);
   useEffect(() => {
-    if (!draftHydrated || !draftUserId) return;
+    if (!draftHydrated || !draftUserId || tab !== "import" || editing) return;
     const draft = pdf || batchPdfs.length || cover || batchCovers.length ? { pdf, batchPdfs, cover, batchCovers, form, savedAt: Date.now() } : null;
     let active = true;
     setDraftSaveState(draft ? "saving" : "idle");
     void savePendingImport(draftUserId, draft).then(() => { if (active && draft) setDraftSaveState("saved"); }).catch(() => { if (active) { setDraftSaveState("error"); feedback("O dispositivo não conseguiu guardar a fila localmente. Mantenha esta tela aberta até publicar.", "error"); } });
     if (!draft) localStorage.removeItem(`biblioteca-hq-import-form:${draftUserId}`);
     return () => { active = false; };
-  }, [draftHydrated, draftUserId, pdf, batchPdfs, cover, batchCovers]);
-  useEffect(() => { if (draftUserId && (pdf || batchPdfs.length)) localStorage.setItem(`biblioteca-hq-import-form:${draftUserId}`, JSON.stringify(form)); }, [draftUserId, form, pdf, batchPdfs.length]);
+  }, [draftHydrated, draftUserId, tab, editing, pdf, batchPdfs, cover, batchCovers, form]);
+  useEffect(() => { if (tab === "import" && !editing && draftUserId && (pdf || batchPdfs.length)) localStorage.setItem(`biblioteca-hq-import-form:${draftUserId}`, JSON.stringify(form)); }, [tab, editing, draftUserId, form, pdf, batchPdfs.length]);
   const [seriesForm, setSeriesForm] = useState({ id: "", kind: "collection", parentSeriesId: "", title: "", publisher: "", startYear: "", endYear: "", expected: "", description: "", coverKey: "" });
   const [publisherNames, setPublisherNames] = useState<string[]>([]);
   const refreshPublisherNames = async () => { if (!supabase) return; const { data } = await supabase.from("publisher_assets").select("publisher"); setPublisherNames((data || []).map((item) => item.publisher)); };
@@ -174,11 +174,13 @@ export const AdminPage: React.FC = () => {
   const adminSearchResults = useMemo(() => { const q = adminSearch.trim().toLocaleLowerCase("pt-BR"); if (q.length < 2) return { comics: [] as Comic[], series: [] as Series[], publishers: [] as string[] }; const comics = allComics.filter((comic) => [comic.title, comic.seriesTitle, comic.publisher, comic.fileName, ...comic.writers, ...comic.characters].join(" ").toLocaleLowerCase("pt-BR").includes(q)).slice(0, 6); const series = seriesList.filter((item) => seriesPath(item, seriesList).toLocaleLowerCase("pt-BR").includes(q)).slice(0, 6); const publishers = [...new Set(seriesList.map((item) => item.publisher))].filter((publisher) => publisher.toLocaleLowerCase("pt-BR").includes(q)).slice(0, 6); return { comics, series, publishers }; }, [adminSearch, allComics, seriesList]);
   const totalPages = useMemo(() => allComics.reduce((sum, item) => sum + item.totalPages, 0), [allComics]);
   const resetComicForm = () => {
+    const wasEditing = Boolean(editing);
     setEditing(null); setPdf(null); setCover(null); setCoverThumbnail(null); setPdfHash(undefined); setNotice(""); setApplyToCollection(false);
     setForm({ title: "", seriesId: "", issue: "", year: "", pages: "", synopsis: "", writers: "", pencillers: "", colorists: "", tags: "", characters: "", volume: "", contentType: "comic", readingDirection: "ltr" });
+    if (wasEditing) setTab("catalog");
   };
   const startEditing = (comic: Comic) => {
-    setTab("import");
+    setTab("edit");
     setEditing(comic); setPdf(null); setCover(null); setCoverThumbnail(null); setPdfHash(undefined); setNotice(""); setApplyToCollection(false);
     setForm({ title: comic.title, seriesId: comic.seriesId, issue: String(comic.issueNumber), year: String(comic.year), pages: String(comic.totalPages), synopsis: comic.synopsis, writers: comic.writers.join(", "), pencillers: comic.pencillers.join(", "), colorists: (comic.colorists || []).join(", "), tags: comic.tags.join(", "), characters: comic.characters.join(", "), volume: comic.volume ? String(comic.volume) : "", contentType: comic.contentType || "comic", readingDirection: comic.readingDirection || "ltr" });
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -385,11 +387,11 @@ export const AdminPage: React.FC = () => {
     {notice && <div className="studio-notice"><CheckCircle2 /> {notice}</div>}
     {toast && <div className={`admin-toast ${toast.type}`} role={toast.type === "error" ? "alert" : "status"}>{toast.type === "error" ? <AlertCircle /> : <CheckCircle2 />}<span>{toast.message}</span><button type="button" aria-label="Fechar aviso" onClick={() => setToast(null)}><X /></button></div>}
     {tab === "overview" && <section className="admin-overview-grid"><button onClick={() => setTab("catalog")}><span>Publicações</span><strong>{allComics.length}</strong><small>Buscar, filtrar e editar o catálogo.</small></button><button onClick={() => { setManagerIssue("missing_cover"); setTab("catalog"); }}><span>Sem capa</span><strong>{missingCoverCount}</strong><small>Publicações que precisam de arte.</small></button><button onClick={() => { setManagerIssue("missing_synopsis"); setTab("catalog"); }}><span>Sem sinopse</span><strong>{missingSynopsisCount}</strong><small>Metadados editoriais incompletos.</small></button><button onClick={() => { setManagerIssue("storage_error"); setTab("catalog"); }}><span>Erro de arquivo</span><strong>{storageErrorCount}</strong><small>Itens com falha de armazenamento.</small></button><button onClick={() => setTab("collections")}><span>Coleções & sagas</span><strong>{seriesList.length}</strong><small>Organização editorial do acervo.</small></button><button onClick={() => setTab("import")}><span>Importar</span><strong>+</strong><small>Adicionar HQs e livros ao catálogo.</small></button></section>}
-    {(tab === "catalog" || tab === "import") && <div className="studio-grid">
+    {(tab === "catalog" || tab === "import" || tab === "edit") && <div className="studio-grid">
       {tab === "import" && <>
       <ImportOrganization series={seriesList} onFeedback={feedback} onCreated={async (id) => { await reloadData(true); setForm((current) => ({ ...current, seriesId: id })); setNewImportSeriesId(id); }} />
       {batchPdfs.length > 0 && <BatchImport files={batchPdfs} covers={batchCovers} series={seriesList} newlyCreatedSeriesId={newImportSeriesId} existingComics={allComics} onComplete={() => reloadData(true)} onClear={() => { setBatchPdfs([]); setBatchCovers([]); }} onFeedback={feedback} />}
-      <form className="studio-panel comic-editor" onSubmit={submitComic}>
+      {(tab === "import" || tab === "edit") && <form className="studio-panel comic-editor" onSubmit={submitComic}>
         <div className="studio-panel-title"><div><span>{editing ? "Editando edição" : "Nova publicação"}</span><h2>{editing?.title || "Cadastrar HQ ou livro"}</h2></div>{editing && <button type="button" onClick={resetComicForm} aria-label="Cancelar edição"><X /></button>}</div>
         <div className="form-grid">
           <label className="span-2">Título{batchPdfs.length > 0 && <small>Gerado pelo nome de cada arquivo na publicação em lote</small>}<input className={fieldClass} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required={batchPdfs.length === 0} disabled={batchPdfs.length > 0} /></label>
@@ -418,8 +420,8 @@ export const AdminPage: React.FC = () => {
         {mobilePdfPicker && <p className="mobile-upload-help">A seleção abre em uma tela leve e volta para esta fila. Você também pode abrir o arquivo em Arquivos e usar Compartilhar → Biblioteca HQ.</p>}
         {(pdf || batchPdfs.length > 0) && <button type="button" className="upload-clear" onClick={() => { setPdf(null); setBatchPdfs([]); setNotice("Seleção de arquivos limpa."); }}>Limpar arquivos selecionados</button>}
         {pdf && !editing && <button type="button" onClick={() => { setBatchPdfs([pdf]); setPdf(null); }}>Revisar como lote (opções para duplicados)</button>}
-        {batchPdfs.length === 0 && <button className="studio-primary" disabled={busy}><UploadCloud /> {busy ? "Publicando..." : editing ? "Salvar alterações" : "Cadastrar e publicar"}</button>}
-      </form>
+        {(tab === "edit" || batchPdfs.length === 0) && <button className="studio-primary" disabled={busy}><UploadCloud /> {busy ? "Publicando..." : editing ? "Salvar alterações" : "Cadastrar e publicar"}</button>}
+      </form>}
       </>}
       {tab === "catalog" && <section className="studio-panel catalog-manager">
         <div className="studio-panel-title"><div><span>Biblioteca publicada</span><h2>Gerenciar edições</h2></div><strong>{managedComics.length} / {allComics.length}</strong></div>
