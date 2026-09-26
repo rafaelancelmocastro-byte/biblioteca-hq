@@ -4,7 +4,7 @@ export type AppRoute =
   | { path: "/biblioteca" } | { path: "/continuar" } | { path: "/series" }
   | { path: "/guia" } | { path: "/multiverso" } | { path: "/lancamentos" }
   | { path: "/offline" } | { path: "/pagamento" } | { path: "/favoritos" }
-  | { path: "/admin" } | { path: "/configuracoes" } | { path: "/login" }
+  | { path: "/admin" } | { path: "/configuracoes" } | { path: "/preferencias" } | { path: "/login" }
   | { path: "/redefinir-senha" } | { path: "/ler"; comicId: string };
 
 type NavigationState = { appNavigation?: true; scrollY?: number; readerDepth?: number };
@@ -12,7 +12,7 @@ type NavigationState = { appNavigation?: true; scrollY?: number; readerDepth?: n
 function parsePath(pathname: string): { route: string; comicId?: string } {
   if (pathname === "/" || pathname === "") return { route: "/biblioteca" };
   if (pathname.startsWith("/ler/")) return { route: "/ler", comicId: pathname.slice(5) };
-  const validRoutes = ["/biblioteca", "/continuar", "/series", "/guia", "/multiverso", "/lancamentos", "/offline", "/pagamento", "/favoritos", "/admin", "/configuracoes", "/login", "/redefinir-senha"];
+  const validRoutes = ["/biblioteca", "/continuar", "/series", "/guia", "/multiverso", "/lancamentos", "/offline", "/pagamento", "/favoritos", "/preferencias", "/admin", "/configuracoes", "/login", "/redefinir-senha"];
   return { route: validRoutes.includes(pathname) ? pathname : "/biblioteca" };
 }
 
