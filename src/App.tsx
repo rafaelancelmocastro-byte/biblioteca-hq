@@ -53,6 +53,7 @@ export default function App() {
     const sync = () => {
       void flushReadingProgress(userId);
       void syncLocalOfflineLibrary(userId);
+      void loadUserPreferences(userId);
     };
     window.addEventListener("online", sync);
     sync();
