@@ -96,6 +96,32 @@ export async function toggleSupabaseSeriesFavorite(seriesId: string, isFavorite:
   return true;
 }
 
+
+export async function getSupabaseProgress(comicId: string): Promise<ReadingProgress | null> {
+  try {
+    const userId = (await supabase?.auth.getSession())?.data.session?.user.id;
+    if (!supabase || !userId) return null;
+    const { data, error } = await supabase
+      .from("reading_progress")
+      .select("current_page,total_pages,percentage,status,last_read_at,updated_at")
+      .eq("user_id", userId)
+      .eq("comic_id", comicId)
+      .maybeSingle();
+    if (error || !data) return null;
+    return {
+      comicId,
+      currentPage: data.current_page,
+      totalPages: data.total_pages,
+      percentage: Number(data.percentage),
+      status: data.status,
+      lastReadAt: data.last_read_at ?? "",
+      updatedAt: data.updated_at ?? "",
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function saveSupabaseProgress(
   comicId: string,
   currentPage: number,
