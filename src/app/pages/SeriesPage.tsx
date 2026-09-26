@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Heart, Layers, Search, Sparkles, Filter, CheckCircle2, ChevronRight, BookOpen } from "lucide-react";
+import { ArrowLeft, Heart, Search } from "lucide-react";
 import { useLibrary } from "../../hooks/useLibrary";
 import type { Comic } from "../../types/comic";
 import { CoverFlow } from "../../components/library/CoverFlow";
@@ -267,7 +267,7 @@ export const SeriesPage: React.FC<{ onOpenReader: (id: string) => void }> = ({ o
     series && (
       <button
         type="button"
-        className={`h-10 sm:h-11 px-4 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 border transition-all cursor-pointer whitespace-nowrap active:scale-[0.98] ${
+        className={`min-h-10 sm:min-h-11 w-full sm:w-auto px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold text-center leading-tight flex items-center justify-center gap-2 border transition-all cursor-pointer active:scale-[0.98] ${
           favoriteSeriesIds.has(series.id)
             ? "bg-rose-500/20 text-rose-300 border-rose-500/40 shadow-sm"
             : "bg-white/[0.06] hover:bg-white/[0.12] text-neutral-200 border-white/10 hover:border-white/20"
@@ -307,13 +307,12 @@ export const SeriesPage: React.FC<{ onOpenReader: (id: string) => void }> = ({ o
 
   return (
     <div className="streaming-page series-page space-y-6 sm:space-y-8">
-      {/* Header Spotlight padronizado com a Biblioteca */}
-      <header className="page-spotlight">
-        <span className="page-kicker">
-          <Layers className="w-3.5 h-3.5" /> Universos do acervo
-        </span>
-        <h1>Coleções e sagas</h1>
-        <p>Escolha uma editora, encontre uma franquia ou saga e explore suas edições em ordem cronológica.</p>
+      <header className="px-1 pt-1">
+        <span className="block text-[11px] font-bold uppercase tracking-[0.14em] text-neutral-400">Universos do acervo</span>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight text-white sm:text-3xl">Coleções e sagas</h1>
+        <p className="mt-1 max-w-2xl text-xs leading-relaxed text-neutral-400 sm:text-sm">
+          Escolha uma editora, encontre uma coleção, saga ou fase e explore suas edições em ordem cronológica.
+        </p>
       </header>
 
       {favoriteError && (
@@ -322,48 +321,42 @@ export const SeriesPage: React.FC<{ onOpenReader: (id: string) => void }> = ({ o
         </p>
       )}
 
-      {/* Trilha de Navegação (Breadcrumb) refinada */}
-      <nav
-        aria-label="Caminho da coleção"
-        className="flex flex-wrap items-center gap-2 text-xs font-medium text-neutral-400 px-1"
-      >
-        <button
-          type="button"
-          className="text-neutral-300 hover:text-white transition-colors cursor-pointer"
-          onClick={goPublishers}
-        >
-          Editoras
-        </button>
-        {publisher && (
-          <>
-            <span className="text-neutral-600">/</span>
-            <button
-              type="button"
-              className={`transition-colors cursor-pointer ${seriesId ? "text-neutral-300 hover:text-white" : "text-white font-semibold"}`}
-              onClick={() => setSeriesId(null)}
-            >
-              {publisher}
-            </button>
-          </>
-        )}
-        {parentSeries && (
-          <>
-            <span className="text-neutral-600">/</span>
-            <button
-              type="button"
-              className="text-neutral-300 hover:text-white transition-colors cursor-pointer"
-              onClick={() => setSeriesId(parentSeries.id)}
-            >
-              {parentSeries.title}
-            </button>
-          </>
-        )}
-        {selectedSeries && (
-          <>
-            <span className="text-neutral-600">/</span>
-            <span className="text-white font-semibold">{selectedSeries.title}</span>
-          </>
-        )}
+      <nav aria-label="Caminho da coleção" className="overflow-x-auto px-1 pb-1">
+        <div className="flex w-max max-w-none items-center gap-2 whitespace-nowrap text-xs font-medium text-neutral-400">
+          <button type="button" className="text-neutral-300 transition-colors hover:text-white" onClick={goPublishers}>Editoras</button>
+          {publisher && (
+            <>
+              <span className="text-neutral-600">›</span>
+              <button
+                type="button"
+                className={`max-w-[13rem] truncate transition-colors ${seriesId ? "text-neutral-300 hover:text-white" : "font-semibold text-white"}`}
+                onClick={() => setSeriesId(null)}
+                title={publisher}
+              >
+                {publisher}
+              </button>
+            </>
+          )}
+          {parentSeries && (
+            <>
+              <span className="text-neutral-600">›</span>
+              <button
+                type="button"
+                className="max-w-[13rem] truncate text-neutral-300 transition-colors hover:text-white"
+                onClick={() => setSeriesId(parentSeries.id)}
+                title={parentSeries.title}
+              >
+                {parentSeries.title}
+              </button>
+            </>
+          )}
+          {selectedSeries && (
+            <>
+              <span className="text-neutral-600">›</span>
+              <span className="max-w-[15rem] truncate font-semibold text-white" title={selectedSeries.title}>{selectedSeries.title}</span>
+            </>
+          )}
+        </div>
       </nav>
 
       {isLoading ? (
@@ -380,74 +373,66 @@ export const SeriesPage: React.FC<{ onOpenReader: (id: string) => void }> = ({ o
             <span>{parentSeries ? `Voltar a ${parentSeries.title}` : "Voltar às coleções"}</span>
           </button>
 
-          {/* Cabeçalho da Coleção Aberta */}
-          <div className="p-5 sm:p-7 rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur-xl shadow-xl flex flex-col md:flex-row md:items-end justify-between gap-5">
-            <div className="space-y-2 max-w-2xl">
-              <span className="text-[11px] font-bold tracking-wider uppercase text-blue-400 block">
-                {selectedSeries.publisher} · {selectedSeries.startYear}
+          <div className="flex flex-col gap-4 border-b border-white/10 px-1 pb-5 sm:pb-6 md:flex-row md:items-end md:justify-between">
+            <div className="min-w-0 max-w-3xl">
+              <span className="block text-[11px] font-bold uppercase tracking-wider text-neutral-400">
+                {selectedSeries.publisher} · {selectedSeries.startYear} · {issueCount(selectedSeries.id)} edições
               </span>
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight leading-tight">
+              <h2 className="mt-1 break-words text-2xl font-bold leading-tight tracking-tight text-white sm:text-3xl lg:text-4xl">
                 {selectedSeries.title}
               </h2>
               {selectedSeries.description && (
-                <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed font-normal">
+                <p className="mt-2 text-xs font-normal leading-relaxed text-neutral-300 sm:text-sm">
                   {selectedSeries.description}
                 </p>
               )}
-              <div className="pt-2">{favoriteButton(selectedSeries)}</div>
             </div>
-            <div className="shrink-0 flex items-center gap-2 self-start md:self-end">
-              <span className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-white/10 text-white border border-white/10">
-                {issueCount(selectedSeries.id)} edições
-              </span>
-            </div>
+            <div className="w-full md:w-auto">{favoriteButton(selectedSeries)}</div>
           </div>
 
-          {/* Fases / Sagas vinculadas se houver */}
           {childSagas.length > 0 && (
-            <section
-              className="collection-hub"
-              aria-label={`Fases, sagas e obras fechadas de ${selectedSeries.title}`}
-            >
-              <CoverFlow
-                items={sagaItems}
-                activeIndex={activeSaga}
-                onChange={setActiveSaga}
-                onActivate={(item) => setSeriesId(item.id)}
-                label={`Fases, sagas e obras fechadas de ${selectedSeries.title}`}
-              />
-              <div className="collection-hub-info">
-                <div>
-                  <span>Fases, sagas e obras fechadas</span>
-                  <h3>{childSagas[Math.min(activeSaga, childSagas.length - 1)]?.title}</h3>
-                  <small>{sagaItems[activeSaga]?.subtitle}</small>
-                </div>
-                <div className="collection-hub-actions">
-                  {favoriteButton(childSagas[Math.min(activeSaga, childSagas.length - 1)])}
-                  <button
-                    type="button"
-                    className="catalog-primary-action"
-                    onClick={() =>
-                      setSeriesId(childSagas[Math.min(activeSaga, childSagas.length - 1)].id)
-                    }
-                  >
-                    Explorar título
-                  </button>
-                </div>
+            <section className="space-y-4" aria-label={`Fases, sagas e obras fechadas de ${selectedSeries.title}`}>
+              <div className="px-1">
+                <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-neutral-400">Fases, sagas e obras fechadas</span>
               </div>
+              <div className="mx-auto w-full max-w-4xl px-2">
+                <CoverFlow
+                  items={sagaItems}
+                  activeIndex={activeSaga}
+                  onChange={setActiveSaga}
+                  onActivate={(item) => setSeriesId(item.id)}
+                  label={`Fases, sagas e obras fechadas de ${selectedSeries.title}`}
+                />
+              </div>
+              {childSagas[Math.min(activeSaga, childSagas.length - 1)] && (
+                <div className="mx-auto max-w-2xl px-2 text-center">
+                  <h3 className="break-words text-xl font-bold tracking-tight text-white sm:text-2xl">
+                    {childSagas[Math.min(activeSaga, childSagas.length - 1)]?.title}
+                  </h3>
+                  <p className="mt-1 text-xs text-neutral-400 sm:text-sm">{sagaItems[activeSaga]?.subtitle}</p>
+                  <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
+                    {favoriteButton(childSagas[Math.min(activeSaga, childSagas.length - 1)])}
+                    <button
+                      type="button"
+                      className="catalog-primary-action w-full sm:w-auto"
+                      onClick={() => setSeriesId(childSagas[Math.min(activeSaga, childSagas.length - 1)].id)}
+                    >
+                      Explorar título
+                    </button>
+                  </div>
+                </div>
+              )}
             </section>
           )}
 
           {/* Barra de Filtros e Busca de Edições (Padrão Biblioteca) */}
           {issues.length > 0 && (
             <div className="space-y-4 pt-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight">
+              <div className="flex flex-col gap-1 px-1 xs:flex-row xs:items-baseline xs:justify-between">
+                <h3 className="text-lg font-bold tracking-tight text-white sm:text-xl">
                   {childSagas.length ? "Edições da coleção principal" : "Edições disponíveis"}
                 </h3>
-                <span className="text-xs text-neutral-400 font-medium">
-                  {visibleIssues.length} de {issues.length}
-                </span>
+                <span className="text-xs font-medium text-neutral-400">{visibleIssues.length} de {issues.length}</span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3 p-3 sm:p-4 rounded-2xl border border-white/10 bg-neutral-900/40 backdrop-blur-md">
@@ -535,7 +520,7 @@ export const SeriesPage: React.FC<{ onOpenReader: (id: string) => void }> = ({ o
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-3 sm:p-4 rounded-2xl border border-white/10 bg-neutral-900/40 backdrop-blur-md">
             {/* Abas Segementadas estilo Biblioteca */}
             <div
-              className="inline-flex p-1 rounded-xl bg-white/[0.05] border border-white/10 self-start shrink-0"
+              className="grid w-full grid-cols-3 gap-1 rounded-xl border border-white/10 bg-white/[0.05] p-1 md:w-auto"
               role="tablist"
               aria-label="Tipo de agrupamento"
             >
@@ -556,7 +541,7 @@ export const SeriesPage: React.FC<{ onOpenReader: (id: string) => void }> = ({ o
                       setKind(option);
                       setActiveSeries(0);
                     }}
-                    className={`h-9 px-3.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                    className={`flex min-h-9 min-w-0 items-center justify-center gap-1 rounded-lg px-2 text-[11px] font-semibold transition-all sm:px-3.5 sm:text-xs ${
                       isActive
                         ? "bg-white text-black shadow-md font-bold"
                         : "text-neutral-400 hover:text-neutral-200"
@@ -590,33 +575,28 @@ export const SeriesPage: React.FC<{ onOpenReader: (id: string) => void }> = ({ o
             </div>
           </div>
 
-          {/* Carrossel CoverFlow */}
           {groups.length ? (
-            <section className="collection-hub" aria-label={`Franquias de ${publisher}`}>
-              <CoverFlow
-                items={seriesItems}
-                activeIndex={activeSeries}
-                onChange={setActiveSeries}
-                onActivate={(item) => setSeriesId(item.id)}
-                label={`Coleções de ${publisher}`}
-              />
+            <section className="space-y-4" aria-label={`Franquias de ${publisher}`}>
+              <div className="mx-auto w-full max-w-4xl px-2">
+                <CoverFlow
+                  items={seriesItems}
+                  activeIndex={activeSeries}
+                  onChange={setActiveSeries}
+                  onActivate={(item) => setSeriesId(item.id)}
+                  label={`Coleções de ${publisher}`}
+                />
+              </div>
               {activeGroup && (
-                <div className="collection-hub-info">
-                  <div>
-                    <span>
-                      {publisher} · {activeGroup.startYear}
-                    </span>
-                    <h2>{activeGroup.title}</h2>
-                    <p>{activeGroup.description || "Explore as edições desta coleção."}</p>
-                    <small>{seriesItems[activeSeries]?.subtitle}</small>
-                  </div>
-                  <div className="collection-hub-actions">
+                <div className="mx-auto max-w-2xl px-2 text-center">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">{publisher} · {activeGroup.startYear}</span>
+                  <h2 className="mt-1 break-words text-2xl font-bold tracking-tight text-white sm:text-3xl">{activeGroup.title}</h2>
+                  <p className="mx-auto mt-2 max-w-xl text-xs leading-relaxed text-neutral-400 sm:text-sm">
+                    {activeGroup.description || "Explore as edições desta coleção."}
+                  </p>
+                  <p className="mt-1 text-xs text-neutral-400">{seriesItems[activeSeries]?.subtitle}</p>
+                  <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
                     {favoriteButton(activeGroup)}
-                    <button
-                      type="button"
-                      className="catalog-primary-action"
-                      onClick={() => setSeriesId(activeGroup.id)}
-                    >
+                    <button type="button" className="catalog-primary-action w-full sm:w-auto" onClick={() => setSeriesId(activeGroup.id)}>
                       Explorar edições
                     </button>
                   </div>
@@ -628,23 +608,23 @@ export const SeriesPage: React.FC<{ onOpenReader: (id: string) => void }> = ({ o
           )}
         </section>
       ) : publishers.length ? (
-        <section className="collection-hub publisher-flow" aria-label="Editoras e selos">
-          <CoverFlow
-            items={publisherItems}
-            activeIndex={activePublisher}
-            onChange={setActivePublisher}
-            onActivate={(item) => setPublisher(item.id)}
-            label="Editoras do acervo"
-          />
-          <div className="collection-hub-info">
-            <div>
-              <span>Editora ou selo</span>
-              <h2>{publishers[activePublisher]}</h2>
-              <p>{publisherItems[activePublisher]?.subtitle} no acervo</p>
-            </div>
+        <section className="space-y-4" aria-label="Editoras e selos">
+          <div className="mx-auto w-full max-w-4xl px-2">
+            <CoverFlow
+              items={publisherItems}
+              activeIndex={activePublisher}
+              onChange={setActivePublisher}
+              onActivate={(item) => setPublisher(item.id)}
+              label="Editoras do acervo"
+            />
+          </div>
+          <div className="mx-auto max-w-xl px-2 text-center">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">Editora ou selo</span>
+            <h2 className="mt-1 break-words text-2xl font-bold tracking-tight text-white sm:text-3xl">{publishers[activePublisher]}</h2>
+            <p className="mt-1 text-xs text-neutral-400 sm:text-sm">{publisherItems[activePublisher]?.subtitle} no acervo</p>
             <button
               type="button"
-              className="catalog-primary-action"
+              className="catalog-primary-action mt-4 w-full sm:w-auto"
               onClick={() => setPublisher(publishers[activePublisher])}
             >
               Explorar coleções
