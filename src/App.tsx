@@ -12,6 +12,7 @@ import { useAuth } from "./hooks/useAuth";
 import { CheckoutPage } from "./app/pages/CheckoutPage";
 import { PasswordResetPage } from "./app/pages/PasswordResetPage";
 import { flushReadingProgress } from "./services/offlineProgress";
+import { syncLocalOfflineLibrary } from "./services/offlineManifest";
 
 const legacyRecoveryLink = /(?:[?&#])type=recovery(?:[&#]|$)/.test(window.location.search + window.location.hash);
 
@@ -39,7 +40,17 @@ export default function App() {
   const [restrictedNotice, setRestrictedNotice] = useState(false);
   const [legacyRecoveryHandled, setLegacyRecoveryHandled] = useState(false);
   useEffect(() => { if (!restrictedNotice) return; const timer = window.setTimeout(() => setRestrictedNotice(false), 4000); return () => window.clearTimeout(timer); }, [restrictedNotice]);
-  useEffect(() => { if (!session?.user.id) return; const sync = () => { void flushReadingProgress(session.user.id); }; window.addEventListener("online", sync); sync(); return () => window.removeEventListener("online", sync); }, [session?.user.id]);
+  useEffect(() => {
+    const userId = session?.user.id || offlineUserId;
+    if (!userId) return;
+    const sync = () => {
+      void flushReadingProgress(userId);
+      void syncLocalOfflineLibrary(userId);
+    };
+    window.addEventListener("online", sync);
+    sync();
+    return () => window.removeEventListener("online", sync);
+  }, [session?.user.id, offlineUserId]);
 
   useEffect(() => {
     if (!isLoading && isSupabaseConfigured && session && (activeRoute === "/admin" || activeRoute === "/configuracoes") && !isOwner) {
