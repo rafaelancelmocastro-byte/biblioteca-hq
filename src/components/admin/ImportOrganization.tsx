@@ -20,6 +20,9 @@ export function ImportOrganization({ series, onCreated, onFeedback }: Props) {
   const [year, setYear] = useState("");
   const [busy, setBusy] = useState(false);
   const publishers = [...new Set(series.map((item) => item.publisher))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  const collections = series
+    .filter((item) => !item.parentSeriesId && (!publisher.trim() || norm(item.publisher) === norm(publisher)))
+    .sort((a, b) => a.title.localeCompare(b.title, "pt-BR"));
   const existingParent = series.find((item) => !item.parentSeriesId && norm(item.publisher) === norm(publisher) && norm(item.title) === norm(collection));
   const existingChild = series.find((item) => item.parentSeriesId === existingParent?.id && norm(item.title) === norm(child));
 
@@ -60,7 +63,7 @@ export function ImportOrganization({ series, onCreated, onFeedback }: Props) {
       <p className="span-2 text-xs text-slate-400">Confira a hierarquia antes de salvar. Itens já existentes serão reutilizados; o novo agrupamento será sugerido aos arquivos ainda sem coleção.</p>
       <label>Editora<input className="admin-field" list="import-publishers" value={publisher} onChange={(event) => setPublisher(event.target.value)} placeholder="Ex.: DC Comics" required /><datalist id="import-publishers">{publishers.map((item) => <option key={item} value={item} />)}</datalist></label>
       <label>Capa ou logo da nova editora<input className="admin-field" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => setPublisherCover(event.target.files?.[0] || null)} /></label>
-      <label>Coleção principal<input className="admin-field" value={collection} onChange={(event) => setCollection(event.target.value)} placeholder="Ex.: Superman" required /></label>
+      <label>Coleção principal<input className="admin-field" list="import-collections" value={collection} onChange={(event) => { const value = event.target.value; setCollection(value); const existing = collections.find((item) => norm(item.title) === norm(value)); if (existing && !year) setYear(String(existing.startYear)); }} placeholder="Digite ou selecione uma coleção existente" required /><datalist id="import-collections">{collections.map((item) => <option key={item.id} value={item.title}>{item.publisher}{item.startYear ? ` · ${item.startYear}` : ""}</option>)}</datalist><small className="text-slate-500">Selecione uma existente para reutilizar. Se o nome não existir, uma nova coleção será criada.</small></label>
       <label>Capa da coleção<input className="admin-field" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => setCollectionCover(event.target.files?.[0] || null)} /></label>
       <label>Tipo de conteúdo<select className="admin-field" value={kind} onChange={(event) => setKind(event.target.value)}><option value="collection">Edições da coleção</option><option value="saga">Saga / arco narrativo</option><option value="phase">Fase / linha editorial</option><option value="one_shot">Obra fechada / volume único</option></select></label>
       <label>Ano inicial<input className="admin-field" type="number" min="1800" max="2200" value={year} onChange={(event) => setYear(event.target.value)} required /></label>
