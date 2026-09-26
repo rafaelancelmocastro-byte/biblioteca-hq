@@ -233,13 +233,39 @@ async function loadCatalog(): Promise<SupabaseCatalog> {
 
   await ensureActiveSession();
 
-  const [comicsResult, seriesResult] = await Promise.all([
-    supabase.from("comics").select("id,title,content_type,reading_direction,issue_number,volume,publication_year,publisher,total_pages,synopsis,writers,pencillers,colorists,tags,file_size_mb,file_name,cover_palette,added_at,series(id,title,publisher,start_year,end_year,total_issues_expected,description,banner_tone,cover_key),comic_characters(characters(id,name,alias,publisher))").order("added_at", { ascending: false }),
-    supabase.from("series").select("id,title,publisher,start_year,end_year,total_issues_expected,description,banner_tone,cover_key,parent_series_id").order("title", { ascending: true }),
-  ]);
+  const PAGE_SIZE = 1000;
+  const comicRows: CatalogRow[] = [];
+  const seriesRows: NonNullable<CatalogRow["series"]>[] = [];
 
-  if (comicsResult.error) throw new Error(`Não foi possível carregar o catálogo: ${comicsResult.error.message}`);
-  const rows = (comicsResult.data ?? []) as unknown as CatalogRow[];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const result = await supabase
+      .from("comics")
+      .select("id,title,content_type,reading_direction,issue_number,volume,publication_year,publisher,total_pages,synopsis,writers,pencillers,colorists,tags,file_size_mb,file_name,cover_palette,added_at,series(id,title,publisher,start_year,end_year,total_issues_expected,description,banner_tone,cover_key),comic_characters(characters(id,name,alias,publisher))")
+      .order("added_at", { ascending: false })
+      .order("id", { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (result.error) throw new Error(`Não foi possível carregar o catálogo: ${result.error.message}`);
+    const page = (result.data ?? []) as unknown as CatalogRow[];
+    comicRows.push(...page);
+    if (page.length < PAGE_SIZE) break;
+  }
+
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const result = await supabase
+      .from("series")
+      .select("id,title,publisher,start_year,end_year,total_issues_expected,description,banner_tone,cover_key,parent_series_id")
+      .order("title", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (result.error) break;
+    const page = (result.data ?? []) as unknown as NonNullable<CatalogRow["series"]>[];
+    seriesRows.push(...page);
+    if (page.length < PAGE_SIZE) break;
+  }
+
+  const rows = comicRows;
   const comics = rows.map(mapComic);
   const seriesById = new Map<string, Series>();
   const charactersById = new Map<string, Character>();
@@ -257,10 +283,8 @@ async function loadCatalog(): Promise<SupabaseCatalog> {
     }
   }
 
-  if (!seriesResult.error) {
-    for (const row of seriesResult.data ?? []) {
-      seriesById.set(row.id, mapSeries(row as NonNullable<CatalogRow["series"]>));
-    }
+  for (const row of seriesRows) {
+    seriesById.set(row.id, mapSeries(row));
   }
 
   const value = {
