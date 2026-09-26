@@ -7,15 +7,13 @@ import fs from "node:fs";
 import healthHandler from "./api/integrations/health.ts";
 import comicReadHandler from "./api/storage/comic-read.ts";
 import coverUrlsHandler from "./api/storage/cover-urls.ts";
-import presignReadHandler from "./api/storage/presign-read.ts";
-import presignUploadHandler from "./api/storage/presign-upload.ts";
+import presignHandler from "./api/storage/presign.ts";
 import comicCheckHandler from "./api/comics/check.ts";
 import comicCreateHandler from "./api/comics/create.ts";
 import comicUpdateHandler from "./api/comics/update.ts";
 import comicBulkUpdateHandler from "./api/comics/bulk-update.ts";
 import comicDeleteHandler from "./api/comics/delete.ts";
-import seriesUpsertHandler from "./api/series/upsert.ts";
-import seriesDeleteHandler from "./api/series/delete.ts";
+import seriesManageHandler from "./api/series/manage.ts";
 import quickSessionHandler from "./api/auth/quick-session.ts";
 
 const app = express();
@@ -44,15 +42,29 @@ app.all("/api/health", wrapHandler(healthHandler));
 app.all("/api/integrations/health", wrapHandler(healthHandler));
 app.all("/api/storage/comic-read", wrapHandler(comicReadHandler));
 app.all("/api/storage/cover-urls", wrapHandler(coverUrlsHandler));
-app.all("/api/storage/presign-read", wrapHandler(presignReadHandler));
-app.all("/api/storage/presign-upload", wrapHandler(presignUploadHandler));
+app.all("/api/storage/presign", wrapHandler(presignHandler));
+app.all("/api/storage/presign-read", wrapHandler((req, res) => {
+  req.query = { ...req.query, action: "read" };
+  return presignHandler(req, res);
+}));
+app.all("/api/storage/presign-upload", wrapHandler((req, res) => {
+  req.query = { ...req.query, action: "upload" };
+  return presignHandler(req, res);
+}));
 app.all("/api/comics/check", wrapHandler(comicCheckHandler));
 app.all("/api/comics/create", wrapHandler(comicCreateHandler));
 app.all("/api/comics/update", wrapHandler(comicUpdateHandler));
 app.all("/api/comics/bulk-update", wrapHandler(comicBulkUpdateHandler));
 app.all("/api/comics/delete", wrapHandler(comicDeleteHandler));
-app.all("/api/series/upsert", wrapHandler(seriesUpsertHandler));
-app.all("/api/series/delete", wrapHandler(seriesDeleteHandler));
+app.all("/api/series/manage", wrapHandler(seriesManageHandler));
+app.all("/api/series/upsert", wrapHandler((req, res) => {
+  req.query = { ...req.query, action: "upsert" };
+  return seriesManageHandler(req, res);
+}));
+app.all("/api/series/delete", wrapHandler((req, res) => {
+  req.query = { ...req.query, action: "delete" };
+  return seriesManageHandler(req, res);
+}));
 app.all("/api/auth/quick-session", wrapHandler(quickSessionHandler));
 
 const isProduction = process.env.NODE_ENV === "production";

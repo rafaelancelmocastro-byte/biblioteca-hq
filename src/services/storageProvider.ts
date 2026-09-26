@@ -1,13 +1,13 @@
 import { StorageProvider, StorageUploadResult } from "../types/repositories";
 import { APP_CONFIG } from "../config/app";
-import { isSupabaseConfigured, supabase } from "./supabaseClient";
+import { ensureActiveSession, isSupabaseConfigured, supabase } from "./supabaseClient";
 import { publicationFormat, publicationMime } from "./publicationFormats";
 
 async function getAccessToken(): Promise<string> {
   if (!supabase) throw new Error("Supabase não está configurado.");
-  const { data } = await supabase.auth.getSession();
-  if (!data.session?.access_token) throw new Error("Sua sessão expirou. Entre novamente.");
-  return data.session.access_token;
+  const session = await ensureActiveSession();
+  if (!session?.access_token) throw new Error("Sua sessão expirou. Entre novamente.");
+  return session.access_token;
 }
 
 async function readApiError(response: Response): Promise<string> {

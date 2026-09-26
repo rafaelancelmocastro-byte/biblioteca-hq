@@ -11,7 +11,7 @@ import { applyQueuedProgress, saveReadingProgress } from "../../services/offline
 import { Button } from "../../components/ui/Button";
 import { ArrowLeft, BookX } from "lucide-react";
 import { listOffline, readOffline } from "../../services/offlineLibrary";
-import { supabase } from "../../services/supabaseClient";
+import { ensureActiveSession, supabase } from "../../services/supabaseClient";
 
 interface ReaderPageProps {
   comicId: string;
@@ -81,34 +81,58 @@ export const ReaderPage: React.FC<ReaderPageProps> = ({ comicId, onBack, onOpenR
     setNextIssue(null);
 
     (async () => {
-      const authPromise = supabase!.auth.getSession();
-      const onlinePromise = navigator.onLine ? Promise.all([getSupabaseComicById(comicId), getComicReadUrl(comicId)]).catch(() => null) : null;
-      const { data: auth } = await authPromise;
-      if (isMounted) setUserId(auth.session?.user.id || "");
-      if (onlinePromise) {
+      let activeSession = null;
+      try {
+        activeSession = await ensureActiveSession();
+      } catch {
+        // activeSession failed
+      }
+      if (isMounted) setUserId(activeSession?.user.id || "");
+
+      if (navigator.onLine) {
         try {
-          const result = await onlinePromise;
-          if (!result) throw new Error("Leitura online indisponível");
-          const [data, url] = result;
-          if (data && isMounted) {
-            setComic(auth.session ? applyQueuedProgress(auth.session.user.id, [data])[0] : data);
+          const [data, url] = await Promise.all([
+            getSupabaseComicById(comicId),
+            getComicReadUrl(comicId),
+          ]);
+          if (data && url && isMounted) {
+            setComic(activeSession ? applyQueuedProgress(activeSession.user.id, [data])[0] : data);
             if (data.progress && data.progress.currentPage >= data.totalPages - 3) setFindNextNow(true);
             setPdfUrl(url);
             setIsLoading(false);
-            if (!data.coverUrl) void getCoverUrls([data]).then((urls) => {
-              if (isMounted && urls[data.id]) setComic((current) => current?.id === data.id ? { ...current, coverUrl: urls[data.id] } : current);
-            }).catch(() => { /* A edição continua disponível sem prévia. */ });
+            if (!data.coverUrl) {
+              void getCoverUrls([data]).then((urls) => {
+                if (isMounted && urls[data.id]) {
+                  setComic((current) => current?.id === data.id ? { ...current, coverUrl: urls[data.id] } : current);
+                }
+              }).catch(() => {});
+            }
             return;
           }
-        } catch { /* Use uma cópia offline quando a rede falhar. */ }
+        } catch (onlineErr) {
+          console.warn("Falha no carregamento online da HQ, tentando cópia offline:", onlineErr);
+        }
       }
-      const offline = auth.session ? await readOffline(auth.session.user.id, comicId) : null;
-      if (offline && isMounted) { setComic(applyQueuedProgress(auth.session!.user.id, [offline.comic])[0]); setPdfData(offline.data); setIsLoading(false); return; }
+
+      if (isMounted) {
+        try {
+          const session = activeSession || (await supabase?.auth.getSession())?.data.session;
+          const offline = session ? await readOffline(session.user.id, comicId) : null;
+          if (offline && isMounted) {
+            setComic(applyQueuedProgress(session!.user.id, [offline.comic])[0]);
+            setPdfData(offline.data);
+            setIsLoading(false);
+            return;
+          }
+        } catch (offlineErr) {
+          console.warn("Falha ao recuperar cópia offline:", offlineErr);
+        }
+      }
+
       if (isMounted) setIsLoading(false);
-    })()
-      .catch(() => {
-        if (isMounted) setIsLoading(false);
-      });
+    })().catch(() => {
+      if (isMounted) setIsLoading(false);
+    });
 
     return () => {
       isMounted = false;

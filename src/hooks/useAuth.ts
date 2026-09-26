@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { isSupabaseConfigured, supabase } from "../services/supabaseClient";
+import { ensureActiveSession, isSupabaseConfigured, supabase } from "../services/supabaseClient";
 
 export type AccessProfile = { id: string; email: string; role: "master" | "user"; access_status: "pending_payment" | "lifetime" | "blocked"; is_active: boolean };
 
@@ -31,28 +31,20 @@ export function useAuth() {
       if (mounted) setProfile((data as AccessProfile | null) || cached);
     };
 
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!mounted) return;
-      let currentSession = data.session;
-      if (!currentSession && !sessionStorage.getItem("user_logged_out")) {
-        try {
-          const res = await fetch("/api/auth/quick-session", { method: "POST" });
-          if (res.ok) {
-            const { tokenHash } = await res.json();
-            if (tokenHash) {
-              const verified = await supabase!.auth.verifyOtp({ token_hash: tokenHash, type: "magiclink" });
-              if (verified.data.session) {
-                currentSession = verified.data.session;
-              }
-            }
-          }
-        } catch { /* proceed without auto-session */ }
+    const initAuth = async () => {
+      let currentSession: Session | null = null;
+      try {
+        currentSession = await ensureActiveSession();
+      } catch {
+        // failed
       }
+      if (!mounted) return;
       setSession(currentSession);
       currentUserId = currentSession?.user.id || "";
       if (currentUserId) await loadProfile(currentUserId);
       setIsLoading(false);
-    });
+    };
+    void initAuth();
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);

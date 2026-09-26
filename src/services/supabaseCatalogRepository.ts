@@ -1,5 +1,5 @@
 import type { Character, Comic, ComicCoverPalette, Series } from "../types/comic";
-import { supabase } from "./supabaseClient";
+import { ensureActiveSession, supabase } from "./supabaseClient";
 
 const DEFAULT_COVER: ComicCoverPalette = {
   primary: "#0f172a",
@@ -109,7 +109,10 @@ let catalogCache: { value: SupabaseCatalog; expiresAt: number } | null = null;
 let pendingCatalog: Promise<SupabaseCatalog> | null = null;
 let pendingCovers: Promise<Record<string, string>> | null = null;
 
-export function invalidateCatalogCache() { catalogCache = null; }
+export function invalidateCatalogCache() {
+  catalogCache = null;
+  pendingCatalog = null;
+}
 
 export async function getCoverUrls(comics: Comic[]): Promise<Record<string, string>> {
   if (!supabase) return {};
@@ -117,13 +120,13 @@ export async function getCoverUrls(comics: Comic[]): Promise<Record<string, stri
   const missing = comics.filter((comic) => !coverCache.has(comic.id) || coverCache.get(comic.id)!.expiresAt < now);
   if (missing.length && !pendingCovers) {
     pendingCovers = (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!data.session) return {};
+      const session = await ensureActiveSession();
+      if (!session) return {};
       const urls: Record<string, string> = {};
       for (let offset = 0; offset < missing.length; offset += 100) {
         const response = await fetch("/api/storage/cover-urls", {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session.access_token}` },
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
           body: JSON.stringify({ comicIds: missing.slice(offset, offset + 100).map((comic) => comic.id) }),
         });
         if (!response.ok) continue;
@@ -141,7 +144,7 @@ export async function getCoverUrls(comics: Comic[]): Promise<Record<string, stri
 
 export async function getSupabaseCatalog(): Promise<SupabaseCatalog> {
   if (!supabase) return { comics: [], series: [], characters: [], publishers: [], years: [] };
-  if (catalogCache && catalogCache.expiresAt > Date.now()) return catalogCache.value;
+  if (catalogCache && catalogCache.expiresAt > Date.now() && catalogCache.value.comics.length > 0) return catalogCache.value;
   if (pendingCatalog) return pendingCatalog;
 
   pendingCatalog = loadCatalog().finally(() => { pendingCatalog = null; });
@@ -150,6 +153,8 @@ export async function getSupabaseCatalog(): Promise<SupabaseCatalog> {
 
 async function loadCatalog(): Promise<SupabaseCatalog> {
   if (!supabase) return { comics: [], series: [], characters: [], publishers: [], years: [] };
+
+  await ensureActiveSession();
 
   const [comicsResult, seriesResult] = await Promise.all([
     supabase.from("comics").select("id,title,content_type,reading_direction,issue_number,volume,publication_year,publisher,total_pages,synopsis,writers,pencillers,colorists,tags,file_size_mb,file_name,cover_palette,added_at,series(id,title,publisher,start_year,end_year,total_issues_expected,description,banner_tone,cover_key),comic_characters(characters(id,name,alias,publisher))").order("added_at", { ascending: false }),
@@ -188,13 +193,19 @@ async function loadCatalog(): Promise<SupabaseCatalog> {
     publishers: [...new Set(comics.map((comic) => comic.publisher))].sort(),
     years: [...new Set(comics.map((comic) => comic.year))].sort((a, b) => b - a),
   };
-  catalogCache = { value, expiresAt: Date.now() + 60_000 };
+
+  if (comics.length > 0) {
+    catalogCache = { value, expiresAt: Date.now() + 60_000 };
+  }
   return value;
 }
 
 export async function getSupabaseComicById(id: string): Promise<Comic | null> {
   if (!supabase) return null;
   const cached = catalogCache?.value.comics.find((comic) => comic.id === id);
+  if (!cached) {
+    await ensureActiveSession();
+  }
   const comicRequest = cached ? Promise.resolve({ data: null, error: null }) : supabase.from("comics")
     .select("id,title,content_type,reading_direction,issue_number,volume,publication_year,publisher,total_pages,synopsis,writers,pencillers,colorists,tags,file_size_mb,file_name,cover_palette,added_at,series(id,title,publisher,start_year,end_year,total_issues_expected,description,banner_tone,cover_key),comic_characters(characters(id,name,alias,publisher))")
     .eq("id", id).maybeSingle();

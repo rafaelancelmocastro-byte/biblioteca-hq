@@ -75,7 +75,17 @@ export function useLibrary(initialFilters: LibraryFilters = DEFAULT_FILTERS) {
 
   useEffect(() => {
     void reloadData();
-    return () => { loadVersion.current++; };
+    const { data: authListener } = supabase?.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        invalidateCatalogCache();
+        void reloadData(true);
+      }
+    }) ?? { data: { subscription: { unsubscribe: () => {} } } };
+
+    return () => {
+      loadVersion.current++;
+      authListener?.subscription?.unsubscribe();
+    };
   }, [reloadData]);
 
   const setGridDensity = useCallback((density: "compact" | "comfortable") => {
