@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { ArrowRight, BookOpen, Search } from "lucide-react";
 import { useLibrary } from "../../hooks/useLibrary";
 import type { Comic } from "../../types/comic";
@@ -12,6 +12,7 @@ export const ReadingGuidePage: React.FC<{ onOpenReader: (id: string) => void }> 
   const { allComics, seriesList, isLoading } = useLibrary();
   const [query, setQuery] = useState("");
   const [selectedSeriesId, setSelectedSeriesId] = useState<string | null>(null);
+  const detailRef = useRef<HTMLElement | null>(null);
   const needle = fold(query.trim());
 
   const paths = useMemo(
@@ -49,6 +50,13 @@ export const ReadingGuidePage: React.FC<{ onOpenReader: (id: string) => void }> 
   );
 
   const selected = paths.find((path) => path.series.id === selectedSeriesId) || filteredPaths[0];
+
+  const openPath = (id: string) => {
+    setSelectedSeriesId(id);
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      window.requestAnimationFrame(() => detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    }
+  };
 
   const related = selected
     ? paths.filter(
@@ -117,7 +125,7 @@ export const ReadingGuidePage: React.FC<{ onOpenReader: (id: string) => void }> 
               <span className="text-xs text-neutral-500">{filteredPaths.length}</span>
             </div>
 
-            <div className="grid max-h-none gap-2 lg:max-h-[44rem] lg:overflow-y-auto lg:pr-1">
+            <div className="grid max-h-[22rem] gap-2 overflow-y-auto pr-1 sm:max-h-[26rem] lg:max-h-[44rem]">
               {filteredPaths.map(({ series, issues, next }) => {
                 const isActive = selected?.series.id === series.id;
                 return (
@@ -125,7 +133,7 @@ export const ReadingGuidePage: React.FC<{ onOpenReader: (id: string) => void }> 
                     type="button"
                     key={series.id}
                     aria-pressed={isActive}
-                    onClick={() => setSelectedSeriesId(series.id)}
+                    onClick={() => openPath(series.id)}
                     className={`grid min-w-0 grid-cols-[3rem_minmax(0,1fr)_1rem] items-center gap-3 rounded-xl border p-2.5 text-left transition-colors sm:grid-cols-[3.5rem_minmax(0,1fr)_1rem] sm:p-3 ${
                       isActive
                         ? "border-white/20 bg-white/[0.08]"
@@ -155,7 +163,7 @@ export const ReadingGuidePage: React.FC<{ onOpenReader: (id: string) => void }> 
           </section>
 
           {selected && (
-            <section className="min-w-0 space-y-5">
+            <section ref={detailRef} className="min-w-0 scroll-mt-24 space-y-5">
               <div className="border-b border-white/[0.08] px-1 pb-4">
                 <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-neutral-400">Sua trilha</span>
                 <h2 className="mt-1 break-words text-2xl font-bold tracking-tight text-white sm:text-3xl">{selected.series.title}</h2>
@@ -176,7 +184,7 @@ export const ReadingGuidePage: React.FC<{ onOpenReader: (id: string) => void }> 
                       <button
                         type="button"
                         key={path.series.id}
-                        onClick={() => setSelectedSeriesId(path.series.id)}
+                        onClick={() => openPath(path.series.id)}
                         className="inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-3 text-[11px] text-neutral-300 hover:bg-white/[0.06]"
                       >
                         <span className="truncate">{path.series.title}</span>
