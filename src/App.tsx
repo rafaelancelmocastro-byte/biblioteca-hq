@@ -14,6 +14,7 @@ import { PasswordResetPage } from "./app/pages/PasswordResetPage";
 import { flushReadingProgress } from "./services/offlineProgress";
 import { syncLocalOfflineLibrary } from "./services/offlineManifest";
 import { loadUserPreferences } from "./services/userPreferences";
+import { supabase } from "./services/supabaseClient";
 
 const legacyRecoveryLink = /(?:[?&#])type=recovery(?:[&#]|$)/.test(window.location.search + window.location.hash);
 
@@ -82,7 +83,7 @@ export default function App() {
   if (isSupabaseConfigured && (session || hasOfflineIdentity) && !canRead) return <CheckoutPage email={session?.user.email || profile?.email || ""} blocked={profile?.access_status === "blocked"} onBack={() => { void signOut().then(() => navigate("/login")); }} />;
 
   if (isSupabaseConfigured && !session && !hasOfflineIdentity && activeRoute !== "/login") {
-    return <LoginPage onSuccess={() => navigate("/biblioteca")} />;
+    return <LoginPage onSuccess={async () => { const userId = (await supabase?.auth.getSession())?.data.session?.user.id || ""; const prefs = userId ? await loadUserPreferences(userId) : null; navigate(prefs?.homeSection || "/biblioteca"); }} />;
   }
 
   // Rota de Leitura Imersiva (oculta layout padrão)
@@ -98,7 +99,7 @@ export default function App() {
   if (activeRoute === "/login") {
     return (
       <LoginPage
-        onSuccess={() => navigate("/biblioteca")}
+        onSuccess={async () => { const userId = (await supabase?.auth.getSession())?.data.session?.user.id || ""; const prefs = userId ? await loadUserPreferences(userId) : null; navigate(prefs?.homeSection || "/biblioteca"); }}
       />
     );
   }
