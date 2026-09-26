@@ -109,6 +109,33 @@ let catalogCache: { value: SupabaseCatalog; expiresAt: number } | null = null;
 let pendingCatalog: Promise<SupabaseCatalog> | null = null;
 let pendingCovers: Promise<Record<string, string>> | null = null;
 
+const CATALOG_CACHE_NAME = "biblioteca-hq-data-v1";
+const CATALOG_CACHE_URL = "/__offline/catalog.json";
+
+async function readPersistentCatalog(): Promise<SupabaseCatalog | null> {
+  try {
+    if (!("caches" in window)) return null;
+    const response = await (await caches.open(CATALOG_CACHE_NAME)).match(CATALOG_CACHE_URL);
+    return response ? await response.json() as SupabaseCatalog : null;
+  } catch {
+    return null;
+  }
+}
+
+async function writePersistentCatalog(value: SupabaseCatalog): Promise<void> {
+  try {
+    if (!("caches" in window) || !value.comics.length) return;
+    const cache = await caches.open(CATALOG_CACHE_NAME);
+    await cache.put(
+      CATALOG_CACHE_URL,
+      new Response(JSON.stringify(value), { headers: { "Content-Type": "application/json" } })
+    );
+  } catch {
+    // Persistent catalog is a convenience fallback only.
+  }
+}
+
+
 export function invalidateCoverCache() {
   coverCache.clear();
 }
@@ -187,9 +214,17 @@ export async function getCoverUrls(comics: Comic[]): Promise<Record<string, stri
 export async function getSupabaseCatalog(): Promise<SupabaseCatalog> {
   if (!supabase) return { comics: [], series: [], characters: [], publishers: [], years: [] };
   if (catalogCache && catalogCache.expiresAt > Date.now() && catalogCache.value.comics.length > 0) return catalogCache.value;
+  if (!navigator.onLine) {
+    const saved = await readPersistentCatalog();
+    return saved ?? { comics: [], series: [], characters: [], publishers: [], years: [] };
+  }
   if (pendingCatalog) return pendingCatalog;
 
-  pendingCatalog = loadCatalog().finally(() => { pendingCatalog = null; });
+  pendingCatalog = loadCatalog().catch(async (error) => {
+    const saved = await readPersistentCatalog();
+    if (saved) return saved;
+    throw error;
+  }).finally(() => { pendingCatalog = null; });
   return pendingCatalog;
 }
 
@@ -238,6 +273,7 @@ async function loadCatalog(): Promise<SupabaseCatalog> {
 
   if (comics.length > 0) {
     catalogCache = { value, expiresAt: Date.now() + 60_000 };
+    void writePersistentCatalog(value);
   }
   return value;
 }
