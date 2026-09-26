@@ -82,10 +82,10 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} maxWidth="2xl" id="comic-detail-modal">
-      <div className="comic-detail-streaming flex flex-col sm:flex-row gap-6 sm:gap-7 p-1 sm:p-2">
+      <div className="comic-detail-streaming flex flex-col sm:flex-row gap-5 sm:gap-6 p-0.5 sm:p-1">
         {/* Coluna da Capa e Ações */}
-        <div className="w-full sm:w-52 flex-shrink-0 flex flex-col items-center">
-          <div className="w-44 sm:w-full rounded-2xl overflow-hidden shadow-2xl shadow-black/90 border border-white/10 bg-neutral-900 aspect-[2/3]">
+        <div className="w-full sm:w-48 md:w-52 flex-shrink-0 flex flex-col items-center">
+          <div className="w-36 sm:w-full rounded-xl overflow-hidden shadow-2xl shadow-black/80 border border-white/10 bg-neutral-900 aspect-[2/3]">
             {comic.coverUrl ? (
               <img
                 src={comic.coverUrl}
@@ -103,28 +103,28 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
             )}
           </div>
 
-          {/* Botões de Ação Apple TV+ */}
-          <div className="w-full mt-4 flex flex-col gap-2">
+          {/* Botões de Ação */}
+          <div className="w-full max-w-xs sm:max-w-none mt-4 flex flex-col gap-2">
             <button
               type="button"
               onClick={() => {
                 onClose();
                 onOpenReader(comic.id);
               }}
-              className="w-full min-h-[2.85rem] rounded-full bg-white text-black font-bold text-xs sm:text-sm hover:bg-neutral-200 transition-all flex items-center justify-center gap-2 shadow-lg shadow-white/10 cursor-pointer"
+              className="w-full h-11 rounded-full bg-white text-black font-semibold text-xs sm:text-sm hover:bg-neutral-200 transition-colors flex items-center justify-center gap-2 shadow-md cursor-pointer"
             >
               <BookOpen className="w-4 h-4 fill-current" />
-              {percentage > 0 ? "Continuar Leitura" : "Iniciar Leitura"}
+              <span>{percentage > 0 ? "Retomar" : "Iniciar Leitura"}</span>
             </button>
 
             <button
               type="button"
               onClick={() => void saveForOffline()}
               disabled={offlineBusy || savedOffline}
-              className={`w-full min-h-[2.4rem] rounded-full text-xs font-semibold flex items-center justify-center gap-2 border transition-all cursor-pointer ${
+              className={`w-full h-10 rounded-full text-xs font-medium flex items-center justify-center gap-2 border transition-colors cursor-pointer ${
                 savedOffline
                   ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
-                  : "bg-white/[0.06] hover:bg-white/[0.12] text-white border-white/10"
+                  : "bg-white/5 hover:bg-white/10 text-neutral-200 border-white/10"
               }`}
             >
               {savedOffline ? (
@@ -136,35 +136,35 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
             </button>
 
             {offlineMessage && (
-              <p role="status" className="text-[11px] text-blue-300 text-center break-words px-1">
+              <p role="status" className="text-[11px] text-neutral-400 text-center break-words px-1">
                 {offlineMessage}
               </p>
             )}
 
-            <div className="flex gap-2 w-full mt-0.5">
+            <div className="flex gap-2 w-full">
               <button
                 type="button"
                 onClick={() => {
                   setIsFavorite((value) => !value);
                   void onToggleFavorite(comic.id);
                 }}
-                className={`flex-1 min-h-[2.4rem] rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 border transition-all cursor-pointer ${
+                className={`flex-1 h-10 rounded-full text-xs font-medium flex items-center justify-center gap-1.5 border transition-colors cursor-pointer ${
                   isFavorite
                     ? "bg-rose-500/15 text-rose-300 border-rose-500/30"
-                    : "bg-white/[0.06] hover:bg-white/[0.12] text-white border-white/10"
+                    : "bg-white/5 hover:bg-white/10 text-neutral-200 border-white/10"
                 }`}
                 aria-pressed={isFavorite}
               >
-                <Heart className={`w-3.5 h-3.5 ${isFavorite ? "fill-current text-rose-400" : "text-neutral-300"}`} />
+                <Heart className={`w-3.5 h-3.5 ${isFavorite ? "fill-current text-rose-400" : "text-neutral-400"}`} />
                 <span>{isFavorite ? "Favorito" : "Favoritar"}</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => onOpenProgressModal(comic)}
-                className="flex-1 min-h-[2.4rem] rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 border border-white/10 bg-white/[0.06] hover:bg-white/[0.12] text-white transition-all cursor-pointer"
+                className="flex-1 h-10 rounded-full text-xs font-medium flex items-center justify-center gap-1.5 border border-white/10 bg-white/5 hover:bg-white/10 text-neutral-200 transition-colors cursor-pointer"
               >
-                <Sliders className="w-3.5 h-3.5 text-neutral-300" />
+                <Sliders className="w-3.5 h-3.5 text-neutral-400" />
                 <span>Progresso</span>
               </button>
             </div>
@@ -174,44 +174,49 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
         {/* Coluna de Conteúdo e Metadados */}
         <div className="flex-1 flex flex-col min-w-0 justify-between">
           <div>
-            {/* Metadados Superiores no Estilo Apple Zero-Pill */}
+            {/* Metadados Superiores */}
             <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-neutral-400 mb-1.5">
-              {comic.publisher && <span className="text-white font-semibold">{comic.publisher}</span>}
-              {comic.publisher && comic.year && <span>·</span>}
+              {comic.publisher && <span className="text-neutral-200 font-semibold">{comic.publisher}</span>}
+              {comic.publisher && comic.year && <span className="text-neutral-600">·</span>}
               {comic.year && <span>{comic.year}</span>}
-              {(comic.publisher || comic.year) && <span>·</span>}
+              {(comic.publisher || comic.year) && <span className="text-neutral-600">·</span>}
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide uppercase ${
                 isCompleted
                   ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
                   : percentage > 0
-                  ? "bg-blue-500/20 text-blue-300 border border-blue-500/30"
-                  : "bg-white/10 text-neutral-300 border border-white/15"
+                  ? "bg-white/15 text-neutral-200 border border-white/20"
+                  : "bg-white/5 text-neutral-400 border border-white/10"
               }`}>
                 {getStatusLabel(status)}
               </span>
             </div>
 
             {/* Título Principal */}
-            <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight leading-snug">
+            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight leading-snug">
               {comic.title}
             </h2>
 
             {/* Coleção & Edição */}
-            <div className="flex items-center gap-1.5 text-xs text-blue-400 font-semibold mt-1">
-              <span>{comic.seriesTitle || "Edição Especial"}</span>
-              <span className="text-neutral-500 font-normal">·</span>
-              <span className="text-neutral-300">Edição #{comic.issueNumber}</span>
+            <div className="flex items-center gap-1.5 text-xs sm:text-sm text-neutral-400 font-medium mt-1 truncate">
+              <span className="truncate">{comic.seriesTitle || "Edição Especial"}</span>
+              <span className="text-neutral-600">·</span>
+              <span className="text-neutral-400">Edição #{comic.issueNumber}</span>
             </div>
 
             {/* Progresso de Leitura */}
-            <div className="py-3.5 border-b border-white/10 my-3">
-              <div className="flex items-center justify-between text-xs text-neutral-300 mb-1.5">
+            <div className="py-3 border-y border-white/10 my-3">
+              <div className="flex items-center justify-between text-xs text-neutral-400 mb-1.5">
                 <span className="font-medium text-neutral-400">Progresso</span>
-                <span className="font-semibold text-white">
-                  Página {comic.progress?.currentPage || 0} de {comic.totalPages} ({formatPercentage(percentage)})
+                <span className="font-medium text-neutral-200">
+                  Pág. {comic.progress?.currentPage || 0}/{comic.totalPages} ({formatPercentage(percentage)})
                 </span>
               </div>
-              <ProgressBar percentage={percentage} status={status} size="sm" />
+              <div className="h-1.5 w-full bg-black/60 rounded-full overflow-hidden border border-white/5">
+                <div
+                  className={`h-full transition-all duration-300 rounded-full ${isCompleted ? "bg-emerald-400" : "bg-white"}`}
+                  style={{ width: `${Math.min(100, Math.max(0, percentage))}%` }}
+                />
+              </div>
 
               <div className="mt-2.5 flex items-center justify-end">
                 {!isCompleted ? (
@@ -237,35 +242,35 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
             </div>
 
             {/* Sinopse */}
-            <div className="py-2 border-b border-white/10">
-              <h4 className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-                <FileText className="w-3.5 h-3.5 text-blue-400" />
+            <div className="py-2.5 border-b border-white/10">
+              <h4 className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-neutral-400" />
                 Sinopse
               </h4>
-              <p className="comic-detail-synopsis text-neutral-300 leading-relaxed">
-                {comic.synopsis || "Nenhuma sinopse disponível para esta edição no momento."}
+              <p className="comic-detail-synopsis text-neutral-300 text-xs sm:text-sm leading-relaxed font-normal">
+                {comic.synopsis || "Nenhuma sinopse cadastrada para esta edição."}
               </p>
             </div>
 
             {/* Ficha Criativa */}
             {(comic.writers.length > 0 || comic.pencillers.length > 0 || comic.characters.length > 0) && (
-              <div className="py-3 border-b border-white/10 grid grid-cols-2 gap-3 text-xs">
+              <div className="py-3 border-b border-white/10 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 {comic.writers.length > 0 && (
                   <div>
-                    <span className="text-neutral-500 text-[10px] uppercase tracking-wider font-semibold block">Roteiro</span>
+                    <span className="text-neutral-500 text-[10px] uppercase tracking-wider font-semibold block mb-0.5">Roteiro</span>
                     <span className="text-neutral-200 font-medium">{comic.writers.join(", ")}</span>
                   </div>
                 )}
                 {comic.pencillers.length > 0 && (
                   <div>
-                    <span className="text-neutral-500 text-[10px] uppercase tracking-wider font-semibold block">Arte e Desenho</span>
+                    <span className="text-neutral-500 text-[10px] uppercase tracking-wider font-semibold block mb-0.5">Arte e Desenho</span>
                     <span className="text-neutral-200 font-medium">{comic.pencillers.join(", ")}</span>
                   </div>
                 )}
                 {comic.characters.length > 0 && (
-                  <div className="col-span-2 pt-0.5">
-                    <span className="text-neutral-500 text-[10px] uppercase tracking-wider font-semibold block">Personagens em Destaque</span>
-                    <span className="text-blue-300 font-medium">{comic.characters.join(", ")}</span>
+                  <div className="sm:col-span-2 pt-0.5">
+                    <span className="text-neutral-500 text-[10px] uppercase tracking-wider font-semibold block mb-0.5">Personagens em Destaque</span>
+                    <span className="text-neutral-200 font-medium">{comic.characters.join(", ")}</span>
                   </div>
                 )}
               </div>
@@ -273,13 +278,13 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
           </div>
 
           {/* Rodapé: Especificações do Arquivo & Tags */}
-          <div className="pt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-400">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-neutral-300">{comic.totalPages} páginas</span>
-              <span>·</span>
+          <div className="pt-3 flex flex-wrap items-center justify-between gap-2.5 text-xs text-neutral-400">
+            <div className="flex items-center gap-2 text-[12px]">
+              <span className="font-medium text-neutral-300">{comic.totalPages} páginas</span>
+              <span className="text-neutral-600">·</span>
               <span>{formatFileSize(comic.fileSizeMb)}</span>
-              <span>·</span>
-              <span className="px-1.5 py-0.2 rounded bg-white/10 text-[10px] font-bold text-neutral-300">{fileExtension}</span>
+              <span className="text-neutral-600">·</span>
+              <span className="px-1.5 py-0.5 rounded bg-white/10 text-[10px] font-bold text-neutral-300 uppercase tracking-wider">{fileExtension}</span>
             </div>
 
             {comic.tags.length > 0 && (
@@ -287,7 +292,7 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
                 {comic.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="text-[10px] px-2 py-0.5 rounded-full bg-white/[0.06] text-neutral-300 border border-white/10"
+                    className="text-[10px] px-2 py-0.5 rounded-full bg-white/[0.04] text-neutral-400 border border-white/10"
                   >
                     #{tag}
                   </span>
