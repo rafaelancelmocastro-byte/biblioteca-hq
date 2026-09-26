@@ -34,6 +34,7 @@ export const PublicationReader: React.FC<{
   const [error, setError] = useState("");
   const format = publicationFormat(comic.fileName);
   const isBook = format === "epub" || format === "azw3";
+  const preferredDirection = (() => { const pref = localStorage.getItem("biblioteca_reading_direction"); return pref === "ltr" || pref === "rtl" ? pref : comic.readingDirection || "ltr"; })();
 
   useEffect(() => {
     let active = true;
@@ -46,7 +47,7 @@ export const PublicationReader: React.FC<{
       const file = new File([blob], comic.fileName);
       book = await openPublicationBook(file);
       if (!active) { book.destroy?.(); return; }
-      if (format === "cbr") book.dir = comic.readingDirection || "ltr";
+      if (format === "cbr") book.dir = preferredDirection;
       await import("foliate-js/view.js");
       view = document.createElement("foliate-view") as FoliateView;
       view.className = "publication-view";
@@ -72,7 +73,7 @@ export const PublicationReader: React.FC<{
     };
     void open().catch((cause) => { if (active) { setError(cause instanceof Error ? cause.message : "Não foi possível abrir este arquivo."); setLoading(false); } });
     return () => { active = false; view?.close(); view?.remove(); book?.destroy?.(); viewRef.current = null; };
-  }, [comic.id, comic.fileName, comic.readingDirection, fileUrl, fileData, format]);
+  }, [comic.id, comic.fileName, fileUrl, fileData, format, preferredDirection]);
 
   useEffect(() => {
     const view = viewRef.current;
@@ -81,12 +82,12 @@ export const PublicationReader: React.FC<{
 
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
-      if (event.key === "ArrowLeft") { event.preventDefault(); void (comic.readingDirection === "rtl" ? viewRef.current?.next() : viewRef.current?.prev()); }
-      if (event.key === "ArrowRight") { event.preventDefault(); void (comic.readingDirection === "rtl" ? viewRef.current?.prev() : viewRef.current?.next()); }
+      if (event.key === "ArrowLeft") { event.preventDefault(); void (preferredDirection === "rtl" ? viewRef.current?.next() : viewRef.current?.prev()); }
+      if (event.key === "ArrowRight") { event.preventDefault(); void (preferredDirection === "rtl" ? viewRef.current?.prev() : viewRef.current?.next()); }
     };
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
-  }, [comic.readingDirection]);
+  }, [preferredDirection]);
 
   return <div className="reader-shell publication-shell fixed inset-0 z-50 flex flex-col text-[#e9edf2]">
     <header className="reader-topbar"><button className="reader-icon-button" onClick={onBack} aria-label="Voltar para a biblioteca"><ArrowLeft /></button><div className="min-w-0 flex-1"><strong className="block truncate">{comic.title}</strong><small className="text-white/60">{format?.toUpperCase()} · {comic.publisher}</small></div>{isBook && <button className="publication-mode" onClick={() => setScrolled((value) => !value)}>{scrolled ? <><Square /> Páginas</> : <><Rows3 /> Rolagem</>}</button>}</header>
@@ -95,6 +96,6 @@ export const PublicationReader: React.FC<{
       {error && <div role="alert" className="publication-message"><p>{error}</p><button onClick={onBack}>Voltar ao acervo</button></div>}
     </main>
     {onNextChapter && section >= total && <button className="reader-next-chapter" onClick={onNextChapter}>Ler o próximo capítulo <ChevronRight /></button>}
-    <footer className="reader-dock publication-dock"><button onClick={() => void (comic.readingDirection === "rtl" ? viewRef.current?.next() : viewRef.current?.prev())} aria-label="Página anterior"><ChevronLeft /></button><label className="reader-page-control"><input type="range" min="1" max={total} value={section} onChange={(event) => void viewRef.current?.goTo(isBook ? { fraction: Number(event.target.value) / 100 } : Number(event.target.value) - 1)} aria-label="Progresso da leitura" /><span>{isBook ? `${section}%` : `Página ${section} / ${total}`}</span></label><button onClick={() => void (comic.readingDirection === "rtl" ? viewRef.current?.prev() : viewRef.current?.next())} aria-label="Próxima página"><ChevronRight /></button></footer>
+    <footer className="reader-dock publication-dock"><button onClick={() => void (preferredDirection === "rtl" ? viewRef.current?.next() : viewRef.current?.prev())} aria-label="Página anterior"><ChevronLeft /></button><label className="reader-page-control"><input type="range" min="1" max={total} value={section} onChange={(event) => void viewRef.current?.goTo(isBook ? { fraction: Number(event.target.value) / 100 } : Number(event.target.value) - 1)} aria-label="Progresso da leitura" /><span>{isBook ? `${section}%` : `Página ${section} / ${total}`}</span></label><button onClick={() => void (preferredDirection === "rtl" ? viewRef.current?.prev() : viewRef.current?.next())} aria-label="Próxima página"><ChevronRight /></button></footer>
   </div>;
 };
