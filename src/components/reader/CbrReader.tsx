@@ -5,6 +5,7 @@ import { openPublicationBook, type PublicationBook } from "../../services/public
 import { createRemoteArchiveSource, downloadComicBlob } from "../../services/comicDownload";
 import { publicationFormat } from "../../services/publicationFormats";
 import { ReaderCompletion, ReaderDock, ReaderSettings, useReaderChrome, type NextIssue, type ReaderFit, type ReaderMode, type ReaderTexture } from "./ReaderChrome";
+import { saveCurrentUserPreferencePatch } from "../../services/userPreferences";
 
 function CbrImage({ book, index, className = "", onVisible }: { book: PublicationBook; index: number; className?: string; onVisible?: (page: number) => void }) {
   const holder = useRef<HTMLDivElement>(null);
@@ -53,11 +54,11 @@ export function CbrReader({ comic, fileUrl, fileData, onBack, onNextChapter, nex
   const resumePageRef = useRef(Math.max(1, comic.progress?.currentPage || 1));
   const restoringPositionRef = useRef(resumePageRef.current > 1);
   const [mode, setMode] = useState<ReaderMode>(() => (localStorage.getItem("biblioteca_reader_mode") as ReaderMode) || "page");
-  const [direction, setDirection] = useState<"ltr" | "rtl">(comic.readingDirection || "ltr");
+  const [direction, setDirection] = useState<"ltr" | "rtl">(() => { const pref = localStorage.getItem("biblioteca_reading_direction"); return pref === "ltr" || pref === "rtl" ? pref : comic.readingDirection || "ltr"; });
   const [zoom, setZoom] = useState(1);
   const [brightness, setBrightness] = useState(100);
   const [texture, setTexture] = useState<ReaderTexture>("clean");
-  const [fitMode, setFitMode] = useState<ReaderFit>("height");
+  const [fitMode, setFitMode] = useState<ReaderFit>(() => (localStorage.getItem("biblioteca_reader_fit") as ReaderFit) || "height");
   const [settings, setSettings] = useState(false);
   const { controlsVisible, showControls, toggleControls } = useReaderChrome(settings);
   const [fullscreen, setFullscreen] = useState(false);
@@ -133,13 +134,13 @@ export function CbrReader({ comic, fileUrl, fileData, onBack, onNextChapter, nex
     const timer = window.setTimeout(() => { restoringPositionRef.current = false; }, 400);
     return () => { cancelAnimationFrame(frame); window.clearTimeout(timer); };
   }, [book, mode]);
-  const changeMode = (value: ReaderMode) => { setMode(value); if (value === "spread" && page > 1 && page % 2 === 1) setPage(page - 1); };
+  const changeMode = (value: ReaderMode) => { setMode(value); localStorage.setItem("biblioteca_reader_mode", value); void saveCurrentUserPreferencePatch({ readerMode: value }); if (value === "spread" && page > 1 && page % 2 === 1) setPage(page - 1); };
   const toggleFullscreen = () => { if (document.fullscreenElement) void document.exitFullscreen(); else void shellRef.current?.requestFullscreen(); };
   const shown = mode === "spread" && visiblePage > 1 && visiblePage < total ? [visiblePage - 1, visiblePage] : [visiblePage - 1];
 
   return <div ref={shellRef} className={`reader-shell reader-immersive fixed inset-0 z-50 flex flex-col text-[#e9edf2] ${controlsVisible ? "" : "reader-controls-hidden"}`} onPointerDownCapture={(event) => { if ((event.target as HTMLElement).closest(".reader-topbar,.reader-dock,.reader-settings")) showControls(); }}>
     <header className="reader-topbar"><button className="reader-icon-button" onClick={onBack} aria-label="Voltar"><ArrowLeft /></button><div className="min-w-0 flex-1"><strong className="block truncate">{comic.title}</strong><small className="text-white/60">{comic.seriesTitle} · {comic.publisher}</small></div><button className="reader-icon-button" onClick={() => { showControls(); setSettings((value) => !value); }} aria-label="Ajustes de leitura" aria-expanded={settings}><Settings2 /></button><button className="reader-icon-button" onClick={toggleFullscreen} aria-label="Alternar tela cheia">{fullscreen ? <Minimize /> : <Expand />}</button></header>
-    {settings && <ReaderSettings mode={mode} onModeChange={changeMode} direction={direction} onDirectionChange={setDirection} brightness={brightness} onBrightnessChange={setBrightness} texture={texture} onTextureChange={setTexture} />}
+    {settings && <ReaderSettings mode={mode} onModeChange={changeMode} direction={direction} onDirectionChange={(value) => { setDirection(value); localStorage.setItem("biblioteca_reading_direction", value); void saveCurrentUserPreferencePatch({ readingDirection: value }); }} brightness={brightness} onBrightnessChange={setBrightness} texture={texture} onTextureChange={setTexture} />}
     <main ref={stageRef} className={`reader-stage cbr-scroll-stage texture-${texture} mode-${mode} ${zoom > 1.05 ? "reader-stage-zoomed" : ""} ${fitMode === "width" ? "reader-stage-fit-width" : ""}`} style={{ filter: `brightness(${brightness}%)` }}
       onTouchStart={(event) => { didSwipe.current = false; const touches = event.touches; startTouch.current = touches.length === 2 ? { x: 0, y: 0, distance: Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY), zoom } : { x: touches[0].clientX, y: touches[0].clientY }; }}
       onTouchMove={(event) => { if (event.touches.length === 2 && startTouch.current?.distance) { const distance = Math.hypot(event.touches[0].clientX - event.touches[1].clientX, event.touches[0].clientY - event.touches[1].clientY); setZoom(Math.min(3, Math.max(.7, startTouch.current.zoom! * distance / startTouch.current.distance))); } }}
@@ -150,6 +151,6 @@ export function CbrReader({ comic, fileUrl, fileData, onBack, onNextChapter, nex
       {previewOnly && <div className="reader-preview-status" role="status">Primeiras páginas disponíveis · preparando o restante</div>}
     </main>
     {book && visiblePage + (mode === "spread" && visiblePage > 1 ? 1 : 0) >= total && <ReaderCompletion nextIssue={nextIssue} onNextChapter={onNextChapter} />}
-    <ReaderDock page={displayedPage} total={total} onPageChange={(target) => { setCurrent(target); if (mode === "continuous") stageRef.current?.querySelector(`[data-cbr-page="${target}"]`)?.scrollIntoView({ block: "start" }); }} onPrevious={direction === "rtl" ? next : previous} onNext={direction === "rtl" ? previous : next} previousDisabled={direction === "rtl" ? displayedPage >= (activeBook?.sections.length || total) : displayedPage <= 1} nextDisabled={direction === "rtl" ? displayedPage <= 1 : displayedPage >= (activeBook?.sections.length || total)} zoom={zoom} onZoomChange={(value) => setZoom(Math.min(3, Math.max(.7, value)))} fit={fitMode} onFitChange={(fit) => { setFitMode(fit); setZoom(1); if (fit === "height" && mode === "continuous") changeMode("page"); }} scrubDisabled={previewOnly} />
+    <ReaderDock page={displayedPage} total={total} onPageChange={(target) => { setCurrent(target); if (mode === "continuous") stageRef.current?.querySelector(`[data-cbr-page="${target}"]`)?.scrollIntoView({ block: "start" }); }} onPrevious={direction === "rtl" ? next : previous} onNext={direction === "rtl" ? previous : next} previousDisabled={direction === "rtl" ? displayedPage >= (activeBook?.sections.length || total) : displayedPage <= 1} nextDisabled={direction === "rtl" ? displayedPage <= 1 : displayedPage >= (activeBook?.sections.length || total)} zoom={zoom} onZoomChange={(value) => setZoom(Math.min(3, Math.max(.7, value)))} fit={fitMode} onFitChange={(fit) => { setFitMode(fit); localStorage.setItem("biblioteca_reader_fit", fit); void saveCurrentUserPreferencePatch({ readerFit: fit }); setZoom(1); if (fit === "height" && mode === "continuous") changeMode("page"); }} scrubDisabled={previewOnly} />
   </div>;
 }
