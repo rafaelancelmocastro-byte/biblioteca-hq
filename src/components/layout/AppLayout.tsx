@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 import { MobileNav } from "./MobileNav";
@@ -36,7 +36,16 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   userId,
 }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => localStorage.getItem("biblioteca-hq-sidebar-collapsed") === "true");
+  const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   const toggleSidebar = () => setIsSidebarCollapsed((current) => { const next = !current; localStorage.setItem("biblioteca-hq-sidebar-collapsed", String(next)); return next; });
+
+  useEffect(() => {
+    const online = () => setIsOnline(true);
+    const offline = () => setIsOnline(false);
+    window.addEventListener("online", online);
+    window.addEventListener("offline", offline);
+    return () => { window.removeEventListener("online", online); window.removeEventListener("offline", offline); };
+  }, []);
 
   if (hideHeaderAndNav) {
     return <div className="min-h-screen bg-[#0b0e14] text-slate-100">{children}</div>;
@@ -68,6 +77,17 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
           isOwner={isOwner}
           userName={userName}
         />
+
+        {!isOnline && (
+          <div className="border-b border-white/[0.08] bg-white/[0.035] px-4 py-2.5 sm:px-6">
+            <div className="mx-auto flex max-w-[1680px] flex-col gap-2 text-xs text-neutral-300 sm:flex-row sm:items-center sm:justify-between">
+              <span>Você está offline. O app continua disponível e as edições salvas neste dispositivo podem ser lidas normalmente.</span>
+              <button type="button" onClick={() => onNavigate("/offline")} className="w-fit font-semibold text-white hover:text-neutral-300">
+                Ver baixados offline
+              </button>
+            </div>
+          </div>
+        )}
 
         <main className="cinematic-main flex-1 px-4 sm:px-6 lg:px-9 py-5 sm:py-7 max-w-[1680px] w-full mx-auto">
           {children}
