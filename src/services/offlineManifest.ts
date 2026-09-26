@@ -1,4 +1,5 @@
 import { getRememberedOfflineUser } from "./offlineIdentity";
+import { listOffline } from "./offlineLibrary";
 import { supabase } from "./supabaseClient";
 
 const cacheKey = (userId: string) => `biblioteca-hq-offline-manifest:${userId}`;
@@ -84,4 +85,23 @@ export async function removeOfflineLibraryItem(comicId: string, userId?: string)
   } catch {
     return false;
   }
+}
+
+
+export async function syncLocalOfflineLibrary(userId?: string): Promise<number> {
+  const resolvedUserId = await resolveUserId(userId);
+  if (!resolvedUserId || !navigator.onLine) return 0;
+
+  const local = await listOffline(resolvedUserId);
+  if (!local.length) return 0;
+
+  const remote = await getOfflineLibraryIds(resolvedUserId);
+  const missing = local.filter((item) => !remote.has(item.comic.id));
+  if (!missing.length) return 0;
+
+  let synced = 0;
+  for (const item of missing) {
+    if (await addOfflineLibraryItem(item.comic.id, resolvedUserId)) synced += 1;
+  }
+  return synced;
 }
