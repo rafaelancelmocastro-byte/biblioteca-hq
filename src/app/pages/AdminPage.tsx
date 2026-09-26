@@ -48,6 +48,8 @@ export const AdminPage: React.FC = () => {
   const [newImportSeriesId, setNewImportSeriesId] = useState("");
   const [draftUserId, setDraftUserId] = useState("");
   const [draftHydrated, setDraftHydrated] = useState(false);
+  const [draftAvailable, setDraftAvailable] = useState(false);
+  const [draftRestoring, setDraftRestoring] = useState(false);
   const [draftSaveState, setDraftSaveState] = useState<"saving" | "saved" | "error" | "idle">("idle");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -65,30 +67,72 @@ export const AdminPage: React.FC = () => {
       const userId = (await supabase?.auth.getSession())?.data.session?.user.id;
       if (!active) return;
       if (!userId) { setDraftHydrated(true); return; }
-      try {
-        const saved = await loadPendingImport<typeof form>(userId);
-        if (!active) return;
-        if (saved) {
-          setPdf(saved.pdf); setBatchPdfs(saved.batchPdfs); setCover(saved.cover); setBatchCovers(saved.batchCovers);
-          const recentForm = localStorage.getItem(`biblioteca-hq-import-form:${userId}`);
-          setForm(recentForm ? JSON.parse(recentForm) : saved.form);
-          setNotice(`${saved.batchPdfs.length + (saved.pdf ? 1 : 0)} arquivo(s) pendente(s) recuperado(s) neste dispositivo.`);
-        }
-      } catch { setNotice("Não foi possível recuperar o rascunho local neste dispositivo."); }
       setDraftUserId(userId);
+      setDraftAvailable(
+        localStorage.getItem(`biblioteca-hq-import-draft:${userId}`) === "true" ||
+        Boolean(localStorage.getItem(`biblioteca-hq-import-form:${userId}`))
+      );
       setDraftHydrated(true);
     })();
     return () => { active = false; };
   }, []);
+
+  const restorePendingDraft = async () => {
+    if (!draftUserId || draftRestoring) return;
+    setDraftRestoring(true);
+    try {
+      const saved = await loadPendingImport<typeof form>(draftUserId);
+      if (!saved) {
+        setDraftAvailable(false);
+        localStorage.removeItem(`biblioteca-hq-import-draft:${draftUserId}`);
+        feedback("Nenhuma fila salva foi encontrada neste dispositivo.", "info");
+        return;
+      }
+      setPdf(saved.pdf);
+      setBatchPdfs(saved.batchPdfs);
+      setCover(saved.cover);
+      setBatchCovers(saved.batchCovers);
+      const recentForm = localStorage.getItem(`biblioteca-hq-import-form:${draftUserId}`);
+      setForm(recentForm ? JSON.parse(recentForm) : saved.form);
+      feedback(`${saved.batchPdfs.length + (saved.pdf ? 1 : 0)} arquivo(s) pendente(s) recuperado(s). A análise será iniciada agora.`, "success");
+    } catch {
+      feedback("Não foi possível recuperar a fila salva. Você pode descartá-la e iniciar uma nova importação.", "error");
+    } finally {
+      setDraftRestoring(false);
+    }
+  };
+
+  const discardPendingDraft = async () => {
+    if (!draftUserId) return;
+    await savePendingImport(draftUserId, null).catch(() => {});
+    localStorage.removeItem(`biblioteca-hq-import-draft:${draftUserId}`);
+    localStorage.removeItem(`biblioteca-hq-import-form:${draftUserId}`);
+    setDraftAvailable(false);
+    setPdf(null);
+    setBatchPdfs([]);
+    setCover(null);
+    setBatchCovers([]);
+    feedback("Fila salva descartada. Você pode iniciar uma nova importação.", "info");
+  };
   useEffect(() => {
     if (!draftHydrated || !draftUserId || tab !== "import" || editing) return;
     const draft = pdf || batchPdfs.length || cover || batchCovers.length ? { pdf, batchPdfs, cover, batchCovers, form, savedAt: Date.now() } : null;
     let active = true;
     setDraftSaveState(draft ? "saving" : "idle");
-    void savePendingImport(draftUserId, draft).then(() => { if (active && draft) setDraftSaveState("saved"); }).catch(() => { if (active) { setDraftSaveState("error"); feedback("O dispositivo não conseguiu guardar a fila localmente. Mantenha esta tela aberta até publicar.", "error"); } });
+    void savePendingImport(draftUserId, draft).then(() => {
+      if (!active) return;
+      if (draft) {
+        setDraftSaveState("saved");
+        setDraftAvailable(true);
+        localStorage.setItem(`biblioteca-hq-import-draft:${draftUserId}`, "true");
+      } else {
+        setDraftAvailable(false);
+        localStorage.removeItem(`biblioteca-hq-import-draft:${draftUserId}`);
+      }
+    }).catch(() => { if (active) { setDraftSaveState("error"); feedback("O dispositivo não conseguiu guardar a fila localmente. Mantenha esta tela aberta até publicar.", "error"); } });
     if (!draft) localStorage.removeItem(`biblioteca-hq-import-form:${draftUserId}`);
     return () => { active = false; };
-  }, [draftHydrated, draftUserId, tab, editing, pdf, batchPdfs, cover, batchCovers, form]);
+  }, [draftHydrated, draftUserId, tab, editing, pdf, batchPdfs, cover, batchCovers]);
   useEffect(() => { if (tab === "import" && !editing && draftUserId && (pdf || batchPdfs.length)) localStorage.setItem(`biblioteca-hq-import-form:${draftUserId}`, JSON.stringify(form)); }, [tab, editing, draftUserId, form, pdf, batchPdfs.length]);
   const [seriesForm, setSeriesForm] = useState({ id: "", kind: "collection", parentSeriesId: "", title: "", publisher: "", startYear: "", endYear: "", expected: "", description: "", coverKey: "" });
   const [publisherNames, setPublisherNames] = useState<string[]>([]);
@@ -389,6 +433,16 @@ export const AdminPage: React.FC = () => {
     {tab === "overview" && <section className="admin-overview-grid"><button onClick={() => setTab("catalog")}><span>Publicações</span><strong>{allComics.length}</strong><small>Buscar, filtrar e editar o catálogo.</small></button><button onClick={() => { setManagerIssue("missing_cover"); setTab("catalog"); }}><span>Sem capa</span><strong>{missingCoverCount}</strong><small>Publicações que precisam de arte.</small></button><button onClick={() => { setManagerIssue("missing_synopsis"); setTab("catalog"); }}><span>Sem sinopse</span><strong>{missingSynopsisCount}</strong><small>Metadados editoriais incompletos.</small></button><button onClick={() => { setManagerIssue("storage_error"); setTab("catalog"); }}><span>Erro de arquivo</span><strong>{storageErrorCount}</strong><small>Itens com falha de armazenamento.</small></button><button onClick={() => setTab("collections")}><span>Coleções & sagas</span><strong>{seriesList.length}</strong><small>Organização editorial do acervo.</small></button><button onClick={() => setTab("import")}><span>Importar</span><strong>+</strong><small>Adicionar HQs e livros ao catálogo.</small></button></section>}
     {(tab === "catalog" || tab === "import" || tab === "edit") && <div className="studio-grid">
       {tab === "import" && <>
+      {draftAvailable && !pdf && batchPdfs.length === 0 && (
+        <section className="studio-panel">
+          <div className="studio-panel-title"><div><span>Fila salva neste dispositivo</span><h2>Retomar importação anterior?</h2></div></div>
+          <p className="text-xs text-slate-400">Para evitar travamentos, arquivos grandes salvos anteriormente não são mais carregados automaticamente. Recupere a fila somente quando quiser continuar.</p>
+          <div className="manager-selection-actions">
+            <button type="button" className="studio-primary" disabled={draftRestoring} onClick={() => void restorePendingDraft()}>{draftRestoring ? "Recuperando..." : "Recuperar fila salva"}</button>
+            <button type="button" className="admin-delete-action" disabled={draftRestoring} onClick={() => void discardPendingDraft()}>Descartar fila salva</button>
+          </div>
+        </section>
+      )}
       <ImportOrganization series={seriesList} onFeedback={feedback} onCreated={async (id) => { await reloadData(true); setForm((current) => ({ ...current, seriesId: id })); setNewImportSeriesId(id); }} />
       {batchPdfs.length > 0 && <BatchImport files={batchPdfs} covers={batchCovers} series={seriesList} newlyCreatedSeriesId={newImportSeriesId} existingComics={allComics} onComplete={() => reloadData(true)} onClear={() => { setBatchPdfs([]); setBatchCovers([]); }} onFeedback={feedback} />}
       </>}
