@@ -130,17 +130,26 @@ export const SeriesPage: React.FC<{ onOpenReader: (id: string) => void }> = ({ o
     [seriesList, publisherKeys]
   );
 
-  const groups = useMemo(
-    () =>
-      seriesList.filter(
-        (series) =>
-          series.publisher === publisher &&
-          !series.parentSeriesId &&
-          (kind === "all" || (series.bannerTone === "saga" ? "saga" : "collection") === kind) &&
-          series.title.toLocaleLowerCase("pt-BR").includes(groupSearch.toLocaleLowerCase("pt-BR"))
-      ),
-    [seriesList, publisher, kind, groupSearch]
-  );
+  const groups = useMemo(() => {
+    const needle = groupSearch.trim().toLocaleLowerCase("pt-BR");
+    return seriesList.filter((series) => {
+      if (series.publisher !== publisher || series.parentSeriesId) return false;
+      if (kind !== "all" && (series.bannerTone === "saga" ? "saga" : "collection") !== kind) return false;
+      if (!needle) return true;
+
+      const childIds = seriesList.filter((child) => child.parentSeriesId === series.id).map((child) => child.id);
+      const childTitles = seriesList
+        .filter((child) => child.parentSeriesId === series.id)
+        .map((child) => child.title)
+        .join(" ");
+      const relatedComics = allComics
+        .filter((comic) => comic.seriesId === series.id || childIds.includes(comic.seriesId))
+        .map((comic) => `${comic.title} ${comic.characters.join(" ")}`)
+        .join(" ");
+
+      return `${series.title} ${childTitles} ${relatedComics}`.toLocaleLowerCase("pt-BR").includes(needle);
+    });
+  }, [seriesList, allComics, publisher, kind, groupSearch]);
 
   const activeGroup = groups[Math.min(activeSeries, groups.length - 1)];
   const selectedSeries = seriesList.find((series) => series.id === seriesId);
