@@ -118,12 +118,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
   React.useEffect(() => {
     const pending = nextPageComics.filter((comic) => !comic.coverUrl);
     if (!pending.length) return;
-    const run = () => void ensureCoverUrls(pending);
-    if ("requestIdleCallback" in window) {
-      const id = window.requestIdleCallback(run, { timeout: 1200 });
-      return () => window.cancelIdleCallback(id);
-    }
-    const id = window.setTimeout(run, 250);
+    const id = window.setTimeout(() => void ensureCoverUrls(pending), 250);
     return () => window.clearTimeout(id);
   }, [nextPageComics, ensureCoverUrls]);
 
