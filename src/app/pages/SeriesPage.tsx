@@ -59,6 +59,7 @@ export const SeriesPage: React.FC<{ onOpenReader: (id: string) => void }> = ({ o
     updateProgress,
     setStatus,
     isLoading,
+    ensureCoverUrls,
   } = useLibrary();
 
   const [publisher, setPublisher] = useState<string | null>(rememberedView.publisher);
@@ -191,6 +192,34 @@ export const SeriesPage: React.FC<{ onOpenReader: (id: string) => void }> = ({ o
         ),
     [issues, issueSearch, issueStatus, issueSort]
   );
+
+  useEffect(() => {
+    const candidates: Comic[] = [];
+
+    if (!publisher) {
+      for (const name of publishers) {
+        const comic = allComics.find((item) => item.publisher === name);
+        if (comic) candidates.push(comic);
+      }
+    } else if (!seriesId) {
+      for (const group of groups) {
+        const childIds = new Set(seriesList.filter((item) => item.parentSeriesId === group.id).map((item) => item.id));
+        const comic = allComics.find((item) => item.seriesId === group.id || childIds.has(item.seriesId));
+        if (comic) candidates.push(comic);
+      }
+    } else {
+      for (const saga of childSagas) {
+        const comic = allComics.find((item) => item.seriesId === saga.id);
+        if (comic) candidates.push(comic);
+      }
+      candidates.push(...visibleIssues.slice(0, 30));
+    }
+
+    const targets = candidates.filter(
+      (comic, index, list) => !comic.coverUrl && list.findIndex((item) => item.id === comic.id) === index
+    );
+    if (targets.length) void ensureCoverUrls(targets);
+  }, [publisher, seriesId, publishers, groups, childSagas, visibleIssues, allComics, seriesList, ensureCoverUrls]);
 
   useEffect(() => {
     if (!supabase) return;
