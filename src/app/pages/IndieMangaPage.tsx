@@ -29,10 +29,8 @@ export const IndieMangaPage: React.FC<{ onOpenReader: (id: string) => void }> = 
 
   const eligibleBooks = useMemo(
     () =>
-      allComics.filter(
-        (comic) =>
-          ["graphic_novel", "manga", "manhwa"].includes(comic.contentType || "") ||
-          /image|dark horse|vertigo|independente|indie/i.test(comic.publisher)
+      allComics.filter((comic) =>
+        ["graphic_novel", "manga", "manhwa"].includes(comic.contentType || "")
       ),
     [allComics]
   );
@@ -71,7 +69,7 @@ export const IndieMangaPage: React.FC<{ onOpenReader: (id: string) => void }> = 
         <span className="block text-[11px] font-bold uppercase tracking-[0.14em] text-neutral-400">Multiverso</span>
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-white sm:text-3xl">Mangá & Indie</h1>
         <p className="mt-1 max-w-2xl text-xs leading-relaxed text-neutral-400 sm:text-sm">
-          Mangás, manhwas, graphic novels e quadrinhos independentes reunidos em uma seleção editorial do acervo.
+          Mangás, manhwas e graphic novels classificados no acervo.
         </p>
       </header>
 
@@ -167,7 +165,7 @@ export const IndieMangaPage: React.FC<{ onOpenReader: (id: string) => void }> = 
                 <span className="text-xs text-neutral-400 sm:text-sm">· {books.length} {books.length === 1 ? "obra" : "obras"}</span>
               </div>
               <p className="mt-0.5 text-xs leading-relaxed text-neutral-400">
-                {type === "all" ? "Seleção completa de mangás, manhwas, graphic novels e quadrinhos independentes." : `Obras classificadas como ${labels[type].toLowerCase()}.`}
+                {type === "all" ? "Seleção completa de mangás, manhwas e graphic novels classificados no acervo." : `Obras classificadas como ${labels[type].toLowerCase()}.`}
               </p>
             </div>
 
