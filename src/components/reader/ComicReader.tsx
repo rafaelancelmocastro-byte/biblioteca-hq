@@ -89,8 +89,8 @@ const ContinuousPdfPage: React.FC<{
 export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, pdfData, onBack, onNextChapter, nextIssue, onUpdateProgress }) => {
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [currentPage, setCurrentPage] = useState(() => Math.max(1, comic.progress?.currentPage || 1));
-  const resumePageRef = useRef(Math.max(1, comic.progress?.currentPage || 1));
-  const restoringPositionRef = useRef(resumePageRef.current > 1);
+  const currentPageRef = useRef(Math.max(1, comic.progress?.currentPage || 1));
+  const restoringPositionRef = useRef(false);
   const [zoom, setZoom] = useState(1);
   const [readerMode, setReaderMode] = useState<ReaderMode>(() => (localStorage.getItem("biblioteca_reader_mode") as ReaderMode) || "page");
   const [readingDirection, setReadingDirection] = useState<"ltr" | "rtl">(() => { const pref = localStorage.getItem("biblioteca_reading_direction"); return pref === "ltr" || pref === "rtl" ? pref : comic.readingDirection || (comic.contentType === "manga" ? "rtl" : "ltr"); });
@@ -226,11 +226,17 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, pdfData
   }, [renderPage]);
 
   useEffect(() => {
-    if (!pdf || readerMode !== "continuous" || !restoringPositionRef.current) return;
-    const frame = requestAnimationFrame(() => {
-      stageRef.current?.querySelector(`[data-reader-page="${Math.min(resumePageRef.current, pdf.numPages)}"]`)?.scrollIntoView({ block: "start" });
-    });
-    const timer = window.setTimeout(() => { restoringPositionRef.current = false; }, 400);
+    currentPageRef.current = currentPage;
+  }, [currentPage]);
+
+  useEffect(() => {
+    if (!pdf || readerMode !== "continuous") return;
+    restoringPositionRef.current = true;
+    const target = Math.min(currentPageRef.current, pdf.numPages);
+    const frame = requestAnimationFrame(() => requestAnimationFrame(() => {
+      stageRef.current?.querySelector(`[data-reader-page="${target}"]`)?.scrollIntoView({ block: "start" });
+    }));
+    const timer = window.setTimeout(() => { restoringPositionRef.current = false; }, 450);
     return () => { cancelAnimationFrame(frame); window.clearTimeout(timer); };
   }, [pdf, readerMode]);
 
@@ -328,11 +334,18 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, pdfData
 
   useEffect(() => {
     const stage = stageRef.current;
-    if (!stage || readerMode !== "continuous") return;
+    if (!stage) return;
     const distance = (touches: TouchList) => Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
     const start = (event: TouchEvent) => {
-      if (event.touches.length === 2) { touchPinchRef.current = { distance: distance(event.touches), zoom: zoomValueRef.current }; touchPanRef.current = null; }
-      else if (event.touches.length === 1 && zoomValueRef.current > 1.05) touchPanRef.current = { x: event.touches[0].clientX, y: event.touches[0].clientY, scrollLeft: stage.scrollLeft, scrollTop: stage.scrollTop };
+      if (event.touches.length === 2) {
+        if (event.cancelable) event.preventDefault();
+        touchPinchRef.current = { distance: distance(event.touches), zoom: zoomValueRef.current };
+        touchPanRef.current = null;
+        swipeStartRef.current = null;
+        panRef.current = null;
+      } else if (readerMode === "continuous" && event.touches.length === 1 && zoomValueRef.current > 1.05) {
+        touchPanRef.current = { x: event.touches[0].clientX, y: event.touches[0].clientY, scrollLeft: stage.scrollLeft, scrollTop: stage.scrollTop };
+      }
     };
     const move = (event: TouchEvent) => {
       if (event.touches.length === 1 && touchPanRef.current && zoomValueRef.current > 1.05) {
@@ -348,7 +361,7 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, pdfData
       changeZoomRef.current(touchPinchRef.current.zoom * distance(event.touches) / Math.max(1, touchPinchRef.current.distance), focusX, focusY);
     };
     const end = (event: TouchEvent) => { if (event.touches.length < 2) touchPinchRef.current = null; if (event.touches.length === 0) touchPanRef.current = null; };
-    stage.addEventListener("touchstart", start, { passive: true });
+    stage.addEventListener("touchstart", start, { passive: false });
     stage.addEventListener("touchmove", move, { passive: false });
     stage.addEventListener("touchend", end);
     stage.addEventListener("touchcancel", end);
@@ -393,6 +406,7 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, pdfData
   const handlePointerDown = (event: React.PointerEvent) => {
     // Preserve native one-finger scrolling in continuous mode at the default zoom.
     if (readerMode === "continuous" && event.pointerType === "touch") return;
+    if (event.pointerType === "touch" && pointersRef.current.size >= 1) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     if (pointersRef.current.size === 1) {
