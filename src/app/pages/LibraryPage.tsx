@@ -73,6 +73,12 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
   const [comicForProgress, setComicForProgress] = useState<Comic | null>(null);
   const [featuredIndex, setFeaturedIndex] = useState(rememberedView.featuredIndex);
   const [catalogPage, setCatalogPage] = useState(rememberedView.catalogPage);
+  const discoverySeed = React.useRef<number | null>(null);
+  if (discoverySeed.current === null) {
+    const previous = Number(sessionStorage.getItem("biblioteca-featured-visit") || "0");
+    discoverySeed.current = previous + 1;
+    sessionStorage.setItem("biblioteca-featured-visit", String(discoverySeed.current));
+  }
 
   React.useEffect(() => {
     rememberedView = { filters, catalogPage, featuredIndex, selectedComic };
@@ -95,14 +101,45 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
     window.requestAnimationFrame(() => document.getElementById("catalogo-completo")?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
 
+  const launches = React.useMemo(() => allComics.filter((comic) => comic.year === 2026).slice(0, 12), [allComics]);
+
   const featuredCandidates = React.useMemo(() => {
-    const preferred = allComics.filter((comic) => comic.isFavorite || comic.progress?.status === "reading");
-    const pool = [...preferred, ...recentlyAddedComics, ...allComics];
-    return [...new Map(pool.map((comic) => [comic.id, comic])).values()].slice(0, 8);
-  }, [allComics, recentlyAddedComics]);
+    const unique = new Map<string, Comic>();
+    const add = (items: Comic[], limit: number) => {
+      let added = 0;
+      for (const comic of items) {
+        if (unique.has(comic.id)) continue;
+        unique.set(comic.id, comic);
+        added += 1;
+        if (added >= limit) break;
+      }
+    };
+
+    add(
+      allComics
+        .filter((comic) => comic.progress?.status === "reading" || comic.isFavorite)
+        .sort((a, b) => {
+          const aRead = a.progress?.lastReadAt ? new Date(a.progress.lastReadAt).getTime() : 0;
+          const bRead = b.progress?.lastReadAt ? new Date(b.progress.lastReadAt).getTime() : 0;
+          return bRead - aRead;
+        }),
+      2
+    );
+    add(recentlyAddedComics, 2);
+    add(launches, 2);
+
+    if (allComics.length) {
+      const pool = allComics.filter((comic) => !unique.has(comic.id));
+      const start = (discoverySeed.current || 1) % Math.max(pool.length, 1);
+      const discoveries = pool.length ? [...pool.slice(start), ...pool.slice(0, start)] : [];
+      add(discoveries, 2);
+    }
+
+    if (unique.size < 8) add(allComics, 8 - unique.size);
+    return [...unique.values()].slice(0, 8);
+  }, [allComics, recentlyAddedComics, launches]);
 
   const featuredComic = featuredCandidates[featuredIndex % Math.max(featuredCandidates.length, 1)];
-  const launches = React.useMemo(() => allComics.filter((comic) => comic.year === 2026).slice(0, 12), [allComics]);
 
   React.useEffect(() => {
     const priority = [
@@ -153,6 +190,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
               onChange={setFeaturedIndex}
               onActivate={(item) => setSelectedComic(featuredCandidates.find((comic) => comic.id === item.id) || null)}
               label="HQs em destaque"
+              autoPlayMs={selectedComic ? undefined : 7000}
             />
           </div>
 
