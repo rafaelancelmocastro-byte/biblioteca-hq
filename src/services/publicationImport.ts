@@ -4,7 +4,15 @@ import { publicationFormat } from "./publicationFormats";
 
 const clean = (name: string) => name.replace(/\.[^.]+$/, "").replace(/[_]+/g, " ").replace(/\s+/g, " ").trim();
 const year = (name: string) => name.match(/\b(18\d{2}|19\d{2}|20\d{2})\b/)?.[1] || "";
-const issue = (name: string) => name.match(/(?:#|(?:edi[çc][ãa]o|issue|n[ºo.]?)\s*)(\d{1,4})\b/i)?.[1] || "";
+const issue = (name: string) => {
+  const explicit = name.match(/(?:#|(?:edi[çc][ãa]o|issue|n[ºo.]?)\s*)(\d{1,4})\b/i)?.[1];
+  if (explicit) return explicit;
+  const sequence = name.match(/(?:^|[\s_-])(\d{1,4})\s*(?:de|of)\s*\d{1,4}(?=[\s_.-]|$)/i)?.[1];
+  if (sequence) return String(Number(sequence));
+  const trailing = name.replace(/\.[^.]+$/, "").match(/(?:^|[\s_-])(\d{1,4})\s*$/)?.[1];
+  const detectedYear = year(name);
+  return trailing && trailing !== detectedYear ? String(Number(trailing)) : "";
+};
 
 export async function inspectPublication(file: File, lightweight = false): Promise<PdfInspection> {
   const format = publicationFormat(file.name);
