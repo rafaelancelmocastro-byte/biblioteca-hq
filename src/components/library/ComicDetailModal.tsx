@@ -20,6 +20,7 @@ import { addOfflineLibraryItem } from "../../services/offlineManifest";
 import { supabase } from "../../services/supabaseClient";
 import { shouldConfirmCellularDownload } from "../../services/userPreferences";
 import { toggleSupabaseSeriesFavorite } from "../../services/supabaseLibrarySync";
+import { getCoverUrls, refreshCoverUrl } from "../../services/supabaseCatalogRepository";
 
 interface ComicDetailModalProps {
   comic: Comic | null;
@@ -50,8 +51,35 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
   const [seriesFavorite, setSeriesFavorite] = useState(false);
   const [seriesFavoriteBusy, setSeriesFavoriteBusy] = useState(false);
   const [seriesFavoriteError, setSeriesFavoriteError] = useState("");
+  const [detailCoverUrl, setDetailCoverUrl] = useState(comic?.coverUrl || "");
+  const [coverRetrying, setCoverRetrying] = useState(false);
 
   useEffect(() => setIsFavorite(Boolean(comic?.isFavorite)), [comic?.id, comic?.isFavorite]);
+
+  useEffect(() => {
+    let active = true;
+    setCoverRetrying(false);
+    setDetailCoverUrl(comic?.coverUrl || "");
+    if (!comic || !isOpen || comic.coverUrl || comic.hasCover === false) return () => { active = false; };
+
+    void getCoverUrls([comic]).then((urls) => {
+      if (active && urls[comic.id]) setDetailCoverUrl(urls[comic.id]);
+    }).catch(() => {});
+
+    return () => { active = false; };
+  }, [comic?.id, comic?.coverUrl, comic?.hasCover, isOpen]);
+
+  const retryDetailCover = () => {
+    if (!comic || coverRetrying || comic.hasCover === false) {
+      setDetailCoverUrl("");
+      return;
+    }
+    setCoverRetrying(true);
+    void refreshCoverUrl(comic)
+      .then((url) => setDetailCoverUrl(url || ""))
+      .catch(() => setDetailCoverUrl(""))
+      .finally(() => setCoverRetrying(false));
+  };
 
   useEffect(() => {
     if (!comic || !supabase) return;
@@ -150,11 +178,12 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
         {/* Coluna da Capa e Ações */}
         <div className="w-full md:w-52 lg:w-56 shrink-0 flex flex-col items-center">
           <div className="w-36 sm:w-44 md:w-full rounded-2xl overflow-hidden shadow-2xl shadow-black/90 border border-white/10 bg-neutral-900 aspect-[2/3] transition-transform duration-300">
-            {comic.coverUrl ? (
+            {detailCoverUrl ? (
               <img
-                src={comic.coverUrl}
+                src={detailCoverUrl}
                 alt={`Capa de ${comic.title}`}
                 className="w-full h-full object-cover"
+                onError={retryDetailCover}
               />
             ) : (
               <CoverPlaceholder
