@@ -107,7 +107,10 @@ function mapComic(row: CatalogRow): Comic {
 const coverCache = new Map<string, { url: string; expiresAt: number }>();
 let catalogCache: { value: SupabaseCatalog; expiresAt: number } | null = null;
 let pendingCatalog: Promise<SupabaseCatalog> | null = null;
-let pendingCovers: Promise<Record<string, string>> | null = null;
+type CoverQueueEntry = { comic: Comic; resolvers: Array<() => void> };
+const coverQueue = new Map<string, CoverQueueEntry>();
+let coverFlushTimer: number | null = null;
+let coverFlushRunning = false;
 
 const CATALOG_CACHE_NAME = "biblioteca-hq-data-v1";
 const CATALOG_CACHE_URL = "/__offline/catalog.json";
@@ -156,59 +159,85 @@ export function invalidateCatalogCache() {
 }
 
 export async function getCoverUrls(comics: Comic[]): Promise<Record<string, string>> {
-  if (!supabase) return {};
+  if (!supabase || !comics.length) return {};
   const now = Date.now();
-  const missing = comics.filter((comic) => !coverCache.has(comic.id) || coverCache.get(comic.id)!.expiresAt < now);
-  if (missing.length && !pendingCovers) {
-    pendingCovers = (async () => {
-      let session = await ensureActiveSession();
-      if (!session) return {};
-      const urls: Record<string, string> = {};
+  const unique = [...new Map(comics.map((comic) => [comic.id, comic])).values()];
+  const missing = unique.filter((comic) => !coverCache.has(comic.id) || coverCache.get(comic.id)!.expiresAt < now);
 
-      const fetchComicBatch = async (comicBatch: Comic[], token: string): Promise<Response> => {
-        return fetch("/api/storage/cover-urls", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ comicIds: comicBatch.map((comic) => comic.id) }),
-        });
-      };
+  const queue = (comic: Comic) =>
+    new Promise<void>((resolve) => {
+      const existing = coverQueue.get(comic.id);
+      if (existing) existing.resolvers.push(resolve);
+      else coverQueue.set(comic.id, { comic, resolvers: [resolve] });
 
-      for (let offset = 0; offset < missing.length; offset += 100) {
-        const batch = missing.slice(offset, offset + 100);
-        try {
-          let response = await fetchComicBatch(batch, session.access_token);
-
-          // Se 401 ou 403, renova a sessão ativamente e tenta mais uma vez
-          if ((response.status === 401 || response.status === 403) && session) {
-            console.warn("[CoverUrls] 401/403 detectado ao buscar capas das HQs. Renovando sessão e tentando novamente...");
-            const refreshed = await ensureActiveSession(true);
-            if (refreshed?.access_token) {
-              session = refreshed;
-              response = await fetchComicBatch(batch, refreshed.access_token);
-            }
-          }
-
-          if (!response.ok) {
-            console.warn(`[CoverUrls] Falha na requisição cover-urls para lote de HQs (status ${response.status})`);
-            continue;
-          }
-
-          const payload = await response.json();
-          for (const [id, url] of Object.entries(payload.urls || {})) {
-            if (typeof url === "string") {
-              coverCache.set(id, { url, expiresAt: Date.now() + 13 * 60_000 });
-              urls[id] = url;
-            }
-          }
-        } catch (err) {
-          console.warn("[CoverUrls] Erro de rede ou parse ao carregar capas das HQs:", err);
-        }
+      if (coverFlushTimer === null && !coverFlushRunning) {
+        coverFlushTimer = window.setTimeout(() => {
+          coverFlushTimer = null;
+          void flushCoverQueue();
+        }, 16);
       }
-      return urls;
-    })().finally(() => { pendingCovers = null; });
+    });
+
+  await Promise.all(missing.map(queue));
+
+  return Object.fromEntries(
+    unique
+      .map((comic) => [comic.id, coverCache.get(comic.id)?.url] as const)
+      .filter((entry): entry is readonly [string, string] => typeof entry[1] === "string")
+  );
+}
+
+async function flushCoverQueue(): Promise<void> {
+  if (coverFlushRunning || !coverQueue.size) return;
+  coverFlushRunning = true;
+  const entries = [...coverQueue.values()];
+  coverQueue.clear();
+
+  try {
+    let session = await ensureActiveSession();
+    if (!session) return;
+
+    const fetchComicBatch = (comicBatch: Comic[], token: string) =>
+      fetch("/api/storage/cover-urls", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ comicIds: comicBatch.map((comic) => comic.id) }),
+      });
+
+    const comics = entries.map((entry) => entry.comic);
+    for (let offset = 0; offset < comics.length; offset += 100) {
+      const batch = comics.slice(offset, offset + 100);
+      try {
+        let response = await fetchComicBatch(batch, session.access_token);
+        if (response.status === 401 || response.status === 403) {
+          const refreshed = await ensureActiveSession(true);
+          if (refreshed?.access_token) {
+            session = refreshed;
+            response = await fetchComicBatch(batch, refreshed.access_token);
+          }
+        }
+        if (!response.ok) continue;
+
+        const payload = await response.json();
+        for (const [id, url] of Object.entries(payload.urls || {})) {
+          if (typeof url === "string") {
+            coverCache.set(id, { url, expiresAt: Date.now() + 13 * 60_000 });
+          }
+        }
+      } catch {
+        // A capa continua opcional; novas tentativas acontecem quando o item voltar a ser exibido.
+      }
+    }
+  } finally {
+    for (const entry of entries) for (const resolve of entry.resolvers) resolve();
+    coverFlushRunning = false;
+    if (coverQueue.size && coverFlushTimer === null) {
+      coverFlushTimer = window.setTimeout(() => {
+        coverFlushTimer = null;
+        void flushCoverQueue();
+      }, 16);
+    }
   }
-  if (pendingCovers) await pendingCovers;
-  return Object.fromEntries(comics.map((comic) => [comic.id, coverCache.get(comic.id)?.url]).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
 }
 
 export async function getSupabaseCatalog(): Promise<SupabaseCatalog> {
