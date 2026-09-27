@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { BookOpen, CheckCircle2, Clock3, Play } from "lucide-react";
 import type { Comic } from "../../types/comic";
 import { useLibrary } from "../../hooks/useLibrary";
@@ -16,7 +16,7 @@ interface ContinuePageProps {
 const readTime = (comic: Comic) => comic.progress?.lastReadAt ? new Date(comic.progress.lastReadAt).getTime() : 0;
 
 export const ContinuePage: React.FC<ContinuePageProps> = ({ onOpenReader }) => {
-  const { allComics, toggleFavorite, updateProgress, setStatus, isLoading } = useLibrary();
+  const { allComics, toggleFavorite, updateProgress, setStatus, isLoading, ensureCoverUrls } = useLibrary();
   const [selectedComic, setSelectedComic] = useState<Comic | null>(null);
   const [comicForProgress, setComicForProgress] = useState<Comic | null>(null);
 
@@ -29,6 +29,11 @@ export const ContinuePage: React.FC<ContinuePageProps> = ({ onOpenReader }) => {
     [allComics]
   );
   const featured = readingComics[0];
+
+  useEffect(() => {
+    const targets = readingComics.slice(0, 30).filter((comic) => !comic.coverUrl);
+    if (targets.length) void ensureCoverUrls(targets);
+  }, [readingComics, ensureCoverUrls]);
 
   return (
     <div className="streaming-page continue-page space-y-10 sm:space-y-12">
