@@ -59,6 +59,21 @@ export function useLibrary(initialFilters: LibraryFilters = DEFAULT_FILTERS) {
     return () => window.removeEventListener("biblioteca-preferences-changed", applyPreferences);
   }, []);
 
+  useEffect(() => {
+    const syncSeriesFavorite = (event: Event) => {
+      const detail = (event as CustomEvent<{ seriesId?: string; isFavorite?: boolean }>).detail;
+      if (!detail?.seriesId || typeof detail.isFavorite !== "boolean") return;
+      setFavoriteSeriesIds((current) => {
+        const next = new Set(current);
+        if (detail.isFavorite) next.add(detail.seriesId!);
+        else next.delete(detail.seriesId!);
+        return next;
+      });
+    };
+    window.addEventListener("biblioteca-series-favorite-changed", syncSeriesFavorite);
+    return () => window.removeEventListener("biblioteca-series-favorite-changed", syncSeriesFavorite);
+  }, []);
+
   const reloadData = useCallback(async (fresh = false) => {
     const version = ++loadVersion.current;
     if (fresh) invalidateCatalogCache();
