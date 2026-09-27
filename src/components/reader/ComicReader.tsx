@@ -226,6 +226,21 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, pdfData
   }, [renderPage]);
 
   useEffect(() => {
+    if (!pdf || readerMode === "continuous") return;
+    const step = readerMode === "spread" && currentPage > 1 ? 2 : 1;
+    const candidates = [currentPage + step, currentPage - step]
+      .filter((page) => page >= 1 && page <= pdf.numPages);
+    const timer = window.setTimeout(() => {
+      for (const pageNumber of candidates) {
+        void pdf.getPage(pageNumber)
+          .then((page) => page.getOperatorList())
+          .catch(() => {});
+      }
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [pdf, currentPage, readerMode]);
+
+  useEffect(() => {
     currentPageRef.current = currentPage;
   }, [currentPage]);
 
