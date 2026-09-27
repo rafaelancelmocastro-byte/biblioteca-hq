@@ -2,6 +2,7 @@ import React, { useMemo, useRef, useState } from "react";
 import { BookOpen, Dices } from "lucide-react";
 import type { Comic } from "../../types/comic";
 import { readingInsights } from "../../lib/readingInsights";
+import { getCoverUrls, refreshCoverUrl } from "../../services/supabaseCatalogRepository";
 
 interface RecommendationRouletteProps {
   comics: Comic[];
@@ -45,12 +46,39 @@ export const RecommendationRoulette: React.FC<RecommendationRouletteProps> = ({ 
   const [recommendation, setRecommendation] = useState<Comic | undefined>(initial);
   const [rotation, setRotation] = useState(0);
   const [spinning, setSpinning] = useState(false);
+  const [coverUrl, setCoverUrl] = useState(initial?.coverUrl || "");
+  const [coverRetrying, setCoverRetrying] = useState(false);
   const timerRef = useRef<number | null>(null);
 
   React.useEffect(() => () => { if (timerRef.current) window.clearTimeout(timerRef.current); }, []);
   React.useEffect(() => {
     if (!recommendation && comics.length > 0) setRecommendation(comics[Math.floor(Math.random() * comics.length)]);
   }, [comics, recommendation]);
+
+  React.useEffect(() => {
+    let active = true;
+    setCoverRetrying(false);
+    setCoverUrl(recommendation?.coverUrl || "");
+    if (!recommendation || recommendation.coverUrl || recommendation.hasCover === false) return () => { active = false; };
+
+    void getCoverUrls([recommendation]).then((urls) => {
+      if (active && urls[recommendation.id]) setCoverUrl(urls[recommendation.id]);
+    }).catch(() => {});
+
+    return () => { active = false; };
+  }, [recommendation?.id, recommendation?.coverUrl, recommendation?.hasCover]);
+
+  const retryCover = () => {
+    if (!recommendation || coverRetrying || recommendation.hasCover === false) {
+      setCoverUrl("");
+      return;
+    }
+    setCoverRetrying(true);
+    void refreshCoverUrl(recommendation)
+      .then((url) => setCoverUrl(url || ""))
+      .catch(() => setCoverUrl(""))
+      .finally(() => setCoverRetrying(false));
+  };
 
   if (!recommendation || comics.length === 0) return null;
 
@@ -59,7 +87,9 @@ export const RecommendationRoulette: React.FC<RecommendationRouletteProps> = ({ 
     setSpinning(true);
     if (timerRef.current) window.clearTimeout(timerRef.current);
     timerRef.current = window.setTimeout(() => {
-      setRecommendation(weightedPick(comics, signals, insights.favoriteCharacters, insights.favoritePublishers, recommendation.id));
+      const next = weightedPick(comics, signals, insights.favoriteCharacters, insights.favoritePublishers, recommendation.id);
+      setRecommendation(next);
+      setCoverUrl(next?.coverUrl || "");
       setSpinning(false);
     }, 200);
   };
@@ -68,11 +98,13 @@ export const RecommendationRoulette: React.FC<RecommendationRouletteProps> = ({ 
     <section className="p-5 sm:p-7 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-md" aria-labelledby="recommendation-card-title">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
         <div className="flex items-start sm:items-center gap-4 flex-1 min-w-0">
-          {recommendation.coverUrl ? (
+          {coverUrl ? (
             <img
-              src={recommendation.coverUrl}
-              alt=""
+              src={coverUrl}
+              alt={`Capa de ${recommendation.title}`}
               className="w-16 sm:w-20 aspect-[2/3] object-cover rounded-xl shadow-md border border-white/10 shrink-0"
+              loading="lazy"
+              onError={retryCover}
             />
           ) : (
             <div className="w-16 sm:w-20 aspect-[2/3] rounded-xl bg-neutral-800 flex items-center justify-center text-xs font-bold text-neutral-400 shrink-0">
@@ -98,10 +130,10 @@ export const RecommendationRoulette: React.FC<RecommendationRouletteProps> = ({ 
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto shrink-0">
+        <div className="grid grid-cols-1 sm:grid-cols-3 md:flex md:flex-wrap items-stretch md:items-center gap-2.5 w-full md:w-auto shrink-0">
           <button
             onClick={() => onOpenReader(recommendation.id)}
-            className="flex-1 md:flex-none h-10 px-5 rounded-full bg-white text-black font-semibold text-xs hover:bg-neutral-200 transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-1.5"
+            className="w-full md:w-auto h-10 px-5 rounded-full bg-white text-black font-semibold text-xs hover:bg-neutral-200 transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-1.5"
           >
             <BookOpen className="w-3.5 h-3.5" />
             <span>Ler agora</span>
@@ -110,7 +142,7 @@ export const RecommendationRoulette: React.FC<RecommendationRouletteProps> = ({ 
           <button
             onClick={pickNext}
             disabled={spinning}
-            className="h-10 px-4 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-white font-medium text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+            className="w-full md:w-auto h-10 px-4 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-white font-medium text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
           >
             <Dices className={`w-3.5 h-3.5 text-neutral-400 ${spinning ? "animate-spin" : ""}`} />
             <span>Sugerir outra</span>
@@ -118,7 +150,7 @@ export const RecommendationRoulette: React.FC<RecommendationRouletteProps> = ({ 
 
           <button
             onClick={() => onOpenDetails(recommendation)}
-            className="h-10 px-3.5 rounded-full text-neutral-400 hover:text-white text-xs font-medium transition-colors cursor-pointer"
+            className="w-full md:w-auto h-10 px-3.5 rounded-full border border-transparent text-neutral-400 hover:text-white hover:bg-white/5 text-xs font-medium transition-colors cursor-pointer"
           >
             Detalhes
           </button>
