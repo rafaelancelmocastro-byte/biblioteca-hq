@@ -11,7 +11,7 @@ import { Comic } from "../../types/comic";
 import { CoverPlaceholder } from "../ui/CoverPlaceholder";
 import { ProgressBar } from "../ui/ProgressBar";
 import { formatPercentage, getStatusLabel } from "../../lib/formatters";
-import { getCoverUrls } from "../../services/supabaseCatalogRepository";
+import { getCoverUrls, refreshCoverUrl } from "../../services/supabaseCatalogRepository";
 import { useOfflineIds } from "./OfflineLibraryProvider";
 import { ComicActions } from "./ComicActions";
 
@@ -40,6 +40,7 @@ const ComicCardComponent: React.FC<ComicCardProps> = ({
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [resolvedCoverUrl, setResolvedCoverUrl] = useState(comic.coverUrl || "");
+  const [coverRetrying, setCoverRetrying] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const portalRef = useRef<HTMLDivElement>(null);
@@ -78,6 +79,18 @@ const ComicCardComponent: React.FC<ComicCardProps> = ({
     };
   }, [comic, resolvedCoverUrl]);
 
+  const retryCover = () => {
+    if (coverRetrying || comic.hasCover === false) {
+      setResolvedCoverUrl("");
+      return;
+    }
+    setCoverRetrying(true);
+    void refreshCoverUrl(comic)
+      .then((url) => setResolvedCoverUrl(url || ""))
+      .catch(() => setResolvedCoverUrl(""))
+      .finally(() => setCoverRetrying(false));
+  };
+
   // Fecha menu de contexto ao clicar fora
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -112,7 +125,7 @@ const ComicCardComponent: React.FC<ComicCardProps> = ({
       <div className="comic-cover relative aspect-[2/3] w-full rounded-xl overflow-hidden bg-neutral-900 shadow-md group-hover:shadow-2xl transition-all duration-300">
         {/* Capa ou Placeholder Editorial */}
         {resolvedCoverUrl ? (
-          <img src={resolvedCoverUrl} alt={`Capa de ${comic.title}`} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-103" loading="lazy" />
+          <img src={resolvedCoverUrl} alt={`Capa de ${comic.title}`} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-103" loading="lazy" onError={retryCover} />
         ) : (
           <CoverPlaceholder
             title={comic.title}
