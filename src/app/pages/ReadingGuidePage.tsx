@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, BookOpen, Search } from "lucide-react";
 import { useLibrary } from "../../hooks/useLibrary";
 import type { Comic } from "../../types/comic";
@@ -9,7 +9,7 @@ const orderIssues = (a: Comic, b: Comic) =>
   (a.volume || 0) - (b.volume || 0) || a.issueNumber - b.issueNumber || a.year - b.year;
 
 export const ReadingGuidePage: React.FC<{ onOpenReader: (id: string) => void }> = ({ onOpenReader }) => {
-  const { allComics, seriesList, isLoading } = useLibrary();
+  const { allComics, seriesList, isLoading, ensureCoverUrls } = useLibrary();
   const [query, setQuery] = useState("");
   const [selectedSeriesId, setSelectedSeriesId] = useState<string | null>(null);
   const detailRef = useRef<HTMLElement | null>(null);
@@ -50,6 +50,12 @@ export const ReadingGuidePage: React.FC<{ onOpenReader: (id: string) => void }> 
   );
 
   const selected = paths.find((path) => path.series.id === selectedSeriesId) || filteredPaths[0];
+
+  useEffect(() => {
+    const targets = [...filteredPaths.slice(0, 40).map((path) => path.issues[0]), ...(selected?.issues.slice(0, 12) || [])]
+      .filter((comic, index, list): comic is Comic => !!comic && !comic.coverUrl && list.findIndex((item) => item?.id === comic.id) === index);
+    if (targets.length) void ensureCoverUrls(targets);
+  }, [filteredPaths, selected, ensureCoverUrls]);
 
   const openPath = (id: string) => {
     setSelectedSeriesId(id);
