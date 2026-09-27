@@ -19,6 +19,7 @@ type Draft = {
   message: string;
   coverOverride?: File;
   existingId?: string;
+  editedMetaFields?: Array<keyof PdfInspection>;
 };
 type SharedField = "title" | "year" | "characters" | "writers" | "pencillers" | "colorists" | "tags" | "synopsis" | "seriesId" | "contentType" | "readingDirection";
 const sharedLabels: Record<SharedField, string> = { title: "Título", year: "Ano", characters: "Personagem / grupo", writers: "Roteiro", pencillers: "Arte e desenho", colorists: "Cores", tags: "Tags", synopsis: "Sinopse", seriesId: "Coleção / saga", contentType: "Formato", readingDirection: "Sentido da leitura" };
@@ -83,7 +84,7 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, newlyCreat
     if (!drafts.length || drafts.some((draft) => draft.status === "analyzing")) return;
     const record = Object.fromEntries(drafts.map((draft) => [draftKey(draft.file), {
       meta: draft.meta ? { ...draft.meta, cover: undefined, thumbnail: undefined } : null,
-      seriesId: draft.seriesId, contentType: draft.contentType, readingDirection: draft.readingDirection, status: draft.status, message: draft.message, existingId: draft.existingId,
+      seriesId: draft.seriesId, contentType: draft.contentType, readingDirection: draft.readingDirection, status: draft.status, message: draft.message, existingId: draft.existingId, editedMetaFields: draft.editedMetaFields,
     }]));
     const timer = window.setTimeout(() => {
       localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(record));
@@ -128,7 +129,7 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, newlyCreat
   useEffect(() => {
     let active = true;
     setAnalysisTiming("");
-    setDrafts(files.map((file) => { const saved = savedDrafts.current[draftKey(file)]; return { file, meta: null, seriesId: "", contentType: saved?.contentType || (["epub", "azw3"].includes(publicationFormat(file.name) || "") ? "book" : "comic"), readingDirection: saved?.readingDirection || "ltr", status: "analyzing", message: "Arquivo recebido. Preparando a ficha..." }; }));
+    setDrafts(files.map((file) => { const saved = savedDrafts.current[draftKey(file)]; return { file, meta: null, seriesId: "", contentType: saved?.contentType || (["epub", "azw3"].includes(publicationFormat(file.name) || "") ? "book" : "comic"), readingDirection: saved?.readingDirection || "ltr", status: "analyzing", message: "Arquivo recebido. Preparando a ficha...", editedMetaFields: saved?.editedMetaFields || [] }; }));
     const inspect = async () => {
       const startedAt = performance.now();
       await runLimited(files, window.matchMedia("(pointer: coarse)").matches ? 1 : 2, async (file, index) => {
@@ -138,7 +139,14 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, newlyCreat
           const exact = suggestIssueSeries(file.name, meta.title, series);
           const matchedCover = covers.find((item) => normalize(item.name) === normalize(file.name));
           const saved = savedDrafts.current[draftKey(file)];
-          setDrafts((current) => current.map((draft, position) => position === index ? { ...draft, meta: saved?.meta ? { ...meta, ...saved.meta, cover: meta.cover, thumbnail: meta.thumbnail } : meta, seriesId: draft.seriesId || saved?.seriesId || exact?.id || "", coverOverride: matchedCover, status: saved?.status === "published" ? "published" : meta.totalPages ? "ready" : "incomplete", message: saved?.status === "published" ? saved.message || "Publicado." : meta.warning || (exact ? `Caminho sugerido: ${seriesPath(exact, series)}. Confirme ou corrija antes de publicar.` : "Selecione a coleção ou saga; campos sem evidência permanecem vazios.") } : draft));
+          setDrafts((current) => current.map((draft, position) => {
+            if (position !== index) return draft;
+            const resolvedMeta = saved?.meta ? { ...meta, ...saved.meta, cover: meta.cover, thumbnail: meta.thumbnail } : { ...meta };
+            for (const field of draft.editedMetaFields || []) {
+              if (draft.meta && field in draft.meta) (resolvedMeta as unknown as Record<string, unknown>)[field as string] = draft.meta[field];
+            }
+            return { ...draft, meta: resolvedMeta, seriesId: draft.seriesId || saved?.seriesId || exact?.id || "", coverOverride: matchedCover, status: saved?.status === "published" ? "published" : meta.totalPages ? "ready" : "incomplete", message: saved?.status === "published" ? saved.message || "Publicado." : meta.warning || (exact ? `Caminho sugerido: ${seriesPath(exact, series)}. Confirme ou corrija antes de publicar.` : "Selecione a coleção ou saga; campos sem evidência permanecem vazios.") };
+          }));
         } catch (error) {
           if (!active) return;
           try {
@@ -160,7 +168,7 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, newlyCreat
   }, [files]);
 
   const update = (index: number, patch: Partial<Draft>) => setDrafts((current) => current.map((draft, position) => position === index ? { ...draft, ...patch } : draft));
-  const updateMeta = (index: number, key: keyof PdfInspection, value: string) => setDrafts((current) => current.map((draft, position) => position === index && draft.meta ? { ...draft, meta: { ...draft.meta, [key]: value }, status: "ready" } : draft));
+  const updateMeta = (index: number, key: keyof PdfInspection, value: string) => setDrafts((current) => current.map((draft, position) => position === index && draft.meta ? { ...draft, meta: { ...draft.meta, [key]: value }, editedMetaFields: [...new Set([...(draft.editedMetaFields || []), key])], status: "ready", message: key === "issueNumber" ? "Número da edição ajustado manualmente e preservado." : draft.message } : draft));
   const applyShared = () => {
     if (!sharedEnabled.length) { setSharedMessage("Marque os campos que deseja repetir."); onFeedback("Marque os campos que deseja repetir.", "error"); return; }
     const selected = sharedEnabled.filter((field) => sharedValues[field].trim());
