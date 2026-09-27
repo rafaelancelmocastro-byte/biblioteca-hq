@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { memo, useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import {
   Heart,
@@ -11,8 +11,8 @@ import { Comic } from "../../types/comic";
 import { CoverPlaceholder } from "../ui/CoverPlaceholder";
 import { ProgressBar } from "../ui/ProgressBar";
 import { formatPercentage, getStatusLabel } from "../../lib/formatters";
-import { getOfflineIds } from "../../services/offlineLibrary";
-import { supabase } from "../../services/supabaseClient";
+import { getCoverUrls } from "../../services/supabaseCatalogRepository";
+import { useOfflineIds } from "./OfflineLibraryProvider";
 import { ComicActions } from "./ComicActions";
 
 interface ComicCardProps {
@@ -27,7 +27,7 @@ interface ComicCardProps {
   showReadingBadge?: boolean;
 }
 
-export const ComicCard: React.FC<ComicCardProps> = ({
+const ComicCardComponent: React.FC<ComicCardProps> = ({
   comic,
   onOpenReader,
   onToggleFavorite,
@@ -39,15 +39,44 @@ export const ComicCard: React.FC<ComicCardProps> = ({
   showReadingBadge = false,
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isOffline, setIsOffline] = useState(false);
+  const [resolvedCoverUrl, setResolvedCoverUrl] = useState(comic.coverUrl || "");
+  const cardRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const portalRef = useRef<HTMLDivElement>(null);
+  const offlineIds = useOfflineIds();
+  const isOffline = offlineIds.has(comic.id);
 
   const percentage = comic.progress?.percentage || 0;
   const status = comic.progress?.status || "not_started";
   const isCompleted = status === "completed";
   const isReading = status === "reading";
-  useEffect(() => { let active = true; const check = async () => { const { data } = await supabase!.auth.getSession(); if (data.session) { const ids = await getOfflineIds(data.session.user.id); if (active) setIsOffline(ids.has(comic.id)); } }; if (supabase) void check(); window.addEventListener("biblioteca-offline-changed", check); return () => { active = false; window.removeEventListener("biblioteca-offline-changed", check); }; }, [comic.id]);
+  useEffect(() => {
+    if (comic.coverUrl && comic.coverUrl !== resolvedCoverUrl) setResolvedCoverUrl(comic.coverUrl);
+  }, [comic.coverUrl, resolvedCoverUrl]);
+
+  useEffect(() => {
+    if (resolvedCoverUrl || !cardRef.current) return;
+    let active = true;
+    const load = () => {
+      void getCoverUrls([comic]).then((urls) => {
+        if (active && urls[comic.id]) setResolvedCoverUrl(urls[comic.id]);
+      });
+    };
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          observer.disconnect();
+          load();
+        }
+      },
+      { rootMargin: "600px 0px" }
+    );
+    observer.observe(cardRef.current);
+    return () => {
+      active = false;
+      observer.disconnect();
+    };
+  }, [comic, resolvedCoverUrl]);
 
   // Fecha menu de contexto ao clicar fora
   useEffect(() => {
@@ -75,14 +104,15 @@ export const ComicCard: React.FC<ComicCardProps> = ({
   return (
     <>
     <div
+      ref={cardRef}
       className="comic-tile group relative flex flex-col focus-within:ring-2 focus-within:ring-white/40 rounded-xl"
       id={`comic-card-${comic.id}`}
     >
       {/* Container da Capa com proporção clássica de HQ */}
       <div className="comic-cover relative aspect-[2/3] w-full rounded-xl overflow-hidden bg-neutral-900 shadow-md group-hover:shadow-2xl transition-all duration-300">
         {/* Capa ou Placeholder Editorial */}
-        {comic.coverUrl ? (
-          <img src={comic.coverUrl} alt={`Capa de ${comic.title}`} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-103" loading="lazy" />
+        {resolvedCoverUrl ? (
+          <img src={resolvedCoverUrl} alt={`Capa de ${comic.title}`} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-103" loading="lazy" />
         ) : (
           <CoverPlaceholder
             title={comic.title}
@@ -186,3 +216,5 @@ export const ComicCard: React.FC<ComicCardProps> = ({
     </>
   );
 };
+
+export const ComicCard = memo(ComicCardComponent);
