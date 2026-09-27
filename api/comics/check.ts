@@ -38,8 +38,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!url || !key) return res.status(503).json({ error: "Banco indisponível." });
   const admin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
   if (typeof fileSha256 === "string" && /^[a-f0-9]{64}$/i.test(fileSha256)) {
-    const { data } = await admin.from("comics").select("id,title").eq("file_sha256", fileSha256).is("deleted_at", null).limit(1).maybeSingle();
-    if (data) return res.status(200).json({ code: "SAME_FILE", existing: data, message: "Este mesmo arquivo já está cadastrado." });
+    const { data } = await admin
+      .from("comics")
+      .select("id,title,issue_number,publication_year,file_name,series(title,publisher)")
+      .eq("file_sha256", fileSha256)
+      .is("deleted_at", null)
+      .limit(1)
+      .maybeSingle();
+    if (data) {
+      const series = Array.isArray(data.series) ? data.series[0] : data.series;
+      const location = [series?.title, Number.isInteger(data.issue_number) ? `#${data.issue_number}` : "", data.publication_year].filter(Boolean).join(" · ");
+      return res.status(200).json({
+        code: "SAME_FILE",
+        existing: {
+          id: data.id,
+          title: data.title,
+          issueNumber: data.issue_number,
+          year: data.publication_year,
+          fileName: data.file_name,
+          seriesTitle: series?.title ?? "",
+          publisher: series?.publisher ?? "",
+        },
+        message: location
+          ? `Este mesmo arquivo já está cadastrado em ${location}. Se a numeração anterior estiver errada, atualize o cadastro existente em vez de criar uma cópia.`
+          : "Este mesmo arquivo já está cadastrado. Atualize o cadastro existente em vez de criar uma cópia.",
+      });
+    }
   }
   const { data, error } = await admin.from("comics").select("id,title,volume,publisher").eq("series_id", seriesId).eq("issue_number", issueNumber).eq("publication_year", year).is("deleted_at", null);
   if (error) return res.status(503).json({ error: "Não foi possível verificar duplicidades." });
