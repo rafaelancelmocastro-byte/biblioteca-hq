@@ -70,6 +70,7 @@ export interface Comic {
   pdfPath?: string; // Caminho no bucket Cloudflare R2 futuramente
   coverPath?: string;
   coverUrl?: string;
+  hasCover?: boolean;
   addedAt: string; // ISO 8601
   tags: string[];
   coverStyle: ComicCoverPalette;
