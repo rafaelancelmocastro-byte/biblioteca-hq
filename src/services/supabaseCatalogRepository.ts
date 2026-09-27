@@ -146,6 +146,12 @@ export function invalidateCoverCache() {
   coverCache.clear();
 }
 
+export async function refreshCoverUrl(comic: Comic): Promise<string | undefined> {
+  coverCache.delete(comic.id);
+  const urls = await getCoverUrls([comic]);
+  return urls[comic.id];
+}
+
 // Invalida cache de URLs de capas assinadas quando a autenticação mudar
 if (supabase) {
   supabase.auth.onAuthStateChange((event) => {
