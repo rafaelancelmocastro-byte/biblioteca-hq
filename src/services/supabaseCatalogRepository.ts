@@ -167,6 +167,14 @@ export function invalidateCatalogCache() {
   pendingCatalog = null;
 }
 
+export function peekCatalogCache(): SupabaseCatalog | null {
+  return catalogCache?.value?.comics.length ? catalogCache.value : null;
+}
+
+export async function getCatalogSnapshot(): Promise<SupabaseCatalog | null> {
+  return peekCatalogCache() ?? await readPersistentCatalog();
+}
+
 export async function getCoverUrls(comics: Comic[]): Promise<Record<string, string>> {
   if (!supabase || !comics.length) return {};
   const now = Date.now();
