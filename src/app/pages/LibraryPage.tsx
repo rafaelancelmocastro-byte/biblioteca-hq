@@ -54,6 +54,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
     setStatus,
     allComics,
     isLoading,
+    ensureCoverUrls,
   } = useLibrary(rememberedView.filters);
 
   // Sincroniza query global da busca do cabeçalho com o filtro
@@ -81,6 +82,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
   const catalogPageCount = Math.max(1, Math.ceil(filteredComics.length / catalogPageSize));
   const currentCatalogPage = Math.min(catalogPage, catalogPageCount);
   const visibleComics = filteredComics.slice((currentCatalogPage - 1) * catalogPageSize, currentCatalogPage * catalogPageSize);
+  const nextPageComics = filteredComics.slice(currentCatalogPage * catalogPageSize, (currentCatalogPage + 1) * catalogPageSize);
 
   const filtersMounted = React.useRef(false);
   React.useEffect(() => {
@@ -101,6 +103,29 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
 
   const featuredComic = featuredCandidates[featuredIndex % Math.max(featuredCandidates.length, 1)];
   const launches = React.useMemo(() => allComics.filter((comic) => comic.year === 2026).slice(0, 12), [allComics]);
+
+  React.useEffect(() => {
+    const priority = [
+      ...featuredCandidates,
+      ...continueReadingComics.slice(0, 12),
+      ...recentlyAddedComics,
+      ...launches,
+      ...visibleComics,
+    ].filter((comic, index, list) => !comic.coverUrl && list.findIndex((item) => item.id === comic.id) === index);
+    if (priority.length) void ensureCoverUrls(priority);
+  }, [featuredCandidates, continueReadingComics, recentlyAddedComics, launches, visibleComics, ensureCoverUrls]);
+
+  React.useEffect(() => {
+    const pending = nextPageComics.filter((comic) => !comic.coverUrl);
+    if (!pending.length) return;
+    const run = () => void ensureCoverUrls(pending);
+    if ("requestIdleCallback" in window) {
+      const id = window.requestIdleCallback(run, { timeout: 1200 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const id = window.setTimeout(run, 250);
+    return () => window.clearTimeout(id);
+  }, [nextPageComics, ensureCoverUrls]);
 
   return (
     <div className="streaming-page library-page space-y-12">
