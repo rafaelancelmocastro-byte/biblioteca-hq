@@ -75,13 +75,7 @@ export function useLibrary(initialFilters: LibraryFilters = DEFAULT_FILTERS) {
       setCharactersList(characters);
       setPublishers(pubs);
       setYears(yrs);
-      void (async () => {
-        for (let offset = 0; offset < hydrated.length && version === loadVersion.current; offset += 100) {
-          const urls = await getCoverUrls(hydrated.slice(offset, offset + 100));
-          if (version !== loadVersion.current) return;
-          setAllComics((current) => current.map((comic) => urls[comic.id] && comic.coverUrl !== urls[comic.id] ? { ...comic, coverUrl: urls[comic.id] } : comic));
-        }
-      })().catch(() => { /* Capas são opcionais; a biblioteca permanece disponível. */ });
+
     } finally {
       setIsLoading(false);
     }
@@ -101,6 +95,22 @@ export function useLibrary(initialFilters: LibraryFilters = DEFAULT_FILTERS) {
       authListener?.subscription?.unsubscribe();
     };
   }, [reloadData]);
+
+  const ensureCoverUrls = useCallback(async (comics: Comic[]) => {
+    if (!comics.length) return;
+    const urls = await getCoverUrls(comics);
+    if (!Object.keys(urls).length) return;
+    setAllComics((current) => {
+      let changed = false;
+      const next = current.map((comic) => {
+        const url = urls[comic.id];
+        if (!url || comic.coverUrl === url) return comic;
+        changed = true;
+        return { ...comic, coverUrl: url };
+      });
+      return changed ? next : current;
+    });
+  }, []);
 
   const setGridDensity = useCallback((density: "compact" | "comfortable") => {
     setGridDensityState(density);
@@ -287,5 +297,6 @@ export function useLibrary(initialFilters: LibraryFilters = DEFAULT_FILTERS) {
     updateProgress,
     setStatus,
     reloadData,
+    ensureCoverUrls,
   };
 }
