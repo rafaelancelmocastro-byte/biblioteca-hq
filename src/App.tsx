@@ -5,6 +5,7 @@
 
 import React, { useEffect, useState } from "react";
 import { AppLayout } from "./components/layout/AppLayout";
+import { OfflineLibraryProvider } from "./components/library/OfflineLibraryProvider";
 import { LibraryPage } from "./app/pages/LibraryPage";
 import { LoginPage } from "./app/pages/LoginPage";
 import { useNavigation } from "./hooks/useNavigation";
@@ -121,6 +122,7 @@ export default function App() {
       userName={isOwner ? "Rafael Castro" : profile?.email?.split("@")[0] || "Leitor"}
       userId={effectiveUserId}
     >
+      <OfflineLibraryProvider userId={effectiveUserId || ""}>
       {restrictedNotice && <div role="alert" className="fixed top-20 right-4 z-50 rounded-xl bg-[#1d2835] border border-amber-400/40 px-4 py-3 text-sm text-amber-200 shadow-xl" onClick={() => setRestrictedNotice(false)}>Acesso restrito</div>}
       <React.Suspense fallback={<div className="studio-panel" role="status">Carregando página...</div>}>
       {activeRoute === "/biblioteca" && (
@@ -160,6 +162,7 @@ export default function App() {
 
       {(activeRoute === "/admin" || activeRoute === "/configuracoes") && (isOwner || !isSupabaseConfigured) && <AdminPage />}
       </React.Suspense>
+      </OfflineLibraryProvider>
     </AppLayout>
   );
 }
