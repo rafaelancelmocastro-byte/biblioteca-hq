@@ -20,7 +20,7 @@ const labels: Record<IndieType, string> = {
 const addedTime = (comic: Comic) => new Date(comic.addedAt).getTime() || 0;
 
 export const IndieMangaPage: React.FC<{ onOpenReader: (id: string) => void }> = ({ onOpenReader }) => {
-  const { allComics, toggleFavorite, updateProgress, setStatus, isLoading } = useLibrary();
+  const { allComics, toggleFavorite, updateProgress, setStatus, isLoading, ensureCoverUrls } = useLibrary();
   const [type, setType] = useState<IndieType>("all");
   const [sort, setSort] = useState<IndieSort>("recent");
   const [active, setActive] = useState(0);
@@ -54,6 +54,11 @@ export const IndieMangaPage: React.FC<{ onOpenReader: (id: string) => void }> = 
     [filteredBooks]
   );
   const selected = featured[Math.min(active, Math.max(0, featured.length - 1))];
+
+  useEffect(() => {
+    const targets = featured.filter((comic) => !comic.coverUrl);
+    if (targets.length) void ensureCoverUrls(targets);
+  }, [featured, ensureCoverUrls]);
 
   useEffect(() => {
     setActive(0);
