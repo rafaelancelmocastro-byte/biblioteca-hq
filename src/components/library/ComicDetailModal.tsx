@@ -8,6 +8,7 @@ import {
   RotateCcw,
   HardDriveDownload,
   Check,
+  ChevronRight,
 } from "lucide-react";
 import { Comic } from "../../types/comic";
 import { Modal } from "../ui/Modal";
@@ -18,6 +19,7 @@ import { hasOffline, saveOffline } from "../../services/offlineLibrary";
 import { addOfflineLibraryItem } from "../../services/offlineManifest";
 import { supabase } from "../../services/supabaseClient";
 import { shouldConfirmCellularDownload } from "../../services/userPreferences";
+import { toggleSupabaseSeriesFavorite } from "../../services/supabaseLibrarySync";
 
 interface ComicDetailModalProps {
   comic: Comic | null;
@@ -44,6 +46,10 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
   const [savedOffline, setSavedOffline] = useState(false);
   const [offlineBusy, setOfflineBusy] = useState(false);
   const [offlineMessage, setOfflineMessage] = useState("");
+  const [seriesContext, setSeriesContext] = useState<{ id: string; title: string; kind: "collection" | "saga" | "phase" | "one_shot"; parentTitle?: string } | null>(null);
+  const [seriesFavorite, setSeriesFavorite] = useState(false);
+  const [seriesFavoriteBusy, setSeriesFavoriteBusy] = useState(false);
+  const [seriesFavoriteError, setSeriesFavoriteError] = useState("");
 
   useEffect(() => setIsFavorite(Boolean(comic?.isFavorite)), [comic?.id, comic?.isFavorite]);
 
@@ -56,6 +62,53 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
       if (saved) void addOfflineLibraryItem(comic.id, data.session.user.id);
     });
   }, [comic?.id]);
+  useEffect(() => {
+    let active = true;
+    setSeriesContext(null);
+    setSeriesFavorite(false);
+    setSeriesFavoriteError("");
+    if (!comic?.seriesId || !supabase) return () => { active = false; };
+
+    void (async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session || !active) return;
+      const [{ data: series }, { data: favorite }] = await Promise.all([
+        supabase.from("series").select("id,title,banner_tone,parent_series_id").eq("id", comic.seriesId).maybeSingle(),
+        supabase.from("series_favorites").select("series_id").eq("user_id", sessionData.session.user.id).eq("series_id", comic.seriesId).maybeSingle(),
+      ]);
+      if (!active || !series) return;
+      let parentTitle: string | undefined;
+      if (series.parent_series_id) {
+        const { data: parent } = await supabase.from("series").select("title").eq("id", series.parent_series_id).maybeSingle();
+        if (active) parentTitle = parent?.title || undefined;
+      }
+      if (!active) return;
+      const tone = ["saga", "phase", "one_shot"].includes(series.banner_tone) ? series.banner_tone : "collection";
+      setSeriesContext({ id: series.id, title: series.title, kind: tone as "collection" | "saga" | "phase" | "one_shot", parentTitle });
+      setSeriesFavorite(Boolean(favorite));
+    })().catch(() => {});
+
+    return () => { active = false; };
+  }, [comic?.id, comic?.seriesId]);
+
+  const toggleSeriesFavorite = async () => {
+    if (!seriesContext || seriesFavoriteBusy) return;
+    const previous = seriesFavorite;
+    const next = !previous;
+    setSeriesFavorite(next);
+    setSeriesFavoriteBusy(true);
+    setSeriesFavoriteError("");
+    try {
+      const saved = await toggleSupabaseSeriesFavorite(seriesContext.id, previous);
+      if (!saved) throw new Error("Não foi possível sincronizar este favorito.");
+      window.dispatchEvent(new CustomEvent("biblioteca-series-favorite-changed", { detail: { seriesId: seriesContext.id, isFavorite: next } }));
+    } catch (error) {
+      setSeriesFavorite(previous);
+      setSeriesFavoriteError(error instanceof Error ? error.message : "Não foi possível salvar o favorito.");
+    } finally {
+      setSeriesFavoriteBusy(false);
+    }
+  };
 
   const saveForOffline = async () => {
     if (!comic || !supabase) return;
@@ -218,6 +271,40 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
               <span className="text-neutral-600">·</span>
               <span className="text-neutral-400">Edição #{comic.issueNumber}</span>
             </div>
+
+            {seriesContext && (
+              <div className="mt-3 rounded-xl border border-white/[0.08] bg-white/[0.025] px-3 py-2.5 sm:px-3.5">
+                <div className="flex min-w-0 flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <span className="block text-[9px] font-bold uppercase tracking-[0.14em] text-neutral-500">Parte de</span>
+                    <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1 text-xs font-semibold text-neutral-200 sm:text-sm">
+                      {seriesContext.parentTitle && (
+                        <>
+                          <span className="max-w-full truncate" title={seriesContext.parentTitle}>{seriesContext.parentTitle}</span>
+                          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-neutral-600" aria-hidden="true" />
+                        </>
+                      )}
+                      <span className="max-w-full truncate text-white" title={seriesContext.title}>{seriesContext.title}</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void toggleSeriesFavorite()}
+                    disabled={seriesFavoriteBusy}
+                    aria-pressed={seriesFavorite}
+                    className={"inline-flex min-h-9 w-full shrink-0 items-center justify-center gap-1.5 rounded-lg border px-3 text-[11px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto " + (seriesFavorite ? "border-rose-500/35 bg-rose-500/15 text-rose-300" : "border-white/10 bg-white/[0.04] text-neutral-300 hover:bg-white/[0.08]")}
+                  >
+                    <Heart className={"h-3.5 w-3.5 shrink-0 " + (seriesFavorite ? "fill-current text-rose-400" : "text-neutral-400")} />
+                    <span>
+                      {seriesFavorite
+                        ? seriesContext.kind === "saga" ? "Saga favorita" : seriesContext.kind === "phase" ? "Fase favorita" : seriesContext.kind === "one_shot" ? "Obra favorita" : "Coleção favorita"
+                        : seriesContext.kind === "saga" ? "Favoritar saga" : seriesContext.kind === "phase" ? "Favoritar fase" : seriesContext.kind === "one_shot" ? "Favoritar obra" : "Favoritar coleção"}
+                    </span>
+                  </button>
+                </div>
+                {seriesFavoriteError && <p role="alert" className="mt-2 text-[10.5px] leading-relaxed text-rose-300">{seriesFavoriteError}</p>}
+              </div>
+            )}
 
             {/* Progresso de Leitura */}
             <div className="py-3.5 border-y border-white/10 my-3.5">
