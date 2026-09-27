@@ -7,6 +7,23 @@ import { publicationFormat } from "../../services/publicationFormats";
 import { ReaderCompletion, ReaderDock, ReaderSettings, useReaderChrome, type NextIssue, type ReaderFit, type ReaderMode, type ReaderTexture } from "./ReaderChrome";
 import { saveCurrentUserPreferencePatch } from "../../services/userPreferences";
 
+const pageBlobCache = new WeakMap<PublicationBook, Map<number, Promise<Blob>>>();
+const getCachedPageBlob = (book: PublicationBook, index: number) => {
+  let cache = pageBlobCache.get(book);
+  if (!cache) {
+    cache = new Map();
+    pageBlobCache.set(book, cache);
+  }
+  let pending = cache.get(index);
+  if (!pending) {
+    if (!book.getPageBlob) return Promise.reject(new Error("Página indisponível."));
+    pending = book.getPageBlob(index);
+    cache.set(index, pending);
+    pending.catch(() => cache?.delete(index));
+  }
+  return pending;
+};
+
 function CbrImage({ book, index, className = "", onVisible }: { book: PublicationBook; index: number; className?: string; onVisible?: (page: number) => void }) {
   const holder = useRef<HTMLDivElement>(null);
   const [url, setUrl] = useState("");
@@ -21,7 +38,7 @@ function CbrImage({ book, index, className = "", onVisible }: { book: Publicatio
     const observer = new IntersectionObserver(([entry]) => {
       setNear(entry.isIntersecting);
       if (entry.isIntersecting) {
-        if (!currentUrl && !failed) void book.getPageBlob!(index).then((blob) => {
+        if (!currentUrl && !failed) void getCachedPageBlob(book, index).then((blob) => {
           if (!active) return;
           currentUrl = URL.createObjectURL(blob);
           setUrl(currentUrl);
@@ -148,6 +165,17 @@ export function CbrReader({ comic, fileUrl, fileData, onBack, onNextChapter, nex
   const changeMode = (value: ReaderMode) => { setMode(value); localStorage.setItem("biblioteca_reader_mode", value); void saveCurrentUserPreferencePatch({ readerMode: value }); if (value === "spread" && page > 1 && page % 2 === 1) setPage(page - 1); };
   const toggleFullscreen = () => { if (document.fullscreenElement) void document.exitFullscreen(); else void shellRef.current?.requestFullscreen(); };
   const shown = mode === "spread" && visiblePage > 1 && visiblePage < total ? [visiblePage - 1, visiblePage] : [visiblePage - 1];
+
+  useEffect(() => {
+    if (!activeBook?.getPageBlob) return;
+    const currentIndex = Math.max(0, visiblePage - 1);
+    const candidates = mode === "spread"
+      ? [currentIndex - 2, currentIndex - 1, currentIndex, currentIndex + 1, currentIndex + 2]
+      : [currentIndex - 1, currentIndex, currentIndex + 1];
+    for (const index of candidates) {
+      if (index >= 0 && index < activeBook.sections.length) void getCachedPageBlob(activeBook, index).catch(() => {});
+    }
+  }, [activeBook, visiblePage, mode]);
 
   return <div ref={shellRef} className={`reader-shell reader-immersive fixed inset-0 z-50 flex flex-col text-[#e9edf2] ${controlsVisible ? "" : "reader-controls-hidden"}`} onPointerDownCapture={(event) => { if ((event.target as HTMLElement).closest(".reader-topbar,.reader-dock,.reader-settings")) showControls(); }}>
     <header className="reader-topbar"><button className="reader-icon-button" onClick={onBack} aria-label="Voltar"><ArrowLeft /></button><div className="min-w-0 flex-1"><strong className="block truncate">{comic.title}</strong><small className="text-white/60">{comic.seriesTitle} · {comic.publisher}</small></div><button className="reader-icon-button" onClick={() => { showControls(); setSettings((value) => !value); }} aria-label="Ajustes de leitura" aria-expanded={settings}><Settings2 /></button><button className="reader-icon-button" onClick={toggleFullscreen} aria-label="Alternar tela cheia">{fullscreen ? <Minimize /> : <Expand />}</button></header>
