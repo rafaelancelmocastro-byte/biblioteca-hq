@@ -19,6 +19,7 @@ type Draft = {
   message: string;
   coverOverride?: File;
   existingId?: string;
+  duplicateCode?: "SAME_FILE" | "POSSIBLE_DUPLICATE";
   editedMetaFields?: Array<keyof PdfInspection>;
 };
 type SharedField = "title" | "year" | "characters" | "writers" | "pencillers" | "colorists" | "tags" | "synopsis" | "seriesId" | "contentType" | "readingDirection";
@@ -84,7 +85,7 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, newlyCreat
     if (!drafts.length || drafts.some((draft) => draft.status === "analyzing")) return;
     const record = Object.fromEntries(drafts.map((draft) => [draftKey(draft.file), {
       meta: draft.meta ? { ...draft.meta, cover: undefined, thumbnail: undefined } : null,
-      seriesId: draft.seriesId, contentType: draft.contentType, readingDirection: draft.readingDirection, status: draft.status, message: draft.message, existingId: draft.existingId, editedMetaFields: draft.editedMetaFields,
+      seriesId: draft.seriesId, contentType: draft.contentType, readingDirection: draft.readingDirection, status: draft.status, message: draft.message, existingId: draft.existingId, duplicateCode: draft.duplicateCode, editedMetaFields: draft.editedMetaFields,
     }]));
     const timer = window.setTimeout(() => {
       localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(record));
@@ -246,7 +247,15 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, newlyCreat
       try {
         if (forceIndex !== index && !replaceExisting && !metadataOnly) {
           const check = await checkComicDuplicate({ title: meta.title.trim(), issueNumber: Number(meta.issueNumber), year: Number(meta.year), fileSha256: meta.fileSha256, series: chosen });
-          if (check.code !== "UNIQUE") { update(index, { status: "duplicate", message: check.message || "Possível duplicidade.", existingId: check.existing?.id }); return; }
+          if (check.code !== "UNIQUE") {
+            update(index, {
+              status: "duplicate",
+              duplicateCode: check.code === "SAME_FILE" ? "SAME_FILE" : "POSSIBLE_DUPLICATE",
+              message: check.message || "Possível duplicidade.",
+              existingId: check.existing?.id,
+            });
+            return;
+          }
         }
         update(index, { status: "uploading", message: "Preparando capa e arquivo..." });
         let coverFile = draft.coverOverride || meta.cover;
@@ -286,7 +295,12 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, newlyCreat
         update(index, { status: "published", message: metadataOnly ? "Metadados atualizados; Arquivo existente preservado." : replaceExisting ? "Arquivo e ficha da edição existente atualizados." : "Publicado com ficha e arquivo individuais." });
       } catch (error) {
         const typed = error as Error & { code?: string; existing?: { id: string } };
-        update(index, { status: typed.code === "SAME_FILE" || typed.code === "POSSIBLE_DUPLICATE" ? "duplicate" : "error", message: typed.message || "Falha ao publicar este arquivo.", existingId: typed.existing?.id });
+        update(index, {
+          status: typed.code === "SAME_FILE" || typed.code === "POSSIBLE_DUPLICATE" ? "duplicate" : "error",
+          duplicateCode: typed.code === "SAME_FILE" ? "SAME_FILE" : typed.code === "POSSIBLE_DUPLICATE" ? "POSSIBLE_DUPLICATE" : undefined,
+          message: typed.message || "Falha ao publicar este arquivo.",
+          existingId: typed.existing?.id,
+        });
       }
       } finally {
         done++;
@@ -326,7 +340,7 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, newlyCreat
         <label className="span-2">Substituir capa automática<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => update(index, { coverOverride: event.target.files?.[0] })} /></label>
         {draft.meta.cover && !draft.coverOverride && <CoverPreview file={draft.meta.cover} alt={`Capa extraída de ${draft.file.name}`} />}
       </div>}
-      {draft.status === "duplicate" && <div className="batch-duplicate-actions"><button type="button" onClick={() => void publish(index)} disabled={publishing}>Manter ambos</button>{draft.existingId && <><button type="button" onClick={() => void publish(index, true)} disabled={publishing}>Substituir arquivo existente</button><button type="button" onClick={() => void publish(index, false, true)} disabled={publishing}>Atualizar só metadados</button></>}<button type="button" onClick={() => update(index, { status: "cancelled", message: "Importação cancelada pelo proprietário." })}>Cancelar este arquivo</button></div>}
+      {draft.status === "duplicate" && <div className="batch-duplicate-actions">{draft.duplicateCode !== "SAME_FILE" && <button type="button" onClick={() => void publish(index)} disabled={publishing}>Manter ambos</button>}{draft.existingId && <>{draft.duplicateCode !== "SAME_FILE" && <button type="button" onClick={() => void publish(index, true)} disabled={publishing}>Substituir arquivo existente</button>}<button type="button" onClick={() => void publish(index, false, true)} disabled={publishing}>{draft.duplicateCode === "SAME_FILE" ? "Corrigir cadastro existente" : "Atualizar só metadados"}</button></>}<button type="button" onClick={() => update(index, { status: "cancelled", message: "Importação cancelada pelo proprietário." })}>Cancelar este arquivo</button></div>}
     </details>)}
     {batchProgress && publishing && <p className="batch-progress" role="status">{batchProgress.done} de {batchProgress.total} processados · {batchProgress.published} publicados. Até {window.matchMedia("(pointer: coarse)").matches ? 2 : 3} arquivos são enviados em paralelo.</p>}
     {analysisTiming && !publishing && <p className="batch-progress">{analysisTiming}</p>}
