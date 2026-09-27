@@ -15,7 +15,7 @@ const RECENT_FALLBACK_COUNT = 24;
 const addedTime = (comic: Comic) => new Date(comic.addedAt).getTime() || 0;
 
 export function LaunchesPage({ onOpenReader }: { onOpenReader: (id: string) => void }) {
-  const { allComics, toggleFavorite, updateProgress, setStatus, isLoading } = useLibrary();
+  const { allComics, toggleFavorite, updateProgress, setStatus, isLoading, ensureCoverUrls } = useLibrary();
   const [view, setView] = useState<LaunchView>("recent");
   const [year, setYear] = useState<number | null>(null);
   const [sort, setSort] = useState<LaunchSort>("recent");
@@ -47,6 +47,11 @@ export function LaunchesPage({ onOpenReader }: { onOpenReader: (id: string) => v
     [filtered]
   );
   const selectedComic = featured[Math.min(active, Math.max(0, featured.length - 1))];
+
+  useEffect(() => {
+    const targets = featured.filter((comic) => !comic.coverUrl);
+    if (targets.length) void ensureCoverUrls(targets);
+  }, [featured, ensureCoverUrls]);
 
   const comics = useMemo(() => {
     const list = [...filtered];
