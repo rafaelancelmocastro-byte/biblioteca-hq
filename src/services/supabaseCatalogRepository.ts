@@ -28,6 +28,8 @@ type CatalogRow = {
   file_size_mb: number | string | null;
   file_name: string;
   cover_palette: ComicCoverPalette | null;
+  cover_key?: string | null;
+  cover_thumb_key?: string | null;
   added_at: string;
   series: {
     id: string;
@@ -88,6 +90,7 @@ function mapComic(row: CatalogRow): Comic {
     fileSizeMb: Number(row.file_size_mb ?? 0),
     fileName: row.file_name,
     coverUrl: coverCache.get(row.id)?.url,
+    hasCover: Boolean(row.cover_thumb_key || row.cover_key),
     addedAt: row.added_at,
     tags: row.tags ?? [],
     coverStyle: row.cover_palette ?? DEFAULT_COVER,
@@ -269,7 +272,7 @@ async function loadCatalog(): Promise<SupabaseCatalog> {
   for (let from = 0; ; from += PAGE_SIZE) {
     const result = await supabase
       .from("comics")
-      .select("id,title,content_type,reading_direction,issue_number,volume,publication_year,publisher,total_pages,synopsis,writers,pencillers,colorists,tags,file_size_mb,file_name,cover_palette,added_at,series(id,title,publisher,start_year,end_year,total_issues_expected,description,banner_tone,cover_key),comic_characters(characters(id,name,alias,publisher))")
+      .select("id,title,content_type,reading_direction,issue_number,volume,publication_year,publisher,total_pages,synopsis,writers,pencillers,colorists,tags,file_size_mb,file_name,cover_palette,cover_key,cover_thumb_key,added_at,series(id,title,publisher,start_year,end_year,total_issues_expected,description,banner_tone,cover_key),comic_characters(characters(id,name,alias,publisher))")
       .order("added_at", { ascending: false })
       .order("id", { ascending: true })
       .range(from, from + PAGE_SIZE - 1);
@@ -338,7 +341,7 @@ export async function getSupabaseComicById(id: string): Promise<Comic | null> {
     await ensureActiveSession();
   }
   const comicRequest = cached ? Promise.resolve({ data: null, error: null }) : supabase.from("comics")
-    .select("id,title,content_type,reading_direction,issue_number,volume,publication_year,publisher,total_pages,synopsis,writers,pencillers,colorists,tags,file_size_mb,file_name,cover_palette,added_at,series(id,title,publisher,start_year,end_year,total_issues_expected,description,banner_tone,cover_key),comic_characters(characters(id,name,alias,publisher))")
+    .select("id,title,content_type,reading_direction,issue_number,volume,publication_year,publisher,total_pages,synopsis,writers,pencillers,colorists,tags,file_size_mb,file_name,cover_palette,cover_key,cover_thumb_key,added_at,series(id,title,publisher,start_year,end_year,total_issues_expected,description,banner_tone,cover_key),comic_characters(characters(id,name,alias,publisher))")
     .eq("id", id).maybeSingle();
   const [record, progress] = await Promise.all([comicRequest, supabase.from("reading_progress").select("current_page,total_pages,status,last_read_at,updated_at").eq("comic_id", id).maybeSingle()]);
   if (!cached && (record.error || !record.data)) return null;
