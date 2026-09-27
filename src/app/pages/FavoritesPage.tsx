@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Heart, LibraryBig } from "lucide-react";
 import type { Comic } from "../../types/comic";
 import { useLibrary } from "../../hooks/useLibrary";
@@ -26,6 +26,7 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
     updateProgress,
     setStatus,
     isLoading,
+    ensureCoverUrls,
   } = useLibrary();
 
   const [selectedComic, setSelectedComic] = useState<Comic | null>(null);
@@ -37,6 +38,25 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
     () => seriesList.filter((series) => favoriteSeriesIds.has(series.id)),
     [favoriteSeriesIds, seriesList]
   );
+
+  const groupCoverCandidates = useMemo(
+    () =>
+      favoriteGroups
+        .map((group) =>
+          allComics.find(
+            (comic) =>
+              comic.seriesId === group.id ||
+              seriesList.some((child) => child.id === comic.seriesId && child.parentSeriesId === group.id)
+          )
+        )
+        .filter((comic): comic is Comic => !!comic),
+    [favoriteGroups, allComics, seriesList]
+  );
+
+  useEffect(() => {
+    const targets = groupCoverCandidates.filter((comic) => !comic.coverUrl);
+    if (targets.length) void ensureCoverUrls(targets);
+  }, [groupCoverCandidates, ensureCoverUrls]);
 
   const groupCover = (id: string) =>
     allComics.find(
