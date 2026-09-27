@@ -49,7 +49,17 @@ export async function createComicRecord(input: ComicRegistration): Promise<strin
   return payload.id;
 }
 
-export async function checkComicDuplicate(input: Pick<ComicRegistration, "title" | "issueNumber" | "year" | "volume" | "fileSha256" | "series">): Promise<{ code: string; existing?: { id: string; title: string }; message?: string }> {
+export type DuplicateComicInfo = {
+  id: string;
+  title: string;
+  issueNumber?: number;
+  year?: number;
+  fileName?: string;
+  seriesTitle?: string;
+  publisher?: string;
+};
+
+export async function checkComicDuplicate(input: Pick<ComicRegistration, "title" | "issueNumber" | "year" | "volume" | "fileSha256" | "series">): Promise<{ code: string; existing?: DuplicateComicInfo; message?: string }> {
   return ownerRequest("/api/comics/check", { title: input.title, issueNumber: input.issueNumber, year: input.year, volume: input.volume, fileSha256: input.fileSha256, seriesId: input.series.id, publisher: input.series.publisher });
 }
 
