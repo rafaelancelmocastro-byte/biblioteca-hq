@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Comic, ComicStatus, LibraryFilters, Series, Character } from "../types/comic";
 import { localFavoriteRepository } from "../services/localFavoriteRepository";
 import { localProgressRepository } from "../services/localProgressRepository";
-import { getCoverUrls, getSupabaseCatalog, invalidateCatalogCache } from "../services/supabaseCatalogRepository";
+import { getCatalogSnapshot, getCoverUrls, getSupabaseCatalog, invalidateCatalogCache, peekCatalogCache } from "../services/supabaseCatalogRepository";
 import { getLocalStorageItem, setLocalStorageItem } from "../lib/utils";
 import { matchesComicSearch } from "../lib/librarySearch";
 import { applyQueuedProgress, saveReadingProgress } from "../services/offlineProgress";
@@ -33,13 +33,14 @@ const DEFAULT_FILTERS: LibraryFilters = {
 
 export function useLibrary(initialFilters: LibraryFilters = DEFAULT_FILTERS) {
   const loadVersion = useRef(0);
-  const [allComics, setAllComics] = useState<Comic[]>([]);
-  const [seriesList, setSeriesList] = useState<Series[]>([]);
+  const initialSnapshot = useRef(peekCatalogCache()).current;
+  const [allComics, setAllComics] = useState<Comic[]>(() => initialSnapshot?.comics ?? []);
+  const [seriesList, setSeriesList] = useState<Series[]>(() => initialSnapshot?.series ?? []);
   const [favoriteSeriesIds, setFavoriteSeriesIds] = useState<Set<string>>(new Set());
-  const [charactersList, setCharactersList] = useState<Character[]>([]);
-  const [publishers, setPublishers] = useState<string[]>([]);
-  const [years, setYears] = useState<number[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [charactersList, setCharactersList] = useState<Character[]>(() => initialSnapshot?.characters ?? []);
+  const [publishers, setPublishers] = useState<string[]>(() => initialSnapshot?.publishers ?? []);
+  const [years, setYears] = useState<number[]>(() => initialSnapshot?.years ?? []);
+  const [isLoading, setIsLoading] = useState<boolean>(() => !initialSnapshot?.comics.length);
 
   const [filters, setFilters] = useState<LibraryFilters>(initialFilters);
   const [gridDensity, setGridDensityState] = useState<"compact" | "comfortable">(() =>
@@ -97,7 +98,20 @@ export function useLibrary(initialFilters: LibraryFilters = DEFAULT_FILTERS) {
   }, []);
 
   useEffect(() => {
+    let active = true;
+    if (!allComics.length) {
+      void getCatalogSnapshot().then((snapshot) => {
+        if (!active || !snapshot?.comics.length) return;
+        setAllComics(snapshot.comics);
+        setSeriesList(snapshot.series);
+        setCharactersList(snapshot.characters);
+        setPublishers(snapshot.publishers);
+        setYears(snapshot.years);
+        setIsLoading(false);
+      });
+    }
     void reloadData();
+
     const { data: authListener } = supabase?.auth.onAuthStateChange((_event, session) => {
       if (session) {
         invalidateCatalogCache();
@@ -106,6 +120,7 @@ export function useLibrary(initialFilters: LibraryFilters = DEFAULT_FILTERS) {
     }) ?? { data: { subscription: { unsubscribe: () => {} } } };
 
     return () => {
+      active = false;
       loadVersion.current++;
       authListener?.subscription?.unsubscribe();
     };
