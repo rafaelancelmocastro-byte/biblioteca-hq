@@ -25,6 +25,7 @@ const splitList = (value: string) => value.split(",").map((item) => item.trim())
 const mergeFiles = (files: File[]) => [...new Map(files.map((file) => [`${file.name}:${file.size}:${file.lastModified}`, file])).values()];
 const seriesPath = (series: Series, all: Series[]) => `${series.publisher} → ${series.parentSeriesId ? `${all.find((item) => item.id === series.parentSeriesId)?.title || "Coleção"} → ` : ""}${series.title}`;
 const fieldClass = "admin-field";
+const hasStoredCover = (comic: Comic) => comic.hasCover ?? Boolean(comic.coverUrl);
 const directlyRelatedSeries = (a?: Series, b?: Series) =>
   !!a && !!b && (a.id === b.id || a.parentSeriesId === b.id || b.parentSeriesId === a.id);
 type BulkField = "title" | "year" | "synopsis" | "characters" | "writers" | "pencillers" | "colorists" | "tags" | "seriesId" | "contentType" | "readingDirection";
@@ -32,7 +33,7 @@ const bulkLabels: Record<BulkField, string> = { title: "Título", year: "Ano", s
 const bulkFields = Object.keys(bulkLabels) as BulkField[];
 
 export const AdminPage: React.FC = () => {
-  const { allComics, seriesList, reloadData } = useLibrary();
+  const { allComics, seriesList, reloadData, ensureCoverUrls } = useLibrary();
   const [tab, setTab] = useState<Tab>("overview");
   const [adminSearch, setAdminSearch] = useState("");
   const [editing, setEditing] = useState<Comic | null>(null);
@@ -177,17 +178,21 @@ export const AdminPage: React.FC = () => {
   const suspiciousAssignmentIds = useMemo(() => new Set(suspiciousAssignments.map((comic) => comic.id)), [suspiciousAssignments]);
   const managedComics = useMemo(() => allComics.filter((comic) => {
     const haystack = [comic.title, comic.seriesTitle, comic.fileName, ...comic.writers, ...comic.pencillers, ...comic.characters].join(" ").toLocaleLowerCase("pt-BR");
-    const issueOk = managerIssue === "all" || (managerIssue === "missing_cover" && !comic.coverUrl) || (managerIssue === "missing_synopsis" && !comic.synopsis.trim()) || (managerIssue === "unassigned" && !comic.seriesId) || (managerIssue === "storage_error" && storageStatuses[comic.id] === "error") || (managerIssue === "series_mismatch" && suspiciousAssignmentIds.has(comic.id));
+    const issueOk = managerIssue === "all" || (managerIssue === "missing_cover" && !hasStoredCover(comic)) || (managerIssue === "missing_synopsis" && !comic.synopsis.trim()) || (managerIssue === "unassigned" && !comic.seriesId) || (managerIssue === "storage_error" && storageStatuses[comic.id] === "error") || (managerIssue === "series_mismatch" && suspiciousAssignmentIds.has(comic.id));
     return (!debouncedSearch || haystack.includes(debouncedSearch)) && issueOk && (managerFormat === "all" || (comic.contentType || "comic") === managerFormat) && (managerPublisher === "all" || comic.publisher === managerPublisher) && (managerSeries === "all" || comic.seriesId === managerSeries) && (managerYear === "all" || comic.year === Number(managerYear)) && (managerStorage === "all" || storageStatuses[comic.id] === managerStorage);
   }).sort((a, b) => managerSort === "az" ? a.title.localeCompare(b.title, "pt-BR") : managerSort === "za" ? b.title.localeCompare(a.title, "pt-BR") : managerSort === "size" ? b.fileSizeMb - a.fileSizeMb : b.addedAt.localeCompare(a.addedAt)), [allComics, debouncedSearch, managerFormat, managerPublisher, managerSeries, managerYear, managerStorage, managerSort, managerIssue, storageStatuses, suspiciousAssignmentIds]);
   const pageCount = Math.max(1, Math.ceil(managedComics.length / 20));
   const visibleComics = managedComics.slice((Math.min(managerPage, pageCount) - 1) * 20, Math.min(managerPage, pageCount) * 20);
+  useEffect(() => {
+    const targets = visibleComics.filter((comic) => hasStoredCover(comic) && !comic.coverUrl);
+    if (targets.length) void ensureCoverUrls(targets);
+  }, [visibleComics, ensureCoverUrls]);
   const allFilteredSelected = managedComics.length > 0 && managedComics.every((comic) => selectedIds.includes(comic.id));
   const selectFilteredComics = (checked: boolean) => {
     const filteredIds = new Set(managedComics.map((comic) => comic.id));
     setSelectedIds((current) => checked ? [...new Set([...current, ...filteredIds])] : current.filter((id) => !filteredIds.has(id)));
   };
-  const missingPdfCovers = managedComics.filter((comic) => !comic.coverUrl && ["pdf", "cbr", "cbz"].includes(publicationFormat(comic.fileName) || "") && (!selectedIds.length || selectedIds.includes(comic.id)));
+  const missingPdfCovers = managedComics.filter((comic) => !hasStoredCover(comic) && ["pdf", "cbr", "cbz"].includes(publicationFormat(comic.fileName) || "") && (!selectedIds.length || selectedIds.includes(comic.id)));
   const repairMissingCovers = async () => {
     const targets = missingPdfCovers;
     if (!targets.length) return;
@@ -218,7 +223,7 @@ export const AdminPage: React.FC = () => {
   useEffect(() => setManagerPage(1), [debouncedSearch, managerFormat, managerPublisher, managerSeries, managerYear, managerStorage, managerSort, managerIssue]);
 
   const totalMb = useMemo(() => allComics.reduce((sum, item) => sum + item.fileSizeMb, 0), [allComics]);
-  const missingCoverCount = useMemo(() => allComics.filter((comic) => !comic.coverUrl).length, [allComics]);
+  const missingCoverCount = useMemo(() => allComics.filter((comic) => !hasStoredCover(comic)).length, [allComics]);
   const missingSynopsisCount = useMemo(() => allComics.filter((comic) => !comic.synopsis.trim()).length, [allComics]);
   const storageErrorCount = useMemo(() => allComics.filter((comic) => storageStatuses[comic.id] === "error").length, [allComics, storageStatuses]);
   const collectionNeedle = collectionSearch.trim().toLocaleLowerCase("pt-BR");
