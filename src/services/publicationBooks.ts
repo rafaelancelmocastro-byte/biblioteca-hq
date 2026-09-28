@@ -34,14 +34,33 @@ export async function openPublicationBook(file: File, remoteSource?: { getLength
       if (!entries.length) throw new Error("O CBZ não contém páginas de imagem legíveis.");
       if (entries.some((entry) => entry.encrypted)) throw new Error("CBZ protegido por senha não pode ser lido.");
       const names = new Map(entries.map((entry, index) => [`page-${String(index).padStart(6, "0")}.jpg`, entry]));
+      // zip.js can reuse internal ArrayBuffers while multiple entries are being
+      // extracted. Concurrent page prefetches may therefore detach a buffer that
+      // another extraction is still copying. Serialize extraction just like CBR,
+      // while keeping network/range reads and rendered-page prefetch asynchronous.
+      let extraction = Promise.resolve();
       const pageBlob = (index: number) => {
         const entry = entries[index];
-        if (!entry) throw new Error("Página não encontrada no CBZ.");
+        if (!entry) return Promise.reject(new Error("Página não encontrada no CBZ."));
         const extension = entry.filename.split(".").pop()?.toLowerCase();
         const type = extension === "png" ? "image/png" : extension === "webp" ? "image/webp" : extension === "gif" ? "image/gif" : extension === "bmp" ? "image/bmp" : extension === "avif" ? "image/avif" : "image/jpeg";
         const fileEntry = entry as { getData?: (writer: unknown) => Promise<Blob> };
-        if (!fileEntry.getData) throw new Error("Página inválida no CBZ.");
-        return fileEntry.getData(new BlobWriter(type));
+        if (!fileEntry.getData) return Promise.reject(new Error("Página inválida no CBZ."));
+
+        const run = async () => {
+          try {
+            return await fileEntry.getData!(new BlobWriter(type));
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            if (!/detached|out-of-bounds|arraybuffer/i.test(message)) throw error;
+            // A transient detached buffer can be recreated safely by retrying the
+            // entry after the previous extraction has fully settled.
+            return fileEntry.getData!(new BlobWriter(type));
+          }
+        };
+        const result = extraction.then(run);
+        extraction = result.then(() => undefined, () => undefined);
+        return result;
       };
       const loader = {
         entries: [...names.keys()].map((filename) => ({ filename })),
