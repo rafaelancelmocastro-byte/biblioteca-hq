@@ -330,7 +330,7 @@ export const ComicReader: React.FC<ComicReaderProps> = ({ comic, pdfUrl, pdfData
 
   const changeZoom = useCallback((nextZoom: number, clientX?: number, clientY?: number) => {
     const stage = stageRef.current;
-    const value = Math.min(3, Math.max(0.7, nextZoom));
+    const value = Math.min(3, Math.max(1, nextZoom));
     if (stage) {
       const rect = stage.getBoundingClientRect();
       const focusX = clientX === undefined ? stage.clientWidth / 2 : clientX - rect.left;
