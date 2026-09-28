@@ -118,7 +118,12 @@ export function CbrReader({ comic, fileUrl, fileData, onBack, onNextChapter, nex
   const lastWheelTurn = useRef(0);
   const shellRef = useRef<HTMLDivElement>(null);
   const startTouch = useRef<{ x: number; y: number; distance?: number; zoom?: number } | null>(null);
+  const touchPanRef = useRef<{ x: number; y: number; scrollLeft: number; scrollTop: number } | null>(null);
+  const mousePanRef = useRef<{ x: number; y: number; scrollLeft: number; scrollTop: number; pointerId: number } | null>(null);
+  const zoomAnchorRef = useRef<{ contentX: number; contentY: number; focusX: number; focusY: number } | null>(null);
+  const zoomRef = useRef(zoom);
   const didSwipe = useRef(false);
+  const didPan = useRef(false);
   const activeBook = book || previewBook;
   const previewOnly = !book && !!previewBook;
   const total = book?.sections.length || comic.totalPages;
@@ -175,13 +180,13 @@ export function CbrReader({ comic, fileUrl, fileData, onBack, onNextChapter, nex
       if (event.key === "ArrowUp" && mode === "page") { event.preventDefault(); previous(); }
       if (event.key === "ArrowRight") { event.preventDefault(); direction === "rtl" ? previous() : next(); }
       if (event.key === "ArrowLeft") { event.preventDefault(); direction === "rtl" ? next() : previous(); }
-      if (event.key === "+" || event.key === "=") { event.preventDefault(); setZoom((value) => Math.min(3, value + .1)); }
-      if (event.key === "-") { event.preventDefault(); setZoom((value) => Math.max(1, value - .1)); }
-      if (event.key === "0") { event.preventDefault(); setZoom(1); }
+      if (event.key === "+" || event.key === "=") { event.preventDefault(); changeZoom(zoomRef.current + .1); }
+      if (event.key === "-") { event.preventDefault(); changeZoom(zoomRef.current - .1); }
+      if (event.key === "0") { event.preventDefault(); changeZoom(1); }
     };
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
-  }, [direction, mode, next, previous]);
+  }, [changeZoom, direction, mode, next, previous]);
   useEffect(() => { const handler = () => setFullscreen(!!document.fullscreenElement); document.addEventListener("fullscreenchange", handler); return () => document.removeEventListener("fullscreenchange", handler); }, []);
   useEffect(() => {
     currentPageRef.current = page;
@@ -198,6 +203,40 @@ export function CbrReader({ comic, fileUrl, fileData, onBack, onNextChapter, nex
     return () => { cancelAnimationFrame(frame); window.clearTimeout(timer); };
   }, [book, mode]);
   const changeMode = (value: ReaderMode) => { setMode(value); localStorage.setItem("biblioteca_reader_mode", value); void saveCurrentUserPreferencePatch({ readerMode: value }); if (value === "spread" && page > 1 && page % 2 === 1) setPage(page - 1); };
+
+  const changeZoom = useCallback((nextZoom: number, clientX?: number, clientY?: number) => {
+    const stage = stageRef.current;
+    const previousZoom = zoomRef.current;
+    const value = Math.min(3, Math.max(1, nextZoom));
+    if (stage) {
+      const rect = stage.getBoundingClientRect();
+      const focusX = clientX === undefined ? stage.clientWidth / 2 : clientX - rect.left;
+      const focusY = clientY === undefined ? stage.clientHeight / 2 : clientY - rect.top;
+      zoomAnchorRef.current = {
+        contentX: (stage.scrollLeft + focusX) / previousZoom,
+        contentY: (stage.scrollTop + focusY) / previousZoom,
+        focusX,
+        focusY,
+      };
+    }
+    zoomRef.current = value;
+    setZoom(value);
+  }, []);
+
+  useEffect(() => {
+    zoomRef.current = zoom;
+    const anchor = zoomAnchorRef.current;
+    if (!anchor) return;
+    const frame = requestAnimationFrame(() => requestAnimationFrame(() => {
+      const stage = stageRef.current;
+      if (!stage) return;
+      stage.scrollLeft = Math.max(0, anchor.contentX * zoom - anchor.focusX);
+      stage.scrollTop = Math.max(0, anchor.contentY * zoom - anchor.focusY);
+      zoomAnchorRef.current = null;
+    }));
+    return () => cancelAnimationFrame(frame);
+  }, [zoom]);
+
   const toggleFullscreen = () => { if (document.fullscreenElement) void document.exitFullscreen(); else void shellRef.current?.requestFullscreen(); };
   const shown = mode === "spread" && visiblePage > 1 && visiblePage < total ? [visiblePage - 1, visiblePage] : [visiblePage - 1];
 
@@ -215,16 +254,84 @@ export function CbrReader({ comic, fileUrl, fileData, onBack, onNextChapter, nex
   return <div ref={shellRef} className={`reader-shell reader-immersive fixed inset-0 z-50 flex flex-col text-[#e9edf2] ${controlsVisible ? "" : "reader-controls-hidden"}`} onPointerDownCapture={(event) => { if ((event.target as HTMLElement).closest(".reader-topbar,.reader-dock,.reader-settings")) showControls(); }}>
     <header className="reader-topbar"><button className="reader-icon-button" onClick={onBack} aria-label="Voltar"><ArrowLeft /></button><div className="min-w-0 flex-1"><strong className="block truncate">{comic.title}</strong><small className="text-white/60">{comic.seriesTitle} · {comic.publisher}</small></div><button className="reader-icon-button" onClick={() => { showControls(); setSettings((value) => !value); }} aria-label="Ajustes de leitura" aria-expanded={settings}><Settings2 /></button><button className="reader-icon-button" onClick={toggleFullscreen} aria-label="Alternar tela cheia">{fullscreen ? <Minimize /> : <Expand />}</button></header>
     {settings && <ReaderSettings mode={mode} onModeChange={changeMode} direction={direction} onDirectionChange={(value) => { setDirection(value); localStorage.setItem("biblioteca_reading_direction", value); void saveCurrentUserPreferencePatch({ readingDirection: value }); }} brightness={brightness} onBrightnessChange={setBrightness} texture={texture} onTextureChange={setTexture} />}
-    <main ref={stageRef} className={`reader-stage cbr-scroll-stage texture-${texture} mode-${mode} ${zoom > 1.05 ? "reader-stage-zoomed" : ""} ${fitMode === "width" ? "reader-stage-fit-width" : ""}`} style={{ filter: `brightness(${brightness}%)` }}
-      onTouchStart={(event) => { didSwipe.current = false; const touches = event.touches; startTouch.current = touches.length === 2 ? { x: 0, y: 0, distance: Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY), zoom } : { x: touches[0].clientX, y: touches[0].clientY }; }}
-      onTouchMove={(event) => { if (event.touches.length === 2 && startTouch.current?.distance) { if (event.cancelable) event.preventDefault(); const distance = Math.hypot(event.touches[0].clientX - event.touches[1].clientX, event.touches[0].clientY - event.touches[1].clientY); setZoom(Math.min(3, Math.max(1, startTouch.current.zoom! * distance / startTouch.current.distance))); } }}
-      onTouchEnd={(event) => { if (mode === "continuous" || zoom > 1.05 || !startTouch.current || startTouch.current.distance || !event.changedTouches.length) return; const dx = event.changedTouches[0].clientX - startTouch.current.x, dy = event.changedTouches[0].clientY - startTouch.current.y; if (mode === "page" && Math.abs(dy) > 55 && Math.abs(dy) > Math.abs(dx)) { didSwipe.current = true; dy < 0 ? next() : previous(); } else if (mode !== "page" && Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy)) { didSwipe.current = true; dx < 0 ? (direction === "rtl" ? previous() : next()) : (direction === "rtl" ? next() : previous()); } }}
-      onClick={(event) => { if (didSwipe.current) { didSwipe.current = false; return; } if (event.detail === 0) return; const rect = event.currentTarget.getBoundingClientRect(); const x = (event.clientX - rect.left) / rect.width, y = (event.clientY - rect.top) / rect.height; if (x > .26 && x < .74 && y > .24 && y < .76) { setSettings(false); toggleControls(); } }}
-      onWheel={(event) => { if (event.ctrlKey) { event.preventDefault(); setZoom((value) => Math.min(3, Math.max(1, value + (event.deltaY < 0 ? .1 : -.1)))); return; } if (mode === "continuous" || zoom > 1.05 || Date.now() - lastWheelTurn.current < 420) return; if (mode === "page" && Math.abs(event.deltaY) > 30) { lastWheelTurn.current = Date.now(); event.preventDefault(); event.deltaY > 0 ? next() : previous(); } else if (mode !== "page" && Math.abs(event.deltaX) > 30) { lastWheelTurn.current = Date.now(); event.preventDefault(); event.deltaX > 0 ? next() : previous(); } }}>
-      {!activeBook ? <div className="reader-loading" role="status">{error || (downloadProgress > 0 && downloadProgress < 100 ? `Carregando HQ… ${downloadProgress}%` : "Preparando HQ…")}</div> : mode === "continuous" ? <div className="cbr-continuous" style={{ width: `${Math.round(zoom * 100)}%`, maxWidth: `${56 * zoom}rem`, ["--reader-image-zoom" as string]: zoom }}>{activeBook.sections.map((_, index) => <CbrImage key={index} book={activeBook} index={index} onVisible={book ? (visiblePage) => { if (!restoringPositionRef.current) progress(visiblePage); } : undefined} />)}</div> : <div className={`cbr-page ${mode === "spread" && shown.filter((index) => index < activeBook.sections.length).length === 2 ? "cbr-spread" : ""}`} style={{ width: `${Math.round(zoom * 100)}%`, height: `${Math.round(zoom * 100)}%`, minWidth: `${Math.round(zoom * 100)}%`, minHeight: `${Math.round(zoom * 100)}%`, ["--reader-image-zoom" as string]: zoom }}>{shown.filter((index) => index < activeBook.sections.length).map((index) => <CbrImage key={index} book={activeBook} index={index} />)}</div>}
+    <main ref={stageRef} className={`reader-stage cbr-scroll-stage texture-${texture} mode-${mode} ${zoom > 1.001 ? "reader-stage-zoomed" : ""} ${fitMode === "width" ? "reader-stage-fit-width" : ""}`} style={{ filter: `brightness(${brightness}%)` }}
+      onTouchStart={(event) => {
+        didSwipe.current = false;
+        didPan.current = false;
+        const touches = event.touches;
+        if (touches.length === 2) {
+          if (event.cancelable) event.preventDefault();
+          touchPanRef.current = null;
+          startTouch.current = { x: 0, y: 0, distance: Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY), zoom: zoomRef.current };
+        } else if (touches.length === 1) {
+          startTouch.current = { x: touches[0].clientX, y: touches[0].clientY };
+          if (zoomRef.current > 1.001) {
+            if (event.cancelable) event.preventDefault();
+            touchPanRef.current = { x: touches[0].clientX, y: touches[0].clientY, scrollLeft: event.currentTarget.scrollLeft, scrollTop: event.currentTarget.scrollTop };
+          }
+        }
+      }}
+      onTouchMove={(event) => {
+        if (event.touches.length === 2 && startTouch.current?.distance) {
+          if (event.cancelable) event.preventDefault();
+          const distance = Math.hypot(event.touches[0].clientX - event.touches[1].clientX, event.touches[0].clientY - event.touches[1].clientY);
+          const focusX = (event.touches[0].clientX + event.touches[1].clientX) / 2;
+          const focusY = (event.touches[0].clientY + event.touches[1].clientY) / 2;
+          changeZoom(startTouch.current.zoom! * distance / startTouch.current.distance, focusX, focusY);
+          didPan.current = true;
+          return;
+        }
+        if (event.touches.length === 1 && touchPanRef.current && zoomRef.current > 1.001) {
+          if (event.cancelable) event.preventDefault();
+          const touch = event.touches[0];
+          event.currentTarget.scrollLeft = touchPanRef.current.scrollLeft - (touch.clientX - touchPanRef.current.x);
+          event.currentTarget.scrollTop = touchPanRef.current.scrollTop - (touch.clientY - touchPanRef.current.y);
+          if (Math.abs(touch.clientX - touchPanRef.current.x) > 4 || Math.abs(touch.clientY - touchPanRef.current.y) > 4) didPan.current = true;
+        }
+      }}
+      onTouchEnd={(event) => {
+        if (zoomRef.current > 1.001) {
+          if (event.touches.length === 1) {
+            const touch = event.touches[0];
+            touchPanRef.current = { x: touch.clientX, y: touch.clientY, scrollLeft: event.currentTarget.scrollLeft, scrollTop: event.currentTarget.scrollTop };
+            startTouch.current = { x: touch.clientX, y: touch.clientY };
+          } else {
+            touchPanRef.current = null;
+            startTouch.current = null;
+          }
+          return;
+        }
+        touchPanRef.current = null;
+        if (mode === "continuous" || !startTouch.current || startTouch.current.distance || !event.changedTouches.length) return;
+        const dx = event.changedTouches[0].clientX - startTouch.current.x, dy = event.changedTouches[0].clientY - startTouch.current.y;
+        if (mode === "page" && Math.abs(dy) > 55 && Math.abs(dy) > Math.abs(dx)) { didSwipe.current = true; dy < 0 ? next() : previous(); }
+        else if (mode !== "page" && Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy)) { didSwipe.current = true; dx < 0 ? (direction === "rtl" ? previous() : next()) : (direction === "rtl" ? next() : previous()); }
+      }}
+      onPointerDown={(event) => {
+        if (event.pointerType === "touch" || zoomRef.current <= 1.001) return;
+        event.currentTarget.setPointerCapture(event.pointerId);
+        didPan.current = false;
+        mousePanRef.current = { x: event.clientX, y: event.clientY, scrollLeft: event.currentTarget.scrollLeft, scrollTop: event.currentTarget.scrollTop, pointerId: event.pointerId };
+      }}
+      onPointerMove={(event) => {
+        const pan = mousePanRef.current;
+        if (!pan || pan.pointerId !== event.pointerId || zoomRef.current <= 1.001) return;
+        event.currentTarget.scrollLeft = pan.scrollLeft - (event.clientX - pan.x);
+        event.currentTarget.scrollTop = pan.scrollTop - (event.clientY - pan.y);
+        if (Math.abs(event.clientX - pan.x) > 3 || Math.abs(event.clientY - pan.y) > 3) didPan.current = true;
+      }}
+      onPointerUp={(event) => {
+        if (mousePanRef.current?.pointerId === event.pointerId) mousePanRef.current = null;
+      }}
+      onPointerCancel={(event) => {
+        if (mousePanRef.current?.pointerId === event.pointerId) mousePanRef.current = null;
+      }}
+      onClick={(event) => { if (didSwipe.current || didPan.current) { didSwipe.current = false; didPan.current = false; return; } if (event.detail === 0) return; const rect = event.currentTarget.getBoundingClientRect(); const x = (event.clientX - rect.left) / rect.width, y = (event.clientY - rect.top) / rect.height; if (x > .26 && x < .74 && y > .24 && y < .76) { setSettings(false); toggleControls(); } }}
+      onWheel={(event) => { if (event.ctrlKey) { event.preventDefault(); changeZoom(zoomRef.current + (event.deltaY < 0 ? .1 : -.1), event.clientX, event.clientY); return; } if (mode === "continuous" || zoomRef.current > 1.001 || Date.now() - lastWheelTurn.current < 420) return; if (mode === "page" && Math.abs(event.deltaY) > 30) { lastWheelTurn.current = Date.now(); event.preventDefault(); event.deltaY > 0 ? next() : previous(); } else if (mode !== "page" && Math.abs(event.deltaX) > 30) { lastWheelTurn.current = Date.now(); event.preventDefault(); event.deltaX > 0 ? next() : previous(); } }}>
+      {!activeBook ? <div className="reader-loading" role="status">{error || (downloadProgress > 0 && downloadProgress < 100 ? `Carregando HQ… ${downloadProgress}%` : "Preparando HQ…")}</div> : mode === "continuous" ? <div className="cbr-continuous" style={{ width: `${Math.round(zoom * 100)}%`, maxWidth: `${56 * zoom}rem`, ["--reader-image-zoom" as string]: zoom }}>{activeBook.sections.map((_, index) => <CbrImage key={index} book={activeBook} index={index} onVisible={book ? (visiblePage) => { if (!restoringPositionRef.current) progress(visiblePage); } : undefined} />)}</div> : <div className={`cbr-page ${mode === "spread" && shown.filter((index) => index < activeBook.sections.length).length === 2 ? "cbr-spread" : ""}`} style={{ width: `${Math.round(zoom * 100)}%`, minWidth: `${Math.round(zoom * 100)}%`, ["--reader-image-zoom" as string]: zoom }}>{shown.filter((index) => index < activeBook.sections.length).map((index) => <CbrImage key={index} book={activeBook} index={index} />)}</div>}
       {previewOnly && <div className="reader-preview-status" role="status">Primeiras páginas disponíveis · preparando o restante</div>}
     </main>
     {book && visiblePage + (mode === "spread" && visiblePage > 1 ? 1 : 0) >= total && <ReaderCompletion nextIssue={nextIssue} onNextChapter={onNextChapter} />}
-    <ReaderDock page={displayedPage} total={total} onPageChange={(target) => { setCurrent(target); if (mode === "continuous") stageRef.current?.querySelector(`[data-cbr-page="${target}"]`)?.scrollIntoView({ block: "start" }); }} onPrevious={direction === "rtl" ? next : previous} onNext={direction === "rtl" ? previous : next} previousDisabled={direction === "rtl" ? displayedPage >= (activeBook?.sections.length || total) : displayedPage <= 1} nextDisabled={direction === "rtl" ? displayedPage <= 1 : displayedPage >= (activeBook?.sections.length || total)} zoom={zoom} onZoomChange={(value) => setZoom(Math.min(3, Math.max(1, value)))} fit={fitMode} onFitChange={(fit) => { setFitMode(fit); localStorage.setItem("biblioteca_reader_fit", fit); void saveCurrentUserPreferencePatch({ readerFit: fit }); setZoom(1); if (fit === "height" && mode === "continuous") changeMode("page"); }} scrubDisabled={previewOnly} />
+    <ReaderDock page={displayedPage} total={total} onPageChange={(target) => { setCurrent(target); if (mode === "continuous") stageRef.current?.querySelector(`[data-cbr-page="${target}"]`)?.scrollIntoView({ block: "start" }); }} onPrevious={direction === "rtl" ? next : previous} onNext={direction === "rtl" ? previous : next} previousDisabled={direction === "rtl" ? displayedPage >= (activeBook?.sections.length || total) : displayedPage <= 1} nextDisabled={direction === "rtl" ? displayedPage <= 1 : displayedPage >= (activeBook?.sections.length || total)} zoom={zoom} onZoomChange={changeZoom} fit={fitMode} onFitChange={(fit) => { setFitMode(fit); localStorage.setItem("biblioteca_reader_fit", fit); void saveCurrentUserPreferencePatch({ readerFit: fit }); changeZoom(1); if (fit === "height" && mode === "continuous") changeMode("page"); }} scrubDisabled={previewOnly} />
   </div>;
 }
