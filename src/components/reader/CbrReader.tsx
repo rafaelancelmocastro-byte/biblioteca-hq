@@ -173,37 +173,6 @@ export function CbrReader({ comic, fileUrl, fileData, onBack, onNextChapter, nex
     return () => { active = false; opened?.destroy?.(); preview?.destroy?.(); };
   }, [comic.id, comic.fileName, fileData, fileUrl]);
   useEffect(() => { localStorage.setItem("biblioteca_reader_mode", mode); }, [mode]);
-  useEffect(() => { if (book) onUpdateProgress(comic.id, page, total); }, [book, comic.id, page, total, onUpdateProgress]);
-  useEffect(() => {
-    const key = (event: KeyboardEvent) => {
-      if (event.key === "ArrowDown" && mode === "page") { event.preventDefault(); next(); }
-      if (event.key === "ArrowUp" && mode === "page") { event.preventDefault(); previous(); }
-      if (event.key === "ArrowRight") { event.preventDefault(); direction === "rtl" ? previous() : next(); }
-      if (event.key === "ArrowLeft") { event.preventDefault(); direction === "rtl" ? next() : previous(); }
-      if (event.key === "+" || event.key === "=") { event.preventDefault(); changeZoom(zoomRef.current + .1); }
-      if (event.key === "-") { event.preventDefault(); changeZoom(zoomRef.current - .1); }
-      if (event.key === "0") { event.preventDefault(); changeZoom(1); }
-    };
-    window.addEventListener("keydown", key);
-    return () => window.removeEventListener("keydown", key);
-  }, [changeZoom, direction, mode, next, previous]);
-  useEffect(() => { const handler = () => setFullscreen(!!document.fullscreenElement); document.addEventListener("fullscreenchange", handler); return () => document.removeEventListener("fullscreenchange", handler); }, []);
-  useEffect(() => {
-    currentPageRef.current = page;
-  }, [page]);
-
-  useEffect(() => {
-    if (mode !== "continuous" || !book) return;
-    restoringPositionRef.current = true;
-    const target = Math.min(currentPageRef.current, book.sections.length);
-    const frame = requestAnimationFrame(() => requestAnimationFrame(() => {
-      stageRef.current?.querySelector(`[data-cbr-page="${target}"]`)?.scrollIntoView({ block: "start" });
-    }));
-    const timer = window.setTimeout(() => { restoringPositionRef.current = false; }, 450);
-    return () => { cancelAnimationFrame(frame); window.clearTimeout(timer); };
-  }, [book, mode]);
-  const changeMode = (value: ReaderMode) => { setMode(value); localStorage.setItem("biblioteca_reader_mode", value); void saveCurrentUserPreferencePatch({ readerMode: value }); if (value === "spread" && page > 1 && page % 2 === 1) setPage(page - 1); };
-
   const changeZoom = useCallback((nextZoom: number, clientX?: number, clientY?: number) => {
     const stage = stageRef.current;
     const previousZoom = zoomRef.current;
@@ -236,6 +205,37 @@ export function CbrReader({ comic, fileUrl, fileData, onBack, onNextChapter, nex
     }));
     return () => cancelAnimationFrame(frame);
   }, [zoom]);
+
+  useEffect(() => { if (book) onUpdateProgress(comic.id, page, total); }, [book, comic.id, page, total, onUpdateProgress]);
+  useEffect(() => {
+    const key = (event: KeyboardEvent) => {
+      if (event.key === "ArrowDown" && mode === "page") { event.preventDefault(); next(); }
+      if (event.key === "ArrowUp" && mode === "page") { event.preventDefault(); previous(); }
+      if (event.key === "ArrowRight") { event.preventDefault(); direction === "rtl" ? previous() : next(); }
+      if (event.key === "ArrowLeft") { event.preventDefault(); direction === "rtl" ? next() : previous(); }
+      if (event.key === "+" || event.key === "=") { event.preventDefault(); changeZoom(zoomRef.current + .1); }
+      if (event.key === "-") { event.preventDefault(); changeZoom(zoomRef.current - .1); }
+      if (event.key === "0") { event.preventDefault(); changeZoom(1); }
+    };
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  }, [changeZoom, direction, mode, next, previous]);
+  useEffect(() => { const handler = () => setFullscreen(!!document.fullscreenElement); document.addEventListener("fullscreenchange", handler); return () => document.removeEventListener("fullscreenchange", handler); }, []);
+  useEffect(() => {
+    currentPageRef.current = page;
+  }, [page]);
+
+  useEffect(() => {
+    if (mode !== "continuous" || !book) return;
+    restoringPositionRef.current = true;
+    const target = Math.min(currentPageRef.current, book.sections.length);
+    const frame = requestAnimationFrame(() => requestAnimationFrame(() => {
+      stageRef.current?.querySelector(`[data-cbr-page="${target}"]`)?.scrollIntoView({ block: "start" });
+    }));
+    const timer = window.setTimeout(() => { restoringPositionRef.current = false; }, 450);
+    return () => { cancelAnimationFrame(frame); window.clearTimeout(timer); };
+  }, [book, mode]);
+  const changeMode = (value: ReaderMode) => { setMode(value); localStorage.setItem("biblioteca_reader_mode", value); void saveCurrentUserPreferencePatch({ readerMode: value }); if (value === "spread" && page > 1 && page % 2 === 1) setPage(page - 1); };
 
   const toggleFullscreen = () => { if (document.fullscreenElement) void document.exitFullscreen(); else void shellRef.current?.requestFullscreen(); };
   const shown = mode === "spread" && visiblePage > 1 && visiblePage < total ? [visiblePage - 1, visiblePage] : [visiblePage - 1];
