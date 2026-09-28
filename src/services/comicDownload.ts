@@ -1,4 +1,4 @@
-import { supabase } from "./supabaseClient";
+import { ensureActiveSession, supabase } from "./supabaseClient";
 
 const CHUNK_SIZE = 2 * 1024 * 1024;
 const REMOTE_BLOCK_SIZE = 1024 * 1024;
@@ -10,13 +10,40 @@ async function fetchChunk(comicId: string, token: string, start: number, end: nu
   });
 }
 
+const retryableStatus = (status: number) => status === 408 || status === 429 || status >= 500;
+
+async function fetchAuthorizedChunk(
+  comicId: string,
+  start: number,
+  end: number,
+  tokenRef: { value: string },
+): Promise<Response> {
+  let response = await fetchChunk(comicId, tokenRef.value, start, end);
+
+  if (response.status === 401 || response.status === 403) {
+    const refreshed = await ensureActiveSession(true);
+    if (!refreshed?.access_token) return response;
+    tokenRef.value = refreshed.access_token;
+    response = await fetchChunk(comicId, tokenRef.value, start, end);
+  }
+
+  if (retryableStatus(response.status)) {
+    await new Promise((resolve) => window.setTimeout(resolve, 180));
+    const session = await ensureActiveSession();
+    if (session?.access_token) tokenRef.value = session.access_token;
+    response = await fetchChunk(comicId, tokenRef.value, start, end);
+  }
+
+  return response;
+}
+
 export async function createRemoteArchiveSource(comicId: string, signedUrl: string) {
   if (!supabase) throw new Error("Autenticação indisponível.");
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
-  if (!token) throw new Error("Entre novamente para ler esta edição.");
+  const session = await ensureActiveSession();
+  if (!session?.access_token) throw new Error("Entre novamente para ler esta edição.");
+  const tokenRef = { value: session.access_token };
   // O mesmo pedido descobre o tamanho e já traz o primeiro bloco usado pelo leitor.
-  const first = await fetchChunk(comicId, token, 0, REMOTE_BLOCK_SIZE - 1);
+  const first = await fetchAuthorizedChunk(comicId, 0, REMOTE_BLOCK_SIZE - 1, tokenRef);
   if (!first.ok) throw new Error("Não foi possível consultar o tamanho da edição.");
   const total = Number(first.headers.get("Content-Range")?.split("/")[1]);
   if (!Number.isSafeInteger(total) || total < 1) throw new Error("Tamanho da edição inválido.");
@@ -35,8 +62,11 @@ export async function createRemoteArchiveSource(comicId: string, signedUrl: stri
       } catch { /* Use the authenticated route below. */ }
       directUnavailable = true;
     }
-    const response = await fetchChunk(comicId, token, start, end);
-    if (!response.ok) throw new Error("Não foi possível carregar um trecho da HQ.");
+    const response = await fetchAuthorizedChunk(comicId, start, end, tokenRef);
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) throw new Error("Sua sessão expirou durante a leitura. Tente a página novamente.");
+      throw new Error("Não foi possível carregar um trecho da HQ.");
+    }
     const bytes = new Uint8Array(await response.arrayBuffer());
     if (response.status !== 206 || bytes.length !== end - start + 1) throw new Error("O arquivo recebido está incompleto. Tente novamente.");
     return bytes;
@@ -84,9 +114,9 @@ export async function downloadComicBlob(comicId: string, signedUrl: string, onPr
   } catch { /* Some browsers fail a full cross-origin download; use authenticated chunks. */ }
 
   if (!supabase) throw new Error("Autenticação indisponível.");
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
-  if (!token) throw new Error("Entre novamente para ler esta edição.");
+  const session = await ensureActiveSession();
+  if (!session?.access_token) throw new Error("Entre novamente para ler esta edição.");
+  const tokenRef = { value: session.access_token };
   const readPart = async (start: number, end: number): Promise<Blob> => {
     try {
       const response = await fetch(signedUrl, { headers: { Range: `bytes=${start}-${end}` } });
@@ -95,13 +125,13 @@ export async function downloadComicBlob(comicId: string, signedUrl: string, onPr
         if (part.size === end - start + 1) return part;
       }
     } catch { /* Try the same-origin route below. */ }
-    const response = await fetchChunk(comicId, token, start, end);
+    const response = await fetchAuthorizedChunk(comicId, start, end, tokenRef);
     if (!response.ok) throw new Error("Não foi possível baixar a edição. Tente novamente.");
     const part = await response.blob();
     if (response.status !== 206 || part.size !== end - start + 1) throw new Error("O arquivo recebido está incompleto. Tente novamente.");
     return part;
   };
-  const first = await fetchChunk(comicId, token, 0, CHUNK_SIZE - 1);
+  const first = await fetchAuthorizedChunk(comicId, 0, CHUNK_SIZE - 1, tokenRef);
   if (!first.ok) throw new Error("Não foi possível baixar a edição. Tente novamente.");
   total = Number(first.headers.get("Content-Range")?.split("/")[1]);
   if (!Number.isSafeInteger(total) || total < 1) throw new Error("O tamanho da edição não pôde ser confirmado.");
