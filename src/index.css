@@ -790,7 +790,7 @@ button, input, select { font: inherit; }
 .publication-mode svg { width: 1rem; height: 1rem; }
 .publication-dock .reader-page-control { flex: 1; max-width: 32rem; }
 .cbr-scroll-stage { overflow: auto; overscroll-behavior: contain; }
-.cbr-scroll-stage.mode-continuous.reader-stage-zoomed { touch-action: pan-y; }
+.cbr-scroll-stage.mode-continuous.reader-stage-zoomed { touch-action: none; }
 .cbr-page { height: 100%; min-height: 100%; display: flex; align-items: center; justify-content: center; gap: .35rem; margin: auto; }
 .cbr-spread { width: 100%; }
 .cbr-page .cbr-image-holder { height: 100%; max-height: 100%; flex: 1 1 0; }
@@ -853,8 +853,16 @@ button, input, select { font: inherit; }
 }
 .reader-stage.texture-paper { background: #20242a; }
 .reader-stage.texture-warm { background: radial-gradient(circle at 50% 20%, #24282e, #090d13 75%); }
-.reader-stage.reader-stage-zoomed { justify-content: flex-start; cursor: grab; }
+.reader-stage.reader-stage-zoomed { align-items: flex-start; justify-content: flex-start; overflow: auto; overscroll-behavior: contain; touch-action: none; cursor: grab; }
 .reader-stage.reader-stage-zoomed:active { cursor: grabbing; }
+.reader-stage.reader-stage-zoomed > .cbr-page,
+.reader-stage.reader-stage-zoomed > .cbr-continuous,
+.reader-stage.reader-stage-zoomed > .reader-page,
+.reader-stage.reader-stage-zoomed > .reader-continuous { margin: 0; align-self: flex-start; }
+.reader-stage.reader-stage-zoomed > .cbr-page { height: auto; min-height: 100%; align-items: flex-start; }
+.reader-stage.reader-stage-zoomed > .cbr-page .cbr-image-holder { height: auto; max-height: none; }
+.reader-stage.reader-stage-zoomed > .cbr-page .cbr-image-holder img { width: 100%; height: auto; max-height: none; }
+.reader-stage.reader-stage-zoomed > .cbr-continuous .cbr-image-holder { width: 100%; max-width: none; }
 .reader-stage.mode-continuous { touch-action: pan-y; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scrollbar-gutter: stable; }
 .reader-stage.mode-continuous.reader-stage-zoomed { touch-action: none; }
 .reader-stage.mode-page:not(.reader-stage-zoomed) { overflow: hidden; touch-action: none; }
