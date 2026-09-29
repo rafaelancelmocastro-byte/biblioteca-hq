@@ -5,14 +5,14 @@ export type AppRoute =
   | { path: "/guia" } | { path: "/multiverso" } | { path: "/lancamentos" }
   | { path: "/offline" } | { path: "/pagamento" } | { path: "/favoritos" }
   | { path: "/admin" } | { path: "/configuracoes" } | { path: "/preferencias" } | { path: "/login" }
-  | { path: "/redefinir-senha" } | { path: "/ler"; comicId: string };
+  | { path: "/" } | { path: "/redefinir-senha" } | { path: "/ativar-conta" } | { path: "/compra-confirmada" } | { path: "/ler"; comicId: string };
 
 type NavigationState = { appNavigation?: true; scrollY?: number; readerDepth?: number };
 
 function parsePath(pathname: string): { route: string; comicId?: string } {
-  if (pathname === "/" || pathname === "") return { route: "/biblioteca" };
+  if (pathname === "/" || pathname === "") return { route: "/" };
   if (pathname.startsWith("/ler/")) return { route: "/ler", comicId: pathname.slice(5) };
-  const validRoutes = ["/biblioteca", "/continuar", "/series", "/guia", "/multiverso", "/lancamentos", "/offline", "/pagamento", "/favoritos", "/preferencias", "/admin", "/configuracoes", "/login", "/redefinir-senha"];
+  const validRoutes = ["/biblioteca", "/continuar", "/series", "/guia", "/multiverso", "/lancamentos", "/offline", "/pagamento", "/favoritos", "/preferencias", "/admin", "/configuracoes", "/login", "/redefinir-senha", "/ativar-conta", "/compra-confirmada"];
   return { route: validRoutes.includes(pathname) ? pathname : "/biblioteca" };
 }
 
@@ -51,7 +51,7 @@ export function useNavigation() {
   useEffect(() => {
     const previousRestoration = window.history.scrollRestoration;
     window.history.scrollRestoration = "manual";
-    if (window.location.pathname === "/") window.history.replaceState(window.history.state, "", "/biblioteca");
+
     if (!(window.history.state as NavigationState | null)?.appNavigation) rememberScroll();
 
     let restoreTimer: number | undefined;
