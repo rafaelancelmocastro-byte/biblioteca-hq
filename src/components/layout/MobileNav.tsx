@@ -6,9 +6,10 @@ interface MobileNavProps {
   currentPath: string;
   onNavigate: (path: string) => void;
   isOwner?: boolean;
+  forceVisible?: boolean;
 }
 
-export const MobileNav: React.FC<MobileNavProps> = ({ currentPath, onNavigate, isOwner = false }) => {
+export const MobileNav: React.FC<MobileNavProps> = ({ currentPath, onNavigate, isOwner = false, forceVisible = false }) => {
   const [isMoreOpen, setIsMoreOpen] = useState(false);
 
   const primaryItems = NAVIGATION_ITEMS.filter((item) => MOBILE_PRIMARY_PATHS.has(item.path));
@@ -35,7 +36,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ currentPath, onNavigate, i
   return (
     <>
       <nav
-        className="app-mobile-nav lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-white/[0.08] bg-[#07090e]/96 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-2xl"
+        className={`app-mobile-nav ${forceVisible ? "" : "lg:hidden"} fixed bottom-0 left-0 right-0 z-40 border-t border-white/[0.08] bg-[#07090e]/96 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-2xl`}
         aria-label="Navegação móvel"
       >
         <div className="mx-auto grid h-[3.9rem] w-full max-w-xl grid-cols-5 items-stretch px-1.5">
@@ -78,7 +79,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ currentPath, onNavigate, i
       </nav>
 
       {isMoreOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex items-end bg-black/65 backdrop-blur-sm" role="presentation">
+        <div className={`${forceVisible ? "" : "lg:hidden"} fixed inset-0 z-50 flex items-end bg-black/65 backdrop-blur-sm`} role="presentation">
           <button className="absolute inset-0 cursor-default" onClick={() => setIsMoreOpen(false)} aria-label="Fechar menu" />
           <section
             className="relative z-10 w-full max-h-[78dvh] overflow-y-auto rounded-t-[1.6rem] border-t border-white/10 bg-[#0b0e14] px-4 pt-4 shadow-[0_-18px_50px_rgba(0,0,0,.55)] pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:px-6"
