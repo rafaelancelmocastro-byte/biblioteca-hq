@@ -175,71 +175,92 @@ export const SalesPage: React.FC<Props> = ({ hasAccess = false, onLogin, onOpenL
           </div>
         </section>
 
-        <section className="sales-section sales-inside-section" id="por-dentro">
-          <div className="sales-section-heading">
-            <span>VEJA O SISTEMA POR DENTRO</span>
-            <h2>Uma interface feita para leitura, não para parecer uma pasta de arquivos.</h2>
+        <section className="sales-section sales-inside-section sales-inside-reference" id="por-dentro">
+          <div className="sales-section-heading sales-inside-heading">
+            <span>VEJA POR DENTRO DO APP</span>
+            <h2>Conheça a experiência completa antes de acessar.</h2>
             <p>
-              A experiência mantém a mesma linguagem visual da Biblioteca HQ em todas as telas:
-              foco no conteúdo, leitura fluida e navegação direta.
+              A Biblioteca HQ mantém a mesma linguagem visual em todo o sistema: rápida, organizada
+              e pensada para leitura em qualquer dispositivo.
             </p>
           </div>
 
-          <div className="sales-real-ui-grid">
-            <article className="sales-ui-shot sales-ui-shot-wide sales-ui-shot-real">
-              <div className="sales-shot-frame sales-shot-frame-wide">
-                <img
-                  src="/sales/continue-reading.webp"
-                  alt="Tela real da Biblioteca HQ mostrando a área Continuar lendo e o progresso de leitura"
-                  loading="lazy"
-                />
-              </div>
-              <footer>
-                <strong>Continue exatamente de onde parou</strong>
-                <span>Progresso de leitura claro e sincronizado entre dispositivos.</span>
-              </footer>
-            </article>
-
-            <article className="sales-ui-shot sales-ui-shot-real">
-              <div className="sales-shot-frame">
-                <img
-                  src="/sales/collections.webp"
-                  alt="Tela real da Biblioteca HQ mostrando Coleções e sagas em CoverFlow"
-                  loading="lazy"
-                />
-              </div>
-              <footer>
-                <strong>Coleções, sagas e editoras</strong>
-                <span>O acervo deixa de parecer uma pasta e passa a ter contexto visual.</span>
-              </footer>
-            </article>
-
-            <article className="sales-ui-shot sales-ui-shot-interface">
-              <div className="sales-ui-device">
-                <span className="sales-ui-kicker">BIBLIOTECA HQ</span>
-                <h3>Feita para qualquer tela</h3>
-                <p>O mesmo design system se adapta ao celular, tablet e computador.</p>
-                <div className="sales-ui-cover-focus">
-                  <img src="/saga-art/x-men.png" alt="" />
-                  <img className="active" src="/saga-art/batman.png" alt="" />
-                  <img src="/saga-art/superman.png" alt="" />
+          <div className="sales-inside-reference-grid">
+            <article className="sales-video-card-reference">
+              <div className="sales-video-media">
+                <div className="sales-video-screen">
+                  <img
+                    src="/sales/continue-reading.webp"
+                    alt="Prévia real da Biblioteca HQ para o vídeo de apresentação"
+                    loading="lazy"
+                  />
+                  <div className="sales-video-overlay" />
+                  <button type="button" className="sales-video-play-reference" aria-label="Vídeo em breve">
+                    <Play />
+                  </button>
+                </div>
+                <div className="sales-video-controls" aria-hidden="true">
+                  <span />
+                  <b>0:00 / 2:45</b>
+                  <i />
                 </div>
               </div>
               <footer>
-                <strong>Experiência consistente</strong>
-                <span>Navegação e leitura preservadas em qualquer tamanho de tela.</span>
+                <strong>Vídeo explicando o sistema por dentro</strong>
+                <span>Espaço reservado para o vídeo oficial assim que você enviar o link.</span>
               </footer>
             </article>
-          </div>
 
-          <div className="sales-video-slot">
-            <div className="sales-video-placeholder">
-              <span className="sales-video-play"><Play /></span>
-              <strong>Vídeo: veja como funciona por dentro</strong>
-              <small>
-                Espaço reservado. Quando o vídeo estiver hospedado, basta conectar o link aqui sem
-                alterar o restante da página.
-              </small>
+            <div className="sales-inside-screens-wrap">
+              <div className="sales-hand-note">
+                <span>Mesma experiência das imagens reais do app!</span>
+                <svg viewBox="0 0 120 70" aria-hidden="true">
+                  <path d="M8 10c35 2 63 18 91 45" />
+                  <path d="M84 50l16 5-5-15" />
+                </svg>
+              </div>
+
+              <div className="sales-inside-screens">
+                <article>
+                  <div className="sales-mini-phone">
+                    <img src="/sales/continue-reading.webp" alt="Tela real Continuar lendo" loading="lazy" />
+                  </div>
+                  <strong>Continuar lendo</strong>
+                  <span>Retome de onde parou</span>
+                </article>
+
+                <article>
+                  <div className="sales-mini-phone">
+                    <img src="/sales/manga-indie.webp" alt="Tela real Mangá e Indie" loading="lazy" />
+                  </div>
+                  <strong>Explorar coleções e sagas</strong>
+                  <span>Navegação visual por universos</span>
+                </article>
+
+                <article>
+                  <div className="sales-mini-phone">
+                    <img src="/sales/collections.webp" alt="Tela real de coleções e sagas" loading="lazy" />
+                  </div>
+                  <strong>Ver todas as edições</strong>
+                  <span>Filtros e ordem cronológica</span>
+                </article>
+
+                <article>
+                  <div className="sales-mini-phone">
+                    <img src="/sales/collections.webp" alt="Tela real de editoras e coleções" loading="lazy" />
+                  </div>
+                  <strong>Editoras e universos</strong>
+                  <span>Acervo organizado por contexto</span>
+                </article>
+
+                <article>
+                  <div className="sales-mini-phone">
+                    <img src="/sales/manga-indie.webp" alt="Tela real de detalhes de edição" loading="lazy" />
+                  </div>
+                  <strong>Detalhes completos</strong>
+                  <span>Informações antes de começar a ler</span>
+                </article>
+              </div>
             </div>
           </div>
         </section>
