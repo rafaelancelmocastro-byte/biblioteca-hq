@@ -15,6 +15,10 @@
       "destination": "/api/storage/presign?action=upload"
     },
     {
+      "source": "/api/storage/vip-guide",
+      "destination": "/api/storage/presign?action=vip-guide"
+    },
+    {
       "source": "/api/series/upsert",
       "destination": "/api/series/manage?action=upsert"
     },
