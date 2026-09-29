@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1280">
+<rect width="900" height="1280" fill="#f7f4ed"/>
+<rect x="38" y="38" width="824" height="1204" rx="8" fill="#fff" stroke="#111" stroke-width="8"/>
+<rect x="64" y="68" width="772" height="430" fill="#111"/>
+<circle cx="650" cy="260" r="112" fill="#f7f4ed"/>
+<path d="M120 420 Q300 190 480 420 T840 420" fill="none" stroke="#f7f4ed" stroke-width="22"/>
+<text x="90" y="128" font-family="Arial" font-size="34" font-weight="700" fill="#fff">UMA NOVA JORNADA</text>
+<rect x="64" y="526" width="370" height="330" fill="#eee" stroke="#111" stroke-width="6"/>
+<rect x="466" y="526" width="370" height="330" fill="#ddd" stroke="#111" stroke-width="6"/>
+<path d="M120 790 L220 610 L350 790 Z" fill="#111"/>
+<circle cx="645" cy="665" r="72" fill="#111"/><path d="M565 805 Q645 700 725 805" fill="#111"/>
+<rect x="64" y="884" width="772" height="330" fill="#f0f0f0" stroke="#111" stroke-width="6"/>
+<path d="M100 1160 Q260 900 430 1120 Q600 900 800 1160" fill="none" stroke="#111" stroke-width="18"/>
+<g font-family="Arial" fill="#111"><text x="92" y="572" font-size="26" font-weight="700">— É aqui.</text><text x="500" y="572" font-size="26" font-weight="700">— Então vamos.</text><text x="110" y="930" font-size="28" font-weight="700">O caminho começa quando você decide seguir.</text></g>
+</svg>
