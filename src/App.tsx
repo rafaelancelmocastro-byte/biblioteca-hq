@@ -11,6 +11,9 @@ import { LoginPage } from "./app/pages/LoginPage";
 import { useNavigation } from "./hooks/useNavigation";
 import { useAuth } from "./hooks/useAuth";
 import { CheckoutPage } from "./app/pages/CheckoutPage";
+import { SalesPage } from "./app/pages/SalesPage";
+import { ActivationPage } from "./app/pages/ActivationPage";
+import { PurchaseSuccessPage } from "./app/pages/PurchaseSuccessPage";
 import { PasswordResetPage } from "./app/pages/PasswordResetPage";
 import { flushReadingProgress } from "./services/offlineProgress";
 import { syncLocalOfflineLibrary } from "./services/offlineManifest";
@@ -69,6 +72,18 @@ export default function App() {
     }
   }, [activeRoute, isLoading, isOwner, isSupabaseConfigured, navigate, session]);
 
+  if (activeRoute === "/") {
+    return <SalesPage hasAccess={canRead} onLogin={() => navigate("/login")} onOpenLibrary={() => navigate("/biblioteca")} />;
+  }
+
+  if (activeRoute === "/compra-confirmada") {
+    return <PurchaseSuccessPage onLogin={() => navigate("/login")} />;
+  }
+
+  if (activeRoute === "/ativar-conta") {
+    return <ActivationPage onComplete={() => navigate("/biblioteca")} onLogin={() => navigate("/login")} />;
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#080a0f] flex items-center justify-center">
@@ -84,7 +99,7 @@ export default function App() {
   if (isSupabaseConfigured && (session || hasOfflineIdentity) && !canRead) return <CheckoutPage email={session?.user.email || profile?.email || ""} blocked={profile?.access_status === "blocked"} onBack={() => { void signOut().then(() => navigate("/login")); }} />;
 
   if (isSupabaseConfigured && !session && !hasOfflineIdentity && activeRoute !== "/login") {
-    return <LoginPage onSuccess={async () => { const userId = (await supabase?.auth.getSession())?.data.session?.user.id || ""; const prefs = userId ? await loadUserPreferences(userId) : null; navigate(prefs?.homeSection || "/biblioteca"); }} />;
+    return <LoginPage onBackToSales={() => navigate("/")} onSuccess={async () => { const userId = (await supabase?.auth.getSession())?.data.session?.user.id || ""; const prefs = userId ? await loadUserPreferences(userId) : null; navigate(prefs?.homeSection || "/biblioteca"); }} />;
   }
 
   // Rota de Leitura Imersiva (oculta layout padrão)
@@ -100,12 +115,13 @@ export default function App() {
   if (activeRoute === "/login") {
     return (
       <LoginPage
+        onBackToSales={() => navigate("/")}
         onSuccess={async () => { const userId = (await supabase?.auth.getSession())?.data.session?.user.id || ""; const prefs = userId ? await loadUserPreferences(userId) : null; navigate(prefs?.homeSection || "/biblioteca"); }}
       />
     );
   }
 
-  if (activeRoute === "/pagamento") return <div className="login-screen min-h-dvh flex items-center justify-center p-4"><div className="login-card max-w-md rounded-3xl p-6 text-center"><h1 className="text-2xl font-bold">Acesso já liberado</h1><p className="mt-3 text-sm text-slate-300">Sua conta já pode ler o acervo. Não é necessário fazer outro PIX.</p><button className="studio-primary mt-5" onClick={() => navigate("/biblioteca")}>Ir para a biblioteca</button></div></div>;
+  if (activeRoute === "/pagamento") return <CheckoutPage email={session?.user.email || profile?.email || ""} blocked={profile?.access_status === "blocked"} onBack={() => navigate("/")} />;
 
   return (
     <AppLayout
