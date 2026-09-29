@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   ArrowRight,
   BookOpen,
@@ -11,9 +11,9 @@ import {
   ShieldCheck,
   Sparkles,
   ZoomIn,
+  Zap,
 } from "lucide-react";
 import { BrandLogo } from "../../components/ui/BrandLogo";
-import { CoverFlow } from "../../components/library/CoverFlow";
 
 const CHECKOUT_URL =
   "https://lastlink.com/p/C95A90981/checkout-payment/?utm_source=bibliotecahq&utm_medium=site&utm_campaign=acesso_vitalicio";
@@ -24,12 +24,6 @@ type Props = {
   onOpenLibrary: () => void;
 };
 
-const showcaseCollections = [
-  { id: "x-men", title: "X-Men", subtitle: "Marvel", image: "/saga-art/x-men.png" },
-  { id: "batman", title: "Batman", subtitle: "DC Comics", image: "/saga-art/batman.png" },
-  { id: "superman", title: "Superman", subtitle: "DC Comics", image: "/saga-art/superman.png" },
-  { id: "green-lantern", title: "Lanterna Verde", subtitle: "DC Comics", image: "/saga-art/green-lantern.png" },
-];
 
 const features = [
   {
@@ -65,87 +59,89 @@ const features = [
 ];
 
 export const SalesPage: React.FC<Props> = ({ hasAccess = false, onLogin, onOpenLibrary }) => {
-  const [showcaseIndex, setShowcaseIndex] = useState(0);
   const checkout = () => {
     window.location.href = CHECKOUT_URL;
   };
 
   return (
     <div className="sales-page sales-page-v2">
-      <header className="sales-header">
-        <BrandLogo showTagline />
-        <nav>
-          <a href="#recursos">Recursos</a>
-          <a href="#por-dentro">Por dentro</a>
-          <a href="#como-funciona">Como funciona</a>
-          <a href="#acesso">Acesso</a>
-          <button type="button" onClick={hasAccess ? onOpenLibrary : onLogin}>
-            {hasAccess ? "Abrir biblioteca" : "Entrar"}
-          </button>
-        </nav>
+      <header className="sales-header sales-header-reference">
+        <div className="sales-brand-block">
+          <BrandLogo />
+          <div className="sales-brand-categories" aria-label="Categorias da Biblioteca HQ">
+            <span>Mangás</span><i />
+            <span>Quadrinhos</span><i />
+            <span>Sagas</span><i />
+            <span>Graphic Novels</span>
+          </div>
+        </div>
+        <button className="sales-header-access" type="button" onClick={hasAccess ? onOpenLibrary : onLogin}>
+          {hasAccess ? "Abrir biblioteca" : "Já tenho acesso"}
+        </button>
       </header>
 
       <main>
-        <section className="sales-hero sales-hero-v2">
+        <section className="sales-hero sales-hero-v3">
           <div className="sales-hero-copy">
-            <span className="sales-eyebrow">
-              <Sparkles /> Biblioteca HQ
-            </span>
-            <h1>Seu universo de quadrinhos, organizado para você realmente ler.</h1>
+            <h1>
+              Seu universo de quadrinhos, organizado para você
+              <em> realmente ler.</em>
+            </h1>
             <p>
-              Descubra, organize e acompanhe suas leituras em uma experiência feita para HQs,
-              mangás, graphic novels, sagas e coleções — no celular, tablet ou computador.
+              Mangás, quadrinhos, sagas e graphic novels em um só lugar. Descubra, explore,
+              organize e continue de onde parou, com uma experiência feita por quem ama HQs.
             </p>
 
-            <div className="sales-actions">
+            <div className="sales-hero-price">
+              <div>
+                <small>Acesso vitalício</small>
+                <strong>R$ 19,99</strong>
+                <span>pagamento único</span>
+              </div>
+            </div>
+
+            <div className="sales-actions sales-actions-reference">
               {hasAccess ? (
-                <button className="sales-primary sales-primary-accent" type="button" onClick={onOpenLibrary}>
+                <button className="sales-primary sales-primary-reference" type="button" onClick={onOpenLibrary}>
                   Abrir minha biblioteca <ArrowRight />
                 </button>
               ) : (
-                <button className="sales-primary sales-primary-accent" type="button" onClick={checkout}>
-                  Quero acesso vitalício <ArrowRight />
+                <button className="sales-primary sales-primary-reference" type="button" onClick={checkout}>
+                  Quero acessar agora <ArrowRight />
                 </button>
               )}
-              <button className="sales-secondary" type="button" onClick={onLogin}>
+              <button className="sales-secondary sales-secondary-reference" type="button" onClick={onLogin}>
                 Já tenho acesso
               </button>
             </div>
 
-            <div className="sales-price-inline">
-              <span>Acesso vitalício</span>
-              <strong>R$ 19,99</strong>
-              <small>pagamento único</small>
-            </div>
-
-            <div className="sales-trust">
-              <span><Check /> Sem mensalidade</span>
-              <span><ShieldCheck /> 7 dias de garantia</span>
-              <span><Check /> Checkout seguro pela Lastlink</span>
+            <div className="sales-trust sales-trust-reference">
+              <span><Sparkles /> Pagamento único</span>
+              <span><ShieldCheck /> Checkout seguro pela Lastlink</span>
+              <span><Zap /> Conta liberada após pagamento confirmado</span>
             </div>
           </div>
 
-          <div className="sales-product-preview sales-product-preview-v2" aria-label="Coleções em destaque">
-            <div className="sales-preview-top">
-              <span>Coleções em destaque</span>
-              <span>rotação automática</span>
-            </div>
-            <div className="sales-showcase-flow">
-              <CoverFlow
-                items={showcaseCollections}
-                activeIndex={showcaseIndex}
-                onChange={setShowcaseIndex}
-                label="Coleções da Biblioteca HQ"
-                autoPlayMs={3600}
-              />
-            </div>
-            <div className="sales-preview-panel">
-              <div>
-                <small>EM DESTAQUE</small>
-                <strong>{showcaseCollections[showcaseIndex]?.title}</strong>
-                <span>{showcaseCollections[showcaseIndex]?.subtitle}</span>
+          <div className="sales-hero-devices" aria-label="Prévia real da Biblioteca HQ">
+            <div className="sales-phone sales-phone-primary">
+              <div className="sales-phone-shell">
+                <div className="sales-phone-speaker" />
+                <img
+                  src="/sales/continue-reading.webp"
+                  alt="Tela real da Biblioteca HQ na área Continuar lendo"
+                  loading="eager"
+                />
               </div>
-              <BookOpen />
+            </div>
+            <div className="sales-phone sales-phone-secondary">
+              <div className="sales-phone-shell">
+                <div className="sales-phone-speaker" />
+                <img
+                  src="/sales/manga-indie.webp"
+                  alt="Tela real da Biblioteca HQ na área Mangá e Indie"
+                  loading="eager"
+                />
+              </div>
             </div>
           </div>
         </section>
