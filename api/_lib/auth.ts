@@ -39,3 +39,43 @@ export async function requireOwner(req: VercelRequest, res: VercelResponse): Pro
 
   return true;
 }
+
+export async function requireLifetimeAccess(req: VercelRequest, res: VercelResponse): Promise<boolean> {
+  res.setHeader("Cache-Control", "private, no-store");
+  const supabaseUrl = process.env.VITE_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const accessToken = getBearerToken(req);
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    res.status(503).json({ error: "Serviço de acesso indisponível." });
+    return false;
+  }
+
+  if (!accessToken) {
+    res.status(401).json({ error: "Autenticação obrigatória." });
+    return false;
+  }
+
+  const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data, error } = await adminClient.auth.getUser(accessToken);
+  const profile = data.user
+    ? await adminClient
+        .from("profiles")
+        .select("role,access_status,is_active")
+        .eq("id", data.user.id)
+        .maybeSingle()
+    : null;
+
+  const allowed = !!data.user && !error && !!profile?.data?.is_active && (
+    profile.data.role === "master" || profile.data.access_status === "lifetime"
+  );
+
+  if (!allowed) {
+    res.status(403).json({ error: "Bônus disponível apenas para acesso vitalício." });
+    return false;
+  }
+
+  return true;
+}
