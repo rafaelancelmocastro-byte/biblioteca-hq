@@ -18,7 +18,6 @@ const GuideViewer: React.FC = () => {
 
     let active = true;
     let pdf: PDFDocumentProxy | null = null;
-    const canvases: HTMLCanvasElement[] = [];
 
     const renderGuide = async () => {
       try {
@@ -55,7 +54,6 @@ const GuideViewer: React.FC = () => {
           const context = canvas.getContext("2d", { alpha: false });
           if (!context) throw new Error("Não foi possível preparar a página do guia.");
           holderRef.current.append(canvas);
-          canvases.push(canvas);
           await page.render({ canvas, canvasContext: context, viewport }).promise;
           page.cleanup();
         }
@@ -72,10 +70,6 @@ const GuideViewer: React.FC = () => {
     void renderGuide();
     return () => {
       active = false;
-      for (const canvas of canvases) {
-        canvas.width = 0;
-        canvas.height = 0;
-      }
       void pdf?.destroy().catch(() => {});
     };
   }, [status]);
