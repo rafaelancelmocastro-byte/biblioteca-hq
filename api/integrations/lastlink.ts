@@ -19,6 +19,7 @@ const allowedEvents = new Set([
   "Refund_Requested",
   "Payment_Refund",
   "Payment_Chargeback",
+  "Product_access_ended",
 ]);
 
 const normalizeEmail = (value?: string) => (value || "").trim().toLowerCase();
@@ -36,7 +37,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const expectedOfferCode = (process.env.LASTLINK_OFFER_CODE || "C95A90981").toUpperCase();
 
   if (!url || !serviceRoleKey || !secret) return res.status(503).json({ error: "Integração indisponível." });
-  if ((req.query.secret as string || "") !== secret) return res.status(401).json({ error: "Unauthorized" });
+
+  const requestUrl = new URL(req.url || "/api/integrations/lastlink", "https://bibliotecahq.com.br");
+  const querySecret = requestUrl.searchParams.get("secret") || "";
+  const bearerSecret = String(req.headers.authorization || "").replace(/^Bearer\s+/i, "").trim();
+  const headerSecret = String(req.headers["x-webhook-secret"] || "").trim();
+  const providedSecret = querySecret || bearerSecret || headerSecret;
+
+  if (providedSecret !== secret) {
+    console.warn("Lastlink webhook unauthorized", {
+      hasQuerySecret: Boolean(querySecret),
+      hasBearerSecret: Boolean(bearerSecret),
+      hasHeaderSecret: Boolean(headerSecret),
+      requestPath: requestUrl.pathname,
+    });
+    return res.status(401).json({ error: "Unauthorized" });
+  }
 
   const payload = req.body as LastlinkPayload;
   const eventId = String(payload?.Id || "").trim();
