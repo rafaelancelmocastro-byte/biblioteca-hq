@@ -22,16 +22,17 @@ export const SalesPage: React.FC<Props> = ({ hasAccess = false, onLogin, onOpenL
       <header className="sales-stage-one__header">
         <div className="sales-stage-one__brand">
           <BrandLogo />
-          <div className="sales-stage-one__categories" aria-label="Categorias">
-            <span>Mangás</span>
-            <i />
-            <span>Quadrinhos</span>
-            <i />
-            <span>Sagas</span>
-            <i />
-            <span>Graphic Novels</span>
-          </div>
         </div>
+
+        <nav className="sales-stage-one__categories" aria-label="Categorias">
+          <span>Mangás</span>
+          <i />
+          <span>Quadrinhos</span>
+          <i />
+          <span>Sagas</span>
+          <i />
+          <span>Graphic Novels</span>
+        </nav>
 
         <button
           className="sales-stage-one__access"
@@ -54,9 +55,9 @@ export const SalesPage: React.FC<Props> = ({ hasAccess = false, onLogin, onOpenL
             organize e continue de onde parou, com uma experiência feita por quem ama HQs.
           </p>
 
-          <div className="sales-stage-one__price">
-            <span className="sales-stage-one__old-price">R$ 29,99</span>
-            <span className="sales-stage-one__current-price">R$ 19,99</span>
+          <div className="sales-stage-one__price" aria-label="Preço promocional">
+            <span className="sales-stage-one__old-price"><small>De</small> R$ 29,99</span>
+            <span className="sales-stage-one__current-price"><small>Por apenas</small> R$ 19,99</span>
           </div>
 
           <div className="sales-stage-one__actions">
@@ -65,8 +66,8 @@ export const SalesPage: React.FC<Props> = ({ hasAccess = false, onLogin, onOpenL
               type="button"
               onClick={hasAccess ? onOpenLibrary : checkout}
             >
-              <span className="sales-stage-one__play">▶</span>
-              {hasAccess ? "Abrir minha biblioteca" : "Quero acessar agora"}
+              <span className="sales-stage-one__play" aria-hidden="true">→</span>
+              {hasAccess ? "Abrir minha biblioteca" : "Garantir acesso imediato"}
             </button>
 
             <button
@@ -80,16 +81,16 @@ export const SalesPage: React.FC<Props> = ({ hasAccess = false, onLogin, onOpenL
 
           <div className="sales-stage-one__trust">
             <div>
-              <b>∞</b>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 8.5c-2.2 0-4 1.6-4 3.5s1.8 3.5 4 3.5c1.8 0 3.1-.9 4.5-3.5 1.4-2.6 2.7-3.5 4.5-3.5 2.2 0 4 1.6 4 3.5s-1.8 3.5-4 3.5c-1.8 0-3.1-.9-4.5-3.5-1.4-2.6-2.7-3.5-4.5-3.5Z"/></svg>
               <span>Pagamento único</span>
             </div>
             <div>
-              <b>◇</b>
-              <span>Checkout seguro<br />pela Lastlink</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.6 3 8.1 7 10 4-1.9 7-5.4 7-10V6l-7-3Z"/><path d="m9.5 12 1.6 1.6 3.7-4"/></svg>
+              <span>Checkout seguro pela Lastlink</span>
             </div>
             <div>
-              <b>ϟ</b>
-              <span>Conta liberada após<br />pagamento confirmado</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 5 13h6l-1 9 9-13h-6l0-7Z"/></svg>
+              <span>Liberação após pagamento</span>
             </div>
           </div>
         </section>
