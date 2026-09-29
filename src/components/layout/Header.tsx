@@ -13,6 +13,7 @@ interface HeaderProps {
   onLogout?: () => void | Promise<void>;
   isOwner?: boolean;
   userName?: string;
+  forceTouchLayout?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -25,6 +26,7 @@ export const Header: React.FC<HeaderProps> = ({
   onLogout,
   isOwner = false,
   userName = "Leitor",
+  forceTouchLayout = false,
 }) => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -57,12 +59,12 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Logo visível no mobile */}
         <button
           onClick={() => onNavigate("/biblioteca")}
-          className="md:hidden flex items-center gap-2 cursor-pointer focus-visible:outline-2 focus-visible:outline-amber-400 rounded-md"
+          className={`${forceTouchLayout ? "flex" : "md:hidden"} items-center gap-2 cursor-pointer focus-visible:outline-2 focus-visible:outline-amber-400 rounded-md`}
         >
           <BrandLogo compact className="mobile-brand-mark" />
         </button>
 
-        <div className="hidden lg:flex flex-col">
+        <div className={forceTouchLayout ? "hidden" : "hidden lg:flex flex-col"}>
           <span className="text-xs text-neutral-300 font-medium">
             {getGreeting()}, <strong className="text-white font-semibold">{userName}</strong>
           </span>
