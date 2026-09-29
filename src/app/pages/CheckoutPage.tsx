@@ -1,50 +1,44 @@
-import { useEffect, useState } from "react";
-import QRCode from "qrcode";
-import { ArrowLeft, Check, Copy, MessageCircle, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
 import { BrandLogo } from "../../components/ui/BrandLogo";
-import { makePixCode, REGULAR_LIFETIME_PRICE_CENTS, type CheckoutSettings } from "../../services/pix";
 
 type Props = { email: string; onBack: () => void; requiresEmailConfirmation?: boolean; blocked?: boolean };
 
-export function CheckoutPage({ email, onBack, requiresEmailConfirmation = false, blocked = false }: Props) {
-  const [settings, setSettings] = useState<CheckoutSettings | null>(null);
-  const [loadError, setLoadError] = useState("");
-  const [qr, setQr] = useState("");
-  const [copied, setCopied] = useState<"key" | "code" | "">("");
-  useEffect(() => {
-    let active = true;
-    void fetch("/api/health?checkout=1").then(async (response) => {
-      if (!response.ok) throw new Error("Não foi possível carregar os dados oficiais do pagamento. Tente novamente mais tarde.");
-      return response.json() as Promise<CheckoutSettings>;
-    }).then((data) => { if (active) setSettings(data); }).catch((error) => { if (active) setLoadError(error instanceof Error ? error.message : "Dados do pagamento indisponíveis."); });
-    return () => { active = false; };
-  }, []);
-  const code = settings ? makePixCode(settings) : "";
-  useEffect(() => { if (code) void QRCode.toDataURL(code, { width: 340, margin: 2, color: { dark: "#101820", light: "#ffffff" } }).then(setQr).catch(() => setQr("")); }, [code]);
-  const whatsapp = settings?.whatsapp_number.replace(/\D/g, "") || "";
-  const whatsappDisplay = /^55\d{11}$/.test(whatsapp) ? `+55 (${whatsapp.slice(2, 4)}) ${whatsapp.slice(4, 9)}-${whatsapp.slice(9)}` : `+${whatsapp}`;
-  const formatPrice = (cents: number) => (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-  const message = `Olá! Sou ${email}. Quero enviar o comprovante do PIX de acesso vitalício à Biblioteca HQ para conferência.`;
-  const copy = async (value: string, field: "key" | "code") => {
-    try { await navigator.clipboard.writeText(value); setCopied(field); window.setTimeout(() => setCopied(""), 2500); }
-    catch { setLoadError("Não foi possível copiar. Selecione o texto e copie manualmente."); }
+const CHECKOUT_URL = "https://lastlink.com/p/C95A90981/checkout-payment/";
+
+export function CheckoutPage({ email, onBack, blocked = false }: Props) {
+  const openCheckout = () => {
+    const url = new URL(CHECKOUT_URL);
+    if (email) url.searchParams.set("email", email);
+    url.searchParams.set("utm_source", "bibliotecahq");
+    url.searchParams.set("utm_medium", "app");
+    url.searchParams.set("utm_campaign", "acesso_vitalicio");
+    window.location.href = url.toString();
   };
 
-  return <div className="min-h-dvh bg-[#0f0f11] text-white px-4 py-8 flex justify-center items-start"><main className="w-full max-w-xl rounded-3xl border border-white/10 bg-[#171b21] p-5 sm:p-8 shadow-2xl">
-    <BrandLogo compact />
-    <button type="button" onClick={onBack} className="flex items-center gap-2 text-sm text-[#a8bacf] mt-6 mb-5"><ArrowLeft className="w-4 h-4" /> {requiresEmailConfirmation ? "Voltar ao login" : "Sair da conta"}</button>
-    {blocked ? <><p className="text-xs uppercase tracking-[.2em] text-rose-300 font-bold">Acesso indisponível</p><h1 className="font-serif text-3xl mt-2">Sua conta está bloqueada</h1><p className="text-slate-300 text-sm mt-3">Não faça um novo pagamento. Entre em contato e informe o e-mail da conta.</p>{settings?.whatsapp_number && <a className="studio-primary w-full mt-5" href={`https://wa.me/${settings.whatsapp_number.replace(/\D/g, "")}?text=${encodeURIComponent(`Olá! Preciso de ajuda com a conta ${email} da Biblioteca HQ.`)}`} target="_blank" rel="noopener noreferrer"><MessageCircle /> Falar com o suporte pelo WhatsApp</a>}</> : <>
-      <p className="text-xs uppercase tracking-[.2em] text-[#ffb81f] font-bold">Acesso vitalício · pagamento único</p><h1 className="font-serif text-3xl sm:text-4xl mt-2">Ative sua leitura</h1>
-      <p className="text-slate-300 text-sm mt-3">Sua conta <strong className="text-white break-all">{email}</strong> foi criada. O acesso ao acervo começa após a confirmação do e-mail e a conferência manual do pagamento pelo responsável da Biblioteca HQ.</p>
-      <ol className="mt-5 space-y-2 text-sm text-slate-200 list-decimal pl-5"><li>Confirme seu endereço pelo link enviado por e-mail.</li><li>Pague o valor abaixo por PIX e confira o nome do recebedor no aplicativo do seu banco.</li><li>Envie o comprovante pelo botão de WhatsApp e informe o e-mail desta conta.</li><li>Após a conferência do pagamento, seu acesso será liberado no sistema. Entre com a senha que você criou.</li></ol>
-      {requiresEmailConfirmation && <p role="status" className="mt-5 rounded-xl border border-[#ffb81f]/40 bg-[#ffb81f]/10 p-3 text-sm text-[#ffe1a2]">Confira seu e-mail antes de pagar. Se o link expirou, peça um novo na tela de login.</p>}
-      {loadError && <p role="alert" className="mt-5 rounded-xl border border-rose-400/40 bg-rose-400/10 p-3 text-sm text-rose-200">{loadError}</p>}
-      {!settings && !loadError && <p role="status" className="mt-5 text-sm text-slate-400">Carregando os dados oficiais do pagamento...</p>}
-      {settings && <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4 space-y-3"><div><span className="text-xs text-slate-400">Valor único do acesso vitalício</span>{settings.lifetime_price_cents < REGULAR_LIFETIME_PRICE_CENTS && <p className="mt-1 text-sm text-slate-400">Preço normal: <s>{formatPrice(REGULAR_LIFETIME_PRICE_CENTS)}</s></p>}<strong className="block text-2xl text-[#ffb81f]">{settings.lifetime_price_cents < REGULAR_LIFETIME_PRICE_CENTS ? "Preço promocional: " : "Total: "}{formatPrice(settings.lifetime_price_cents)}</strong></div><div><span className="text-xs text-slate-400">Chave PIX oficial</span><div className="flex items-center gap-2"><strong className="min-w-0 break-all text-sm">{settings.pix_key}</strong><button type="button" className="catalog-secondary-action shrink-0" onClick={() => void copy(settings.pix_key, "key")}>{copied === "key" ? <Check /> : <Copy />} {copied === "key" ? "Copiada" : "Copiar"}</button></div></div><p className="text-xs text-slate-300">Recebedor: <strong className="text-white">{settings.pix_merchant_name}</strong> · {settings.pix_merchant_city}</p></div>}
-      {code && <div className="mt-5 space-y-3"><div className="flex justify-center">{qr && <img src={qr} alt="QR Code PIX do acesso vitalício" width="220" height="220" className="rounded-xl bg-white p-2" />}</div><button type="button" className="studio-primary w-full" onClick={() => void copy(code, "code")}>{copied === "code" ? <Check /> : <Copy />} {copied === "code" ? "Código copiado" : "Copiar PIX Copia e Cola"}</button></div>}
-      {whatsapp && <><a className="mt-3 studio-primary w-full" href={`https://wa.me/${whatsapp}?text=${encodeURIComponent(message)}`} target="_blank" rel="noopener noreferrer"><MessageCircle /> Enviar comprovante pelo WhatsApp</a><p className="mt-2 text-center text-xs text-slate-400">WhatsApp oficial: {whatsappDisplay}</p></>}
-      {settings && <div className="mt-5 rounded-xl border border-[#a8bacf]/30 bg-[#a8bacf]/5 p-3 text-xs text-slate-300"><ShieldCheck className="inline h-4 w-4 mr-1 text-[#a8bacf]" /><strong className="text-white">Confira antes de pagar:</strong> use somente os dados desta página em <strong>biblioteca-hq.vercel.app</strong>. Confirme o recebedor no banco. Ninguém da Biblioteca HQ pedirá sua senha ou código recebido por e-mail ou WhatsApp.</div>}
-      {!requiresEmailConfirmation && <p className="mt-4 text-xs text-slate-400">Já enviou o comprovante? Você pode voltar depois. Esta página mostrará o acesso assim que o Master conferir o pagamento no banco e liberar sua conta.</p>}
-    </>}
-  </main></div>;
+  return <div className="min-h-dvh bg-[#0b0f15] text-white px-4 py-8 flex justify-center items-start">
+    <main className="w-full max-w-xl rounded-3xl border border-white/10 bg-[#11161d] p-5 sm:p-8 shadow-2xl">
+      <BrandLogo />
+      <button type="button" onClick={onBack} className="mt-6 mb-5 flex items-center gap-2 text-sm text-[#a8bacf]"><ArrowLeft className="w-4 h-4" /> Voltar</button>
+      {blocked ? <>
+        <p className="text-xs uppercase tracking-[.2em] text-rose-300 font-bold">Acesso indisponível</p>
+        <h1 className="mt-2 text-3xl font-bold">Esta conta está bloqueada</h1>
+        <p className="mt-3 text-sm leading-6 text-slate-300">Se houve reembolso ou chargeback, o acesso é removido automaticamente. Não faça uma nova compra sem antes confirmar a situação da conta.</p>
+      </> : <>
+        <p className="text-xs uppercase tracking-[.2em] text-[#8fa2b8] font-bold">Acesso vitalício · pagamento único</p>
+        <h1 className="mt-2 text-3xl font-bold sm:text-4xl">Finalize pela Lastlink</h1>
+        <p className="mt-3 text-sm leading-6 text-slate-300">O pagamento não é conferido manualmente. Assim que a Lastlink confirmar a compra, o acesso da conta <strong className="break-all text-white">{email || "informada no checkout"}</strong> será liberado automaticamente.</p>
+        <div className="mt-6 rounded-2xl border border-white/10 bg-white/[.025] p-4">
+          <span className="text-xs text-slate-400">Pagamento único</span>
+          <strong className="mt-1 block text-3xl text-white">R$ 19,99</strong>
+          <ul className="mt-4 space-y-2 text-sm text-slate-300">
+            <li>• Checkout e confirmação pela Lastlink</li>
+            <li>• Cartão ou PIX conforme disponibilidade no checkout</li>
+            <li>• Liberação automática após pagamento confirmado</li>
+          </ul>
+        </div>
+        <button type="button" className="studio-primary mt-6 w-full" onClick={openCheckout}>Ir para o checkout seguro <ArrowRight /></button>
+        <div className="mt-4 flex items-start gap-2 rounded-xl border border-[#a8bacf]/20 bg-[#a8bacf]/5 p-3 text-xs leading-5 text-slate-400"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#a8bacf]" />A Biblioteca HQ não solicita comprovante por WhatsApp. Use somente o checkout oficial da Lastlink.</div>
+      </>}
+    </main>
+  </div>;
 }
