@@ -213,7 +213,7 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, newlyCreat
     const completed = new Set<number>();
     const seenIssues = new Set<string>();
     try {
-    await runLimited(jobs, window.matchMedia("(pointer: coarse)").matches ? 2 : 3, async ({ draft, index }) => {
+    await runLimited(jobs, window.matchMedia("(pointer: coarse)").matches ? 1 : 2, async ({ draft, index }) => {
       try {
       const meta = draft.meta;
       const chosen = series.find((item) => item.id === draft.seriesId);
@@ -342,7 +342,7 @@ export const BatchImport: React.FC<Props> = ({ files, covers, series, newlyCreat
       </div>}
       {draft.status === "duplicate" && <div className="batch-duplicate-actions">{draft.duplicateCode !== "SAME_FILE" && <button type="button" onClick={() => void publish(index)} disabled={publishing}>Manter ambos</button>}{draft.existingId && <>{draft.duplicateCode !== "SAME_FILE" && <button type="button" onClick={() => void publish(index, true)} disabled={publishing}>Substituir arquivo existente</button>}<button type="button" onClick={() => void publish(index, false, true)} disabled={publishing}>{draft.duplicateCode === "SAME_FILE" ? "Corrigir cadastro existente" : "Atualizar só metadados"}</button></>}<button type="button" onClick={() => update(index, { status: "cancelled", message: "Importação cancelada pelo proprietário." })}>Cancelar este arquivo</button></div>}
     </details>)}
-    {batchProgress && publishing && <p className="batch-progress" role="status">{batchProgress.done} de {batchProgress.total} processados · {batchProgress.published} publicados. Até {window.matchMedia("(pointer: coarse)").matches ? 2 : 3} arquivos são enviados em paralelo.</p>}
+    {batchProgress && publishing && <p className="batch-progress" role="status">{batchProgress.done} de {batchProgress.total} processados · {batchProgress.published} publicados. Até {window.matchMedia("(pointer: coarse)").matches ? 1 : 2} arquivos são enviados em paralelo.</p>}
     {analysisTiming && !publishing && <p className="batch-progress">{analysisTiming}</p>}
     {batchTiming && !publishing && <p className="batch-progress" role="status">{batchTiming}</p>}
     <button type="button" className="studio-primary" disabled={publishing || drafts.some((draft) => draft.status === "analyzing")} onClick={() => void publish()}>{publishing ? "Processando fila..." : "Publicar arquivos revisados"}</button>
