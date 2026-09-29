@@ -9,6 +9,7 @@ import {
   Settings,
   SlidersHorizontal,
   BookMarked,
+  Gift,
   type LucideIcon,
 } from "lucide-react";
 
@@ -28,6 +29,7 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
   { label: "Séries & Sagas", path: "/series", icon: Layers3, description: "Coleções, fases e sagas" },
   { label: "Mangás & Indie", path: "/multiverso", icon: BookMarked, section: "Descobrir", description: "Mangás, manhwas e independentes" },
   { label: "Guia de Leitura", path: "/guia", icon: Map, description: "Rotas e ordens de leitura" },
+  { label: "Bônus VIP", path: "/bonus-vip", icon: Gift, description: "Guia exclusivo e canal VIP" },
   { label: "Favoritos", path: "/favoritos", icon: Heart, section: "Sua coleção", description: "Obras que você salvou" },
   { label: "Baixados Offline", path: "/offline", icon: Download, description: "Disponíveis sem conexão" },
   { label: "Preferências", path: "/preferencias", icon: SlidersHorizontal, section: "Conta", description: "Leitura, interface e sincronização" },
