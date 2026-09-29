@@ -1,7 +1,7 @@
 import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { requireOwner } from "../_lib/auth.js";
+import { requireLifetimeAccess, requireOwner } from "../_lib/auth.js";
 import { createR2Client, getR2Config } from "../_lib/r2.js";
 
 const ALLOWED_FILES = {
@@ -36,12 +36,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
-  if (!(await requireOwner(req, res))) return;
+  const action = actionFrom(req);
+  if (action === "vip-guide") {
+    if (!(await requireLifetimeAccess(req, res))) return;
+  } else if (!(await requireOwner(req, res))) return;
 
   const config = getR2Config();
   if (!config) return res.status(503).json({ error: "Serviço de armazenamento indisponível." });
 
-  if (actionFrom(req) === "read") {
+  if (action === "vip-guide") {
+    const key = "vip/guia-definitivo-marvel-dc.pdf";
+    const readUrl = await getSignedUrl(
+      createR2Client(config),
+      new GetObjectCommand({
+        Bucket: config.bucketName,
+        Key: key,
+        ResponseContentType: "application/pdf",
+        ResponseContentDisposition: 'inline; filename="guia-definitivo-marvel-dc.pdf"',
+      }),
+      { expiresIn: 300 }
+    );
+    return res.status(200).json({ readUrl, expiresInSeconds: 300 });
+  }
+
+  if (action === "read") {
     const { key } = req.body ?? {};
     if (!isAllowedKey(key)) return res.status(400).json({ error: "Chave de arquivo inválida." });
 
@@ -53,7 +71,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ key, readUrl, expiresInSeconds: 3600 });
   }
 
-  if (actionFrom(req) === "upload") {
+  if (action === "upload") {
     const { fileName, contentType, purpose } = req.body ?? {};
     if (
       typeof fileName !== "string" ||
