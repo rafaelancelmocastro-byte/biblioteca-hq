@@ -9,46 +9,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const url = process.env.VITE_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    return res.status(503).json({ error: "Configuração do Supabase indisponível." });
+  const ownerEmail = (process.env.APP_OWNER_EMAIL || "rafaelancelmo.castro@gmail.com").trim().toLowerCase();
+  const requestedEmail = String(req.body?.email || req.query?.email || "").trim().toLowerCase();
+
+  if (!url || !key) return res.status(503).json({ error: "Configuração do Supabase indisponível." });
+
+  // This endpoint exists only as a recovery path for the master account.
+  // Public users must authenticate normally and can only be created after a confirmed purchase.
+  if (requestedEmail && requestedEmail !== ownerEmail) {
+    return res.status(403).json({ error: "Acesso direto indisponível para esta conta." });
   }
 
-  const requestedEmail = (req.body?.email || req.query?.email as string || "").trim().toLowerCase();
-  const defaultOwnerEmail = (process.env.APP_OWNER_EMAIL || "agenciasimplificaads@gmail.com").trim().toLowerCase();
-  const email = requestedEmail || defaultOwnerEmail;
-
-  const admin = createClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  const admin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 
   try {
-    // Ensure user has master/active profile
-    const { data: profile } = await admin
-      .from("profiles")
-      .select("id, role, access_status, is_active")
-      .ilike("email", email)
-      .maybeSingle();
-
-    if (profile && (profile.role !== "master" || !profile.is_active || profile.access_status !== "lifetime")) {
-      await admin
-        .from("profiles")
-        .update({ role: "master", access_status: "lifetime", is_active: true })
-        .eq("id", profile.id);
+    const { data: profile } = await admin.from("profiles").select("id,role,access_status,is_active").ilike("email", ownerEmail).maybeSingle();
+    if (!profile || profile.role !== "master" || profile.access_status !== "lifetime" || !profile.is_active) {
+      return res.status(403).json({ error: "Conta master não autorizada." });
     }
 
-    const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
-      type: "magiclink",
-      email,
-    });
-
+    const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({ type: "magiclink", email: ownerEmail });
     if (linkError || !linkData?.properties?.hashed_token) {
       return res.status(400).json({ error: linkError?.message || "Não foi possível gerar sessão de acesso." });
     }
 
-    return res.status(200).json({
-      email,
-      tokenHash: linkData.properties.hashed_token,
-    });
+    return res.status(200).json({ email: ownerEmail, tokenHash: linkData.properties.hashed_token });
   } catch (err) {
     console.error("Erro ao gerar sessão rápida:", err);
     return res.status(500).json({ error: "Falha interna ao gerar sessão." });
