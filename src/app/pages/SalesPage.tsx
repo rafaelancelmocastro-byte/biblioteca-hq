@@ -190,56 +190,39 @@ export const SalesPage: React.FC<Props> = ({ hasAccess = false, onLogin, onOpenL
           </div>
 
           <div className="sales-real-ui-grid">
-            <article className="sales-ui-shot sales-ui-shot-wide">
-              <div className="sales-ui-device">
-                <div className="sales-ui-topbar">
-                  <img src="/brand-icon.svg" alt="" />
-                  <span>Biblioteca HQ</span>
-                  <i />
-                </div>
-                <div className="sales-ui-continue">
-                  <span className="sales-ui-kicker">SUA LEITURA</span>
-                  <h3>Continuar lendo</h3>
-                  <p>Retome suas histórias de onde parou.</p>
-                  <div className="sales-ui-reading-card">
-                    <img src="/saga-art/x-men.png" alt="" />
-                    <div>
-                      <small>PRÓXIMA LEITURA</small>
-                      <strong>Continue de onde parou</strong>
-                      <span>Progresso sincronizado entre dispositivos</span>
-                      <div className="sales-ui-progress"><i /></div>
-                    </div>
-                  </div>
-                </div>
+            <article className="sales-ui-shot sales-ui-shot-wide sales-ui-shot-real">
+              <div className="sales-shot-frame sales-shot-frame-wide">
+                <img
+                  src="/sales/continue-reading.webp"
+                  alt="Tela real da Biblioteca HQ mostrando a área Continuar lendo e o progresso de leitura"
+                  loading="lazy"
+                />
               </div>
               <footer>
-                <strong>Continuar lendo</strong>
-                <span>Seu progresso fica salvo e sincronizado.</span>
+                <strong>Continue exatamente de onde parou</strong>
+                <span>Progresso de leitura claro e sincronizado entre dispositivos.</span>
               </footer>
             </article>
 
-            <article className="sales-ui-shot">
-              <div className="sales-ui-device">
-                <span className="sales-ui-kicker">UNIVERSOS DO ACERVO</span>
-                <h3>Coleções e sagas</h3>
-                <p>Explore editoras, sagas e fases em ordem cronológica.</p>
-                <div className="sales-ui-mini-flow">
-                  <img src="/publisher-art/marvel.png" alt="" />
-                  <img className="active" src="/publisher-art/dc.png" alt="" />
-                  <img src="/publisher-art/jbc.png" alt="" />
-                </div>
+            <article className="sales-ui-shot sales-ui-shot-real">
+              <div className="sales-shot-frame">
+                <img
+                  src="/sales/collections.webp"
+                  alt="Tela real da Biblioteca HQ mostrando Coleções e sagas em CoverFlow"
+                  loading="lazy"
+                />
               </div>
               <footer>
-                <strong>Organização visual</strong>
-                <span>Encontre rapidamente onde cada edição pertence.</span>
+                <strong>Coleções, sagas e editoras</strong>
+                <span>O acervo deixa de parecer uma pasta e passa a ter contexto visual.</span>
               </footer>
             </article>
 
-            <article className="sales-ui-shot">
+            <article className="sales-ui-shot sales-ui-shot-interface">
               <div className="sales-ui-device">
-                <span className="sales-ui-kicker">MULTIVERSO</span>
-                <h3>Mangá & Indie</h3>
-                <p>Mangás, graphic novels e obras independentes no mesmo lugar.</p>
+                <span className="sales-ui-kicker">BIBLIOTECA HQ</span>
+                <h3>Feita para qualquer tela</h3>
+                <p>O mesmo design system se adapta ao celular, tablet e computador.</p>
                 <div className="sales-ui-cover-focus">
                   <img src="/saga-art/x-men.png" alt="" />
                   <img className="active" src="/saga-art/batman.png" alt="" />
@@ -247,8 +230,8 @@ export const SalesPage: React.FC<Props> = ({ hasAccess = false, onLogin, onOpenL
                 </div>
               </div>
               <footer>
-                <strong>Todo o acervo em contexto</strong>
-                <span>Capas, metadados e agrupamentos organizados visualmente.</span>
+                <strong>Experiência consistente</strong>
+                <span>Navegação e leitura preservadas em qualquer tamanho de tela.</span>
               </footer>
             </article>
           </div>
