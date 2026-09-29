@@ -34,6 +34,7 @@ const ReaderPage = React.lazy(() =>
 );
 const AdminPage = React.lazy(() => import("./app/pages/AdminPage").then((module) => ({ default: module.AdminPage })));
 const PreferencesPage = React.lazy(() => import("./app/pages/PreferencesPage").then((module) => ({ default: module.PreferencesPage })));
+const VipBonusesPage = React.lazy(() => import("./app/pages/VipBonusesPage").then((module) => ({ default: module.VipBonusesPage })));
 
 export default function App() {
   const { pathname, activeRoute, comicId, navigate, openReader, backFromReader } = useNavigation();
@@ -167,6 +168,7 @@ export default function App() {
       {activeRoute === "/multiverso" && <IndieMangaPage onOpenReader={openReader} />}
 
       {activeRoute === "/preferencias" && <PreferencesPage userId={effectiveUserId || ""} />}
+      {activeRoute === "/bonus-vip" && <VipBonusesPage />}
 
       {activeRoute === "/favoritos" && (
         <FavoritesPage
