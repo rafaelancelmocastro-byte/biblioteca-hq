@@ -64,7 +64,10 @@ export function useAuth() {
     };
     void initAuth();
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (event === "SIGNED_IN" && nextSession) {
+        sessionStorage.removeItem("user_logged_out");
+      }
       setSession(nextSession);
       const changedUser = currentUserId !== (nextSession?.user.id || "");
       currentUserId = nextSession?.user.id || "";
@@ -105,7 +108,13 @@ export function useAuth() {
 
   const signOut = async () => {
     sessionStorage.setItem("user_logged_out", "1");
-    if (supabase) await supabase.auth.signOut();
+    if (supabase) {
+      try {
+        await supabase.auth.signOut({ scope: "local" });
+      } catch {
+        // Local state below still guarantees an explicit logout in this browser.
+      }
+    }
     forgetOfflineUser();
     setOfflineUserId("");
     setSession(null);
