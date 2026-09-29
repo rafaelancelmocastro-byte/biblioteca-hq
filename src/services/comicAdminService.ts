@@ -1,5 +1,5 @@
 import type { Comic, Series } from "../types/comic";
-import { supabase } from "./supabaseClient";
+import { ensureActiveSession, supabase } from "./supabaseClient";
 
 export type ComicRegistration = {
   title: string;
@@ -27,21 +27,43 @@ export type ComicRegistration = {
 
 async function ownerRequest(path: string, body: unknown, method = "POST") {
   if (!supabase) throw new Error("Supabase não está configurado.");
-  const { data } = await supabase.auth.getSession();
-  if (!data.session?.access_token) throw new Error("Sua sessão expirou. Entre novamente.");
-  const response = await fetch(path, {
-    method,
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session.access_token}` },
-    body: JSON.stringify(body),
-  });
-  const payload = await response.json().catch(() => null);
-  if (!response.ok) {
-    const error = new Error(payload?.error || "Não foi possível concluir a operação.") as Error & { code?: string; existing?: { id: string; title: string } };
-    error.code = payload?.code;
-    error.existing = payload?.existing;
-    throw error;
+
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const session = await ensureActiveSession(attempt > 0);
+      if (!session?.access_token) throw new Error("Sua sessão expirou. Entre novamente.");
+
+      const response = await fetch(path, {
+        method,
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify(body),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        const retryable = response.status === 401 || response.status === 403 || response.status === 429 || response.status >= 500;
+        if (retryable && attempt < 2) {
+          await new Promise((resolve) => window.setTimeout(resolve, 350 * (attempt + 1)));
+          continue;
+        }
+        const error = new Error(payload?.error || "Não foi possível concluir a operação.") as Error & { code?: string; existing?: { id: string; title: string } };
+        error.code = payload?.code;
+        error.existing = payload?.existing;
+        throw error;
+      }
+
+      return payload;
+    } catch (error) {
+      lastError = error;
+      if (attempt < 2) {
+        await new Promise((resolve) => window.setTimeout(resolve, 350 * (attempt + 1)));
+        continue;
+      }
+    }
   }
-  return payload;
+
+  throw lastError instanceof Error ? lastError : new Error("Falha de comunicação com o servidor.");
 }
 
 export async function createComicRecord(input: ComicRegistration): Promise<string> {
