@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Plus } from "lucide-react";
 import type { Series } from "../../types/comic";
-import { supabase } from "../../services/supabaseClient";
+import { ensureActiveSession, supabase } from "../../services/supabaseClient";
 import { storageProvider } from "../../services/storageProvider";
 import { saveSeriesRecord } from "../../services/comicAdminService";
 
@@ -35,7 +35,7 @@ export function ImportOrganization({ series, onCreated, onFeedback }: Props) {
       const { data: publisherAssets } = await supabase!.from("publisher_assets").select("publisher,logo_key");
       const savedPublisher = (publisherAssets || []).find((item) => norm(item.publisher) === norm(knownPublisher));
       if (!savedPublisher || publisherCover) {
-        const session = (await supabase?.auth.getSession())?.data.session;
+        const session = await ensureActiveSession();
         if (!session) throw new Error("Sua sessão expirou. Entre novamente.");
         const logoKey = publisherCover ? (await storageProvider.uploadFile(publisherCover, "covers")).fileKey : savedPublisher?.logo_key || "";
         const response = await fetch("/api/series/upsert", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` }, body: JSON.stringify({ publisherAction: savedPublisher ? "update" : "create", originalName: savedPublisher?.publisher || knownPublisher, name: knownPublisher, logoKey }) });
