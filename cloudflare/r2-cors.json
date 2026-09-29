@@ -4,6 +4,8 @@
       "id": "biblioteca-hq-web",
       "allowed": {
         "origins": [
+          "https://bibliotecahq.com.br",
+          "https://www.bibliotecahq.com.br",
           "https://biblioteca-hq.vercel.app",
           "http://localhost:3000"
         ],
