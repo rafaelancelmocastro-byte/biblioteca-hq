@@ -3106,3 +3106,290 @@ html.reduce-transparency .catalog-secondary-action {
   .sales-phone-primary { left:5%; transform:rotate(-3deg); }
   .sales-phone-secondary { right:2%; transform:rotate(5deg) translateY(1.5rem) scale(.92); }
 }
+
+
+/* Sales inside reference v3 */
+.sales-inside-reference {
+  padding-top: 1.4rem;
+}
+.sales-inside-heading {
+  margin-bottom: 1.5rem;
+}
+.sales-inside-heading > span {
+  color: #fbbf24;
+}
+.sales-inside-heading h2 {
+  max-width: 20ch;
+}
+.sales-inside-reference-grid {
+  display: grid;
+  grid-template-columns: minmax(17rem,.85fr) minmax(0,1.65fr);
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 1.45rem;
+  background:
+    linear-gradient(180deg,rgba(15,23,42,.72),rgba(8,15,28,.78));
+  backdrop-filter: blur(14px);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.035),
+    0 24px 70px rgba(0,0,0,.28);
+}
+.sales-video-card-reference {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 1.05rem;
+  background: rgba(5,8,14,.82);
+}
+.sales-video-media {
+  position: relative;
+  min-height: 24rem;
+  display: flex;
+  flex-direction: column;
+  padding: .65rem;
+}
+.sales-video-screen {
+  position: relative;
+  flex: 1;
+  min-height: 20rem;
+  overflow: hidden;
+  border-radius: .85rem .85rem .45rem .45rem;
+  background: #02050a;
+}
+.sales-video-screen img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: top;
+  filter: saturate(.72) brightness(.72);
+  transform: scale(1.03);
+}
+.sales-video-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at center,transparent 10%,rgba(3,7,12,.2) 38%,rgba(3,7,12,.72) 100%),
+    linear-gradient(180deg,rgba(3,7,12,.06),rgba(3,7,12,.32));
+}
+.sales-video-play-reference {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4.2rem;
+  height: 4.2rem;
+  transform: translate(-50%,-50%);
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.35);
+  background: rgba(7,12,20,.78);
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(0,0,0,.38);
+  backdrop-filter: blur(12px);
+}
+.sales-video-play-reference svg {
+  width: 1.55rem;
+  margin-left: .2rem;
+  fill: currentColor;
+}
+.sales-video-controls {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: .45rem;
+  min-height: 2rem;
+  padding: .4rem .2rem 0;
+}
+.sales-video-controls span {
+  height: .22rem;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg,#fff 0 18%,#334155 18% 100%);
+}
+.sales-video-controls b {
+  color: #cbd5e1;
+  font-size: .58rem;
+  font-weight: 700;
+}
+.sales-video-controls i {
+  width: .75rem;
+  height: .75rem;
+  border: 1px solid #94a3b8;
+  border-radius: .12rem;
+  opacity: .9;
+}
+.sales-video-card-reference footer {
+  display: grid;
+  gap: .3rem;
+  padding: .85rem .95rem 1rem;
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+.sales-video-card-reference footer strong {
+  color: #fff;
+  font-size: .8rem;
+}
+.sales-video-card-reference footer span {
+  color: #8a98aa;
+  font-size: .64rem;
+  line-height: 1.5;
+}
+.sales-inside-screens-wrap {
+  position: relative;
+  min-width: 0;
+  padding-top: 2.8rem;
+}
+.sales-hand-note {
+  position: absolute;
+  top: -.1rem;
+  right: 1rem;
+  display: flex;
+  align-items: flex-start;
+  gap: .3rem;
+  color: #facc15;
+  transform: rotate(-2deg);
+  font-family: "Comic Sans MS", "Bradley Hand", cursive;
+  font-size: .78rem;
+  line-height: 1.15;
+  z-index: 3;
+}
+.sales-hand-note span {
+  max-width: 11rem;
+}
+.sales-hand-note svg {
+  width: 5.4rem;
+  height: 3.5rem;
+  overflow: visible;
+}
+.sales-hand-note path {
+  fill: none;
+  stroke: #facc15;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.sales-inside-screens {
+  display: grid;
+  grid-template-columns: repeat(5,minmax(0,1fr));
+  gap: .7rem;
+  align-items: end;
+}
+.sales-inside-screens article {
+  min-width: 0;
+  text-align: center;
+}
+.sales-mini-phone {
+  position: relative;
+  min-height: 20.8rem;
+  overflow: hidden;
+  padding: .3rem;
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 1.15rem;
+  background: linear-gradient(160deg,#1d2530,#090d13 42%,#161c24);
+  box-shadow:
+    0 16px 28px rgba(0,0,0,.34),
+    inset 0 1px 0 rgba(255,255,255,.12);
+}
+.sales-mini-phone::before {
+  content:"";
+  position:absolute;
+  z-index:2;
+  top:.52rem;
+  left:50%;
+  width:3.8rem;
+  height:.72rem;
+  transform:translateX(-50%);
+  border-radius:999px;
+  background:#020305;
+}
+.sales-mini-phone img {
+  width:100%;
+  height:100%;
+  min-height:20.2rem;
+  display:block;
+  object-fit:cover;
+  object-position:top;
+  border-radius:.9rem;
+  background:#05080d;
+}
+.sales-inside-screens article:nth-child(3) .sales-mini-phone img,
+.sales-inside-screens article:nth-child(4) .sales-mini-phone img {
+  object-fit: contain;
+  background: #05080d;
+}
+.sales-inside-screens article strong {
+  display:block;
+  margin-top:.55rem;
+  color:#fff;
+  font-size:.66rem;
+  line-height:1.3;
+}
+.sales-inside-screens article span {
+  display:block;
+  margin-top:.16rem;
+  color:#7f8b99;
+  font-size:.56rem;
+  line-height:1.35;
+}
+
+@media (max-width: 1080px) {
+  .sales-inside-reference-grid {
+    grid-template-columns: 1fr;
+  }
+  .sales-video-media {
+    min-height: 21rem;
+  }
+  .sales-inside-screens-wrap {
+    padding-top: 2.6rem;
+  }
+}
+@media (max-width: 860px) {
+  .sales-inside-screens {
+    grid-template-columns: repeat(3,minmax(0,1fr));
+  }
+  .sales-inside-screens article:nth-child(4),
+  .sales-inside-screens article:nth-child(5) {
+    display:none;
+  }
+}
+@media (max-width: 620px) {
+  .sales-inside-reference-grid {
+    padding:.75rem;
+    border-radius:1.1rem;
+  }
+  .sales-video-media {
+    min-height:18rem;
+  }
+  .sales-video-screen {
+    min-height:15rem;
+  }
+  .sales-hand-note {
+    position:static;
+    justify-content:center;
+    margin:0 0 .7rem;
+    transform:rotate(-1deg);
+    text-align:center;
+  }
+  .sales-hand-note svg {
+    display:none;
+  }
+  .sales-inside-screens-wrap {
+    padding-top:0;
+  }
+  .sales-inside-screens {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    gap:.55rem;
+  }
+  .sales-inside-screens article:nth-child(3) {
+    display:none;
+  }
+  .sales-mini-phone {
+    min-height:16.5rem;
+  }
+  .sales-mini-phone img {
+    min-height:16rem;
+  }
+}
