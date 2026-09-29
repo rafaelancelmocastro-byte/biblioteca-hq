@@ -15,11 +15,15 @@ let activeSessionPromise: Promise<Session | null> | null = null;
 export async function ensureActiveSession(forceRefresh = false): Promise<Session | null> {
   if (!supabase) return null;
 
+  const explicitlyLoggedOut =
+    typeof window !== "undefined" && window.sessionStorage.getItem("user_logged_out") === "1";
+
+  if (explicitlyLoggedOut) return null;
+
   if (!forceRefresh) {
     try {
       const { data } = await supabase.auth.getSession();
       const current = data.session;
-      // Check if session exists and is valid for at least 30 more seconds
       if (current && (!current.expires_at || current.expires_at * 1000 > Date.now() + 30_000)) {
         return current;
       }
@@ -38,21 +42,6 @@ export async function ensureActiveSession(forceRefresh = false): Promise<Session
       }
     } catch {
       // Refresh error ignored
-    }
-
-    try {
-      const res = await fetch("/api/auth/quick-session", { method: "POST" });
-      if (res.ok) {
-        const { tokenHash } = await res.json();
-        if (tokenHash) {
-          const verified = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: "magiclink" });
-          if (verified.data.session) {
-            return verified.data.session;
-          }
-        }
-      }
-    } catch {
-      // Quick session error ignored
     }
 
     const { data } = await supabase.auth.getSession();
