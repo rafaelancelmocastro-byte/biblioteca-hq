@@ -1,17 +1,13 @@
 import React from "react";
-import { BrandLogo } from "../../components/ui/BrandLogo";
-
 const CHECKOUT_URL =
   "https://lastlink.com/p/C95A90981/checkout-payment/?utm_source=bibliotecahq&utm_medium=site&utm_campaign=acesso_vitalicio";
 
-// Mapeamento das imagens fornecidas
 const ASSETS = {
-  bgPattern: "/image_3aef20.jpg",
-  screenContinuarLendo: "/image_3aef38.jpg",
-  screenMangaIndie: "/image_3aef3e.jpg",
-  screenEdicoes: "/image_3aef57.jpg",
-  screenColecoes: "/image_3aef5b.png",
-  screenMorteRubra: "/image_3aef5f.jpg",
+  screenContinuarLendo: "/sales/continue-reading.webp",
+  screenMangaIndie: "/sales/manga-indie.webp",
+  screenEdicoes: "/sales/collections.webp",
+  screenColecoes: "/sales/collections.webp",
+  screenMorteRubra: "/sales/continue-reading.webp",
 };
 
 type Props = {
@@ -27,15 +23,12 @@ export const SalesPage: React.FC<Props> = ({ hasAccess = false, onLogin, onOpenL
 
   return (
     <div className="sales-stage-one">
-      <div 
-        className="sales-stage-one__pattern-bg" 
-        style={{ backgroundImage: `url(${ASSETS.bgPattern})` }} 
-        aria-hidden="true" 
-      />
+      <div className="sales-stage-one__pattern-bg" aria-hidden="true" />
 
       <header className="sales-stage-one__header">
-        <div className="sales-stage-one__brand">
-          <BrandLogo />
+        <div className="sales-stage-one__brand" aria-label="Biblioteca HQ">
+          <img src="/brand-icon.svg" alt="" className="sales-stage-one__brand-mark" />
+          <span className="sales-stage-one__brand-name">Biblioteca <strong>HQ</strong></span>
         </div>
 
         <nav className="sales-stage-one__categories" aria-label="Categorias">
@@ -67,13 +60,13 @@ export const SalesPage: React.FC<Props> = ({ hasAccess = false, onLogin, onOpenL
             </h1>
 
             <p>
-              Mangás, quadrinhos, sagas e graphic novels em um só lugar. Descubra, explore,
-              organize e continue de onde parou, com uma experiência feita por quem ama HQs.
+              Mangás, quadrinhos, sagas e graphic novels em um só lugar. Organize suas leituras
+              e continue exatamente de onde parou.
             </p>
 
             <div className="sales-stage-one__price" aria-label="Preço promocional">
-              <span className="sales-stage-one__old-price"><small>R$</small> 29,99</span>
-              <span className="sales-stage-one__current-price"><small>R$</small> 19,99</span>
+              <span className="sales-stage-one__old-price">De <s>R$ 29,99</s></span>
+              <span className="sales-stage-one__current-price">Por <strong>R$ 19,99</strong></span>
             </div>
 
             <div className="sales-stage-one__actions">
@@ -82,32 +75,27 @@ export const SalesPage: React.FC<Props> = ({ hasAccess = false, onLogin, onOpenL
                 type="button"
                 onClick={hasAccess ? onOpenLibrary : checkout}
               >
-                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="16" height="16"><path d="M8 5v14l11-7z"/></svg>
+                <svg viewBox="0 0 24 24" aria-hidden="true" width="18" height="18">
+                  <path d="M5 12h14M13 6l6 6-6 6" />
+                </svg>
                 {hasAccess ? "Abrir minha biblioteca" : "Quero acessar agora"}
-              </button>
-
-              <button
-                className="sales-stage-one__secondary"
-                type="button"
-                onClick={onLogin}
-              >
-                Já tenho acesso
               </button>
             </div>
 
             <div className="sales-stage-one__trust">
-              <div>
-                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-                <span>Pagamento único</span>
-              </div>
-              <div>
-                <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
-                <span>Checkout seguro pela Lastlink</span>
-              </div>
-              <div>
-                <svg viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                <span>Conta liberada após pagamento confirmado</span>
-              </div>
+              {[
+                "Pagamento único",
+                "Checkout seguro pela Lastlink",
+                "Liberação após pagamento",
+              ].map((label) => (
+                <div key={label}>
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="m8.2 12.1 2.3 2.3 5.2-5.2" />
+                  </svg>
+                  <span>{label}</span>
+                </div>
+              ))}
             </div>
           </div>
 
