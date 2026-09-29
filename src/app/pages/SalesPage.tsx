@@ -1,6 +1,7 @@
-import React from "react";
-import { ArrowRight, BookOpen, Check, Cloud, Download, Layers3, Search, ShieldCheck, Sparkles, ZoomIn } from "lucide-react";
+import React, { useState } from "react";
+import { ArrowRight, BookOpen, Check, Cloud, Download, Layers3, MonitorSmartphone, Play, Search, ShieldCheck, Sparkles, ZoomIn } from "lucide-react";
 import { BrandLogo } from "../../components/ui/BrandLogo";
+import { CoverFlow } from "../../components/library/CoverFlow";
 
 const CHECKOUT_URL = "https://lastlink.com/p/C95A90981/checkout-payment/?utm_source=bibliotecahq&utm_medium=site&utm_campaign=acesso_vitalicio";
 
@@ -9,6 +10,13 @@ type Props = {
   onLogin: () => void;
   onOpenLibrary: () => void;
 };
+
+const showcaseCollections = [
+  { id: "x-men", title: "X-Men", subtitle: "Marvel", image: "/saga-art/x-men.png" },
+  { id: "batman", title: "Batman", subtitle: "DC Comics", image: "/saga-art/batman.png" },
+  { id: "superman", title: "Superman", subtitle: "DC Comics", image: "/saga-art/superman.png" },
+  { id: "green-lantern", title: "Lanterna Verde", subtitle: "DC Comics", image: "/saga-art/green-lantern.png" },
+];
 
 const features = [
   { icon: Layers3, title: "Coleções organizadas", copy: "Editoras, coleções, sagas, fases e edições em uma navegação feita para quadrinhos." },
@@ -20,6 +28,7 @@ const features = [
 ];
 
 export const SalesPage: React.FC<Props> = ({ hasAccess = false, onLogin, onOpenLibrary }) => {
+  const [showcaseIndex, setShowcaseIndex] = useState(0);
   const checkout = () => { window.location.href = CHECKOUT_URL; };
 
   return (
@@ -50,20 +59,28 @@ export const SalesPage: React.FC<Props> = ({ hasAccess = false, onLogin, onOpenL
             </div>
             <div className="sales-trust">
               <span><Check /> Pagamento único</span>
+              <span><ShieldCheck /> 7 dias de garantia</span>
               <span><Check /> Checkout seguro pela Lastlink</span>
               <span><Check /> Conta liberada após pagamento confirmado</span>
             </div>
           </div>
 
-          <div className="sales-product-preview" aria-label="Prévia da Biblioteca HQ">
-            <div className="sales-preview-top"><span>Biblioteca</span><span>2.000+ títulos organizados</span></div>
-            <div className="sales-preview-covers">
-              {["/saga-art/x-men.png","/saga-art/batman.png","/saga-art/superman.png","/saga-art/green-lantern.png"].map((src, index) => (
-                <img key={src} src={src} alt="" loading={index ? "lazy" : "eager"} />
-              ))}
+          <div className="sales-product-preview" aria-label="Coleções em destaque">
+            <div className="sales-preview-top"><span>Coleções em destaque</span><span>rotação automática</span></div>
+            <div className="sales-showcase-flow">
+              <CoverFlow
+                items={showcaseCollections}
+                activeIndex={showcaseIndex}
+                onChange={setShowcaseIndex}
+                label="Coleções da Biblioteca HQ"
+                autoPlayMs={3600}
+              />
             </div>
             <div className="sales-preview-panel">
-              <div><small>CONTINUAR LENDO</small><strong>Retome exatamente de onde parou</strong></div>
+              <div>
+                <small>COLEÇÃO EM DESTAQUE</small>
+                <strong>{showcaseCollections[showcaseIndex]?.title}</strong>
+              </div>
               <BookOpen />
             </div>
           </div>
@@ -77,6 +94,42 @@ export const SalesPage: React.FC<Props> = ({ hasAccess = false, onLogin, onOpenL
           <div className="sales-section-heading"><span>FEITO PARA ACERVOS GRANDES</span><h2>Menos tempo procurando. Mais tempo lendo.</h2><p>A experiência foi construída em volta da biblioteca e do leitor, com o mesmo design em todos os dispositivos.</p></div>
           <div className="sales-feature-grid">
             {features.map(({ icon: Icon, title, copy }) => <article key={title}><Icon /><h3>{title}</h3><p>{copy}</p></article>)}
+          </div>
+        </section>
+
+        <section className="sales-section sales-inside-section" id="por-dentro">
+          <div className="sales-section-heading">
+            <span>VEJA O SISTEMA POR DENTRO</span>
+            <h2>Interface real, feita para navegar e ler.</h2>
+            <p>Deixamos a página pronta para receber capturas reais do catálogo, das coleções e do leitor, além de um vídeo demonstrativo.</p>
+          </div>
+
+          <div className="sales-app-media">
+            <div className="sales-app-shots">
+              <article className="sales-shot-slot sales-shot-slot-main">
+                <MonitorSmartphone />
+                <strong>Print real · Catálogo</strong>
+                <span>Área reservada para uma captura ampla da Biblioteca em desktop ou tablet.</span>
+              </article>
+              <article className="sales-shot-slot">
+                <Layers3 />
+                <strong>Print real · Coleções</strong>
+                <span>Área reservada para mostrar CoverFlow, sagas e organização cronológica.</span>
+              </article>
+              <article className="sales-shot-slot">
+                <BookOpen />
+                <strong>Print real · Leitor</strong>
+                <span>Área reservada para leitura, zoom, progresso e modo offline.</span>
+              </article>
+            </div>
+
+            <div className="sales-video-slot">
+              <div className="sales-video-placeholder" role="img" aria-label="Espaço reservado para vídeo demonstrativo">
+                <span className="sales-video-play"><Play /></span>
+                <strong>Vídeo: veja como funciona por dentro</strong>
+                <small>Espaço preparado para incorporar o vídeo demonstrativo quando o arquivo ou link estiver pronto.</small>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -100,14 +153,15 @@ export const SalesPage: React.FC<Props> = ({ hasAccess = false, onLogin, onOpenL
               <li><Check /> Leitura offline e sincronização</li>
               <li><Check /> Acesso em celular, tablet e desktop</li>
               <li><Check /> Atualizações do aplicativo</li>
+              <li><ShieldCheck /> Garantia de 7 dias após a compra</li>
             </ul>
           </div>
           <div className="sales-price-card">
             <small>Pagamento único</small>
             <strong><sup>R$</sup> 19,99</strong>
-            <p>Processado com segurança pela Lastlink.</p>
+            <p>Pagamento único · acesso vitalício.</p>
             <button type="button" onClick={checkout}>Garantir acesso vitalício <ArrowRight /></button>
-            <div><ShieldCheck /> Sua conta só é liberada depois da confirmação do pagamento.</div>
+            <div><ShieldCheck /> 7 dias de garantia após a compra. Sua conta é liberada somente depois da confirmação do pagamento.</div>
           </div>
         </section>
 
@@ -117,6 +171,7 @@ export const SalesPage: React.FC<Props> = ({ hasAccess = false, onLogin, onOpenL
           <details><summary>Posso usar em mais de um dispositivo?</summary><p>Sim. O progresso e preferências da conta são sincronizados entre dispositivos compatíveis.</p></details>
           <details><summary>Consigo ler sem internet?</summary><p>Sim. Você pode baixar edições no dispositivo para leitura offline e sincronizar o progresso quando voltar à internet.</p></details>
           <details><summary>É uma assinatura mensal?</summary><p>Não nesta oferta. O checkout atual é de pagamento único com acesso vitalício.</p></details>
+          <details><summary>Existe garantia?</summary><p>Sim. A oferta possui garantia de 7 dias após a compra.</p></details>
         </section>
       </main>
 
