@@ -5355,3 +5355,61 @@ html.reduce-transparency .catalog-secondary-action {
   .sales-demo-reader__control-group { flex-wrap: wrap; }
   .sales-demo-reader__page--height { height: min(100%, calc(100dvh - 12rem)); }
 }
+
+
+/* Physical touch-device layout guard.
+   Chrome/Android may expose a desktop-sized CSS viewport when "Site para computador"
+   is enabled. These rules keep the installed/mobile experience in app proportions. */
+html[data-app-device="mobile"] .app-shell,
+html[data-app-device="tablet"] .app-shell {
+  --app-touch-max: 100%;
+}
+
+html[data-app-device="mobile"][data-desktop-viewport="true"] body,
+html[data-app-device="tablet"][data-desktop-viewport="true"] body {
+  overflow-x: hidden;
+}
+
+html[data-app-device="mobile"][data-desktop-viewport="true"] #root,
+html[data-app-device="tablet"][data-desktop-viewport="true"] #root {
+  width: var(--app-compensated-width, 100%);
+  min-height: calc(100dvh * var(--app-desktop-scale, 1));
+  transform: scale(var(--app-desktop-scale, 1));
+  transform-origin: top left;
+}
+
+html[data-app-device="mobile"] .app-touch-layout .cinematic-main,
+html[data-app-device="tablet"] .app-touch-layout .cinematic-main {
+  width: 100%;
+  max-width: none;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+html[data-app-device="mobile"] .app-touch-layout .app-header,
+html[data-app-device="tablet"] .app-touch-layout .app-header {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+html[data-app-device="mobile"] .app-touch-layout .app-mobile-nav,
+html[data-app-device="tablet"] .app-touch-layout .app-mobile-nav {
+  display: block !important;
+}
+
+html[data-app-device="mobile"] .app-touch-layout .app-sidebar,
+html[data-app-device="tablet"] .app-touch-layout .app-sidebar {
+  display: none !important;
+}
+
+html[data-app-device="mobile"] .app-touch-layout .streaming-page::before,
+html[data-app-device="tablet"] .app-touch-layout .streaming-page::before {
+  inset-left: 0;
+}
+
+@media (orientation: landscape) {
+  html[data-app-device="mobile"] .app-touch-layout .cinematic-main {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+}
