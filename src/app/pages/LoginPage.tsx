@@ -28,12 +28,13 @@ export const LoginPage: React.FC<{ onSuccess: () => void; onBackToSales?: () => 
   useEffect(() => {
     if (!supabase) return;
     let active = true;
+    const explicitlyLoggedOut = sessionStorage.getItem("user_logged_out") === "1";
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY") return;
-      if (active && event === "SIGNED_IN" && session && !initialLinkError()) finishLogin();
+      if (active && event === "SIGNED_IN" && session && !initialLinkError() && !explicitlyLoggedOut) finishLogin();
     });
     void supabase.auth.getSession().then(({ data }) => {
-      if (active && data.session && !initialLinkError()) finishLogin();
+      if (active && data.session && !initialLinkError() && !explicitlyLoggedOut) finishLogin();
     });
     return () => { active = false; listener.subscription.unsubscribe(); };
   }, []);
@@ -55,6 +56,7 @@ export const LoginPage: React.FC<{ onSuccess: () => void; onBackToSales?: () => 
       if (password.length < 8) { setError("A senha deve ter ao menos 8 caracteres."); return; }
       const { error: failure } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (failure) throw failure;
+      sessionStorage.removeItem("user_logged_out");
       finishLogin();
     } catch (failure) {
       const message = failure instanceof Error ? failure.message : "Não foi possível concluir. Tente novamente.";
