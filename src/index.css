@@ -2381,3 +2381,76 @@ html.reduce-transparency .catalog-secondary-action {
   .sales-strip i { display: none; }
   .sales-strip { gap: .55rem 1rem; }
 }
+
+
+/* Sales page showcase + media slots */
+.sales-showcase-flow { margin: .35rem 0 -.35rem; }
+.sales-product-preview .sales-showcase-flow .cover-flow-stage { height: clamp(16rem, 28vw, 22rem); }
+.sales-product-preview .sales-showcase-flow .cover-flow-card { height: 68%; }
+.sales-product-preview .sales-showcase-flow .cover-flow-arrow { top: 43%; }
+.sales-inside-section { border-top: 1px solid rgba(255,255,255,.05); }
+.sales-app-media { display: grid; gap: 1rem; }
+.sales-app-shots { display: grid; grid-template-columns: 1.35fr .85fr .85fr; gap: .8rem; }
+.sales-shot-slot {
+  min-width: 0;
+  min-height: 13rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: .35rem;
+  padding: 1rem;
+  border: 1px dashed rgba(168,186,207,.25);
+  border-radius: 1rem;
+  background:
+    radial-gradient(circle at 75% 20%, rgba(143,162,184,.12), transparent 42%),
+    linear-gradient(145deg, rgba(255,255,255,.035), rgba(255,255,255,.012));
+}
+.sales-shot-slot-main { min-height: 17rem; }
+.sales-shot-slot svg { width: 1.15rem; color: #91a9c5; }
+.sales-shot-slot strong { color: #eef2f6; font-size: .82rem; }
+.sales-shot-slot span { color: #7f8a96; font-size: .68rem; line-height: 1.5; }
+.sales-video-slot { min-width: 0; }
+.sales-video-placeholder {
+  min-height: clamp(18rem, 38vw, 28rem);
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: .65rem;
+  padding: 1.2rem;
+  text-align: center;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 1.15rem;
+  background:
+    radial-gradient(circle at center, rgba(143,162,184,.11), transparent 36%),
+    #0b1016;
+}
+.sales-video-play {
+  width: 3.2rem;
+  height: 3.2rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.12);
+  background: #eef2f6;
+  color: #0a0e14;
+}
+.sales-video-play svg { width: 1.05rem; margin-left: .15rem; }
+.sales-video-placeholder strong { color: #eef2f6; font-size: .92rem; }
+.sales-video-placeholder small { max-width: 28rem; color: #788491; font-size: .67rem; line-height: 1.5; }
+.sales-offer-copy li svg { flex: none; }
+.sales-price-card > div { border-top: 1px solid rgba(255,255,255,.07); padding-top: .8rem; }
+
+@media (max-width: 900px) {
+  .sales-app-shots { grid-template-columns: 1fr 1fr; }
+  .sales-shot-slot-main { grid-column: 1 / -1; }
+  .sales-product-preview .sales-showcase-flow .cover-flow-stage { height: clamp(17rem, 46vw, 23rem); }
+}
+
+@media (max-width: 560px) {
+  .sales-app-shots { grid-template-columns: 1fr; }
+  .sales-shot-slot-main { grid-column: auto; }
+  .sales-shot-slot, .sales-shot-slot-main { min-height: 10.5rem; }
+  .sales-video-placeholder { min-height: 15rem; }
+  .sales-product-preview .sales-showcase-flow .cover-flow-stage { height: 15.5rem; }
+  .sales-product-preview .sales-showcase-flow .cover-flow-card { height: 70%; }
+}
