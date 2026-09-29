@@ -1,10 +1,18 @@
 import React from "react";
 import { BrandLogo } from "../../components/ui/BrandLogo";
 
-const MANGA_INDIE_SCREENSHOT = "data:image/webp;base64,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";
-
 const CHECKOUT_URL =
   "https://lastlink.com/p/C95A90981/checkout-payment/?utm_source=bibliotecahq&utm_medium=site&utm_campaign=acesso_vitalicio";
+
+// Mapeamento das imagens fornecidas
+const ASSETS = {
+  bgPattern: "/image_3aef20.jpg",
+  screenContinuarLendo: "/image_3aef38.jpg",
+  screenMangaIndie: "/image_3aef3e.jpg",
+  screenEdicoes: "/image_3aef57.jpg",
+  screenColecoes: "/image_3aef5b.png",
+  screenMorteRubra: "/image_3aef5f.jpg",
+};
 
 type Props = {
   hasAccess?: boolean;
@@ -19,6 +27,12 @@ export const SalesPage: React.FC<Props> = ({ hasAccess = false, onLogin, onOpenL
 
   return (
     <div className="sales-stage-one">
+      <div 
+        className="sales-stage-one__pattern-bg" 
+        style={{ backgroundImage: `url(${ASSETS.bgPattern})` }} 
+        aria-hidden="true" 
+      />
+
       <header className="sales-stage-one__header">
         <div className="sales-stage-one__brand">
           <BrandLogo />
@@ -43,80 +57,246 @@ export const SalesPage: React.FC<Props> = ({ hasAccess = false, onLogin, onOpenL
         </button>
       </header>
 
-      <main className="sales-stage-one__hero">
-        <section className="sales-stage-one__copy">
-          <h1>
-            Seu universo de quadrinhos, organizado para você
-            <strong> realmente ler.</strong>
-          </h1>
+      <main>
+        {/* HERO SECTION */}
+        <section className="sales-stage-one__hero">
+          <div className="sales-stage-one__copy">
+            <h1>
+              Seu universo de quadrinhos, organizado para você
+              <strong> realmente ler.</strong>
+            </h1>
 
-          <p>
-            Mangás, quadrinhos, sagas e graphic novels em um só lugar. Descubra, explore,
-            organize e continue de onde parou, com uma experiência feita por quem ama HQs.
-          </p>
+            <p>
+              Mangás, quadrinhos, sagas e graphic novels em um só lugar. Descubra, explore,
+              organize e continue de onde parou, com uma experiência feita por quem ama HQs.
+            </p>
 
-          <div className="sales-stage-one__price" aria-label="Preço promocional">
-            <span className="sales-stage-one__old-price"><small>De</small> R$ 29,99</span>
-            <span className="sales-stage-one__current-price"><small>Por apenas</small> R$ 19,99</span>
+            <div className="sales-stage-one__price" aria-label="Preço promocional">
+              <span className="sales-stage-one__old-price"><small>R$</small> 29,99</span>
+              <span className="sales-stage-one__current-price"><small>R$</small> 19,99</span>
+            </div>
+
+            <div className="sales-stage-one__actions">
+              <button
+                className="sales-stage-one__primary"
+                type="button"
+                onClick={hasAccess ? onOpenLibrary : checkout}
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="16" height="16"><path d="M8 5v14l11-7z"/></svg>
+                {hasAccess ? "Abrir minha biblioteca" : "Quero acessar agora"}
+              </button>
+
+              <button
+                className="sales-stage-one__secondary"
+                type="button"
+                onClick={onLogin}
+              >
+                Já tenho acesso
+              </button>
+            </div>
+
+            <div className="sales-stage-one__trust">
+              <div>
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                <span>Pagamento único</span>
+              </div>
+              <div>
+                <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+                <span>Checkout seguro pela Lastlink</span>
+              </div>
+              <div>
+                <svg viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                <span>Conta liberada após pagamento confirmado</span>
+              </div>
+            </div>
           </div>
 
-          <div className="sales-stage-one__actions">
-            <button
-              className="sales-stage-one__primary"
-              type="button"
-              onClick={hasAccess ? onOpenLibrary : checkout}
-            >
-              <span className="sales-stage-one__play" aria-hidden="true">→</span>
-              {hasAccess ? "Abrir minha biblioteca" : "Garantir acesso imediato"}
-            </button>
-
-            <button
-              className="sales-stage-one__secondary"
-              type="button"
-              onClick={onLogin}
-            >
-              Já tenho acesso
-            </button>
-          </div>
-
-          <div className="sales-stage-one__trust">
-            <div>
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 8.5c-2.2 0-4 1.6-4 3.5s1.8 3.5 4 3.5c1.8 0 3.1-.9 4.5-3.5 1.4-2.6 2.7-3.5 4.5-3.5 2.2 0 4 1.6 4 3.5s-1.8 3.5-4 3.5c-1.8 0-3.1-.9-4.5-3.5-1.4-2.6-2.7-3.5-4.5-3.5Z"/></svg>
-              <span>Pagamento único</span>
+          <div className="sales-stage-one__devices" aria-label="Telas reais da Biblioteca HQ">
+            <div className="sales-stage-one__glow" aria-hidden="true" />
+            
+            <div className="sales-stage-one__phone sales-stage-one__phone--front">
+              <div className="sales-stage-one__phone-shell">
+                <span className="sales-stage-one__dynamic-island" />
+                <img src={ASSETS.screenContinuarLendo} alt="Continuar lendo" loading="eager" />
+              </div>
             </div>
-            <div>
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.6 3 8.1 7 10 4-1.9 7-5.4 7-10V6l-7-3Z"/><path d="m9.5 12 1.6 1.6 3.7-4"/></svg>
-              <span>Checkout seguro pela Lastlink</span>
-            </div>
-            <div>
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 5 13h6l-1 9 9-13h-6l0-7Z"/></svg>
-              <span>Liberação após pagamento</span>
+
+            <div className="sales-stage-one__phone sales-stage-one__phone--back">
+              <div className="sales-stage-one__phone-shell">
+                <span className="sales-stage-one__dynamic-island" />
+                <img src={ASSETS.screenMangaIndie} alt="Mangá e Indie" loading="eager" />
+              </div>
             </div>
           </div>
         </section>
 
-        <section className="sales-stage-one__devices" aria-label="Telas reais da Biblioteca HQ">
-          <div className="sales-stage-one__glow" aria-hidden="true" />
+        {/* INSIDE THE APP SECTION */}
+        <section className="sales-section">
+          <div className="sales-section-heading">
+            <h2>Veja por dentro do app</h2>
+            <p>Assista ao vídeo e conheça a experiência completa da Biblioteca HQ.</p>
+          </div>
+          
+          <div className="sales-inside-reference-grid">
+            <div className="sales-video-card-reference">
+              <div className="sales-video-media">
+                <div className="sales-video-screen">
+                  <img src={ASSETS.screenMorteRubra} alt="Capa do Vídeo" />
+                  <div className="sales-video-overlay" />
+                  <button className="sales-video-play-reference" aria-label="Play video">
+                    <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                  </button>
+                </div>
+                <div className="sales-video-controls">
+                  <span></span>
+                  <b>0:00 / 2:45</b>
+                  <i></i>
+                </div>
+              </div>
+              <footer>
+                <strong>Vídeo explicando o sistema por dentro</strong>
+                <span>Descubra como é fácil organizar e ler suas HQs.</span>
+              </footer>
+            </div>
 
-          <div className="sales-stage-one__phone sales-stage-one__phone--front">
-            <div className="sales-stage-one__phone-shell">
-              <span className="sales-stage-one__dynamic-island" />
-              <img
-                src="/sales/continue-reading.webp"
-                alt="Biblioteca HQ em Continuar lendo"
-                loading="eager"
-              />
+            <div className="sales-inside-screens-wrap">
+              <div className="sales-hand-note">
+                <span>Mesma experiência das imagens reais do app!</span>
+                <svg viewBox="0 0 100 50"><path d="M10,40 Q40,10 90,40 M80,30 L90,40 L80,50" /></svg>
+              </div>
+              
+              <div className="sales-inside-screens">
+                <article>
+                  <div className="sales-mini-phone"><img src={ASSETS.screenContinuarLendo} alt="Tela" /></div>
+                  <strong>Continuar lendo</strong>
+                  <span>de onde parou</span>
+                </article>
+                <article>
+                  <div className="sales-mini-phone"><img src={ASSETS.screenMangaIndie} alt="Tela" /></div>
+                  <strong>Explore coleções</strong>
+                  <span>e sagas</span>
+                </article>
+                <article>
+                  <div className="sales-mini-phone"><img src={ASSETS.screenEdicoes} alt="Tela" /></div>
+                  <strong>Ver todas as edições</strong>
+                  <span>da coleção</span>
+                </article>
+                <article>
+                  <div className="sales-mini-phone"><img src={ASSETS.screenColecoes} alt="Tela" /></div>
+                  <strong>Editoras e universos</strong>
+                  <span>do acervo</span>
+                </article>
+                <article>
+                  <div className="sales-mini-phone"><img src={ASSETS.screenMorteRubra} alt="Tela" /></div>
+                  <strong>Detalhes completos</strong>
+                  <span>de cada edição</span>
+                </article>
+              </div>
             </div>
           </div>
+        </section>
 
-          <div className="sales-stage-one__phone sales-stage-one__phone--back">
-            <div className="sales-stage-one__phone-shell">
-              <span className="sales-stage-one__dynamic-island" />
-              <img
-                src={MANGA_INDIE_SCREENSHOT}
-                alt="Biblioteca HQ em Mangá e Indie"
-                loading="eager"
-              />
+        {/* EXPLORE COLLECTION SECTION */}
+        <section className="sales-section sales-inside-section">
+          <div className="sales-section-heading">
+            <h2>Explore coleções incríveis</h2>
+            <p>Dos maiores clássicos aos títulos mais cults. Tudo organizado e pronto para você mergulhar.</p>
+          </div>
+          
+          <div className="sales-preview-covers" style={{ perspective: '1200px', margin: '3rem 0' }}>
+            <img src={ASSETS.screenMorteRubra} alt="HQ 1" style={{ transform: 'translateX(40%) rotateY(15deg) scale(0.8)', opacity: 0.6 }} />
+            <img src={ASSETS.screenEdicoes} alt="HQ 2" style={{ transform: 'translateX(15%) rotateY(10deg) scale(0.9)', opacity: 0.85 }} />
+            <img src={ASSETS.screenMangaIndie} alt="HQ 3" style={{ zIndex: 3, transform: 'scale(1.1)', boxShadow: '0 20px 50px rgba(0,0,0,0.8)' }} />
+            <img src={ASSETS.screenColecoes} alt="HQ 4" style={{ transform: 'translateX(-15%) rotateY(-10deg) scale(0.9)', opacity: 0.85 }} />
+            <img src={ASSETS.screenContinuarLendo} alt="HQ 5" style={{ transform: 'translateX(-40%) rotateY(-15deg) scale(0.8)', opacity: 0.6 }} />
+          </div>
+        </section>
+
+        {/* FEATURES SECTION */}
+        <section className="sales-section sales-inside-section">
+          <div className="sales-section-heading">
+            <h2>Por que escolher a Biblioteca HQ?</h2>
+            <p>Uma plataforma pensada para leitores, do seu jeito.</p>
+          </div>
+          
+          <div className="sales-feature-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(16rem, 1fr))' }}>
+            <article>
+              <svg viewBox="0 0 24 24" fill="none" stroke="#facc15" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 8c-2.2 0-4 1.8-4 4s1.8 4 4 4 4-1.8 4-4-1.8-4-4-4zm14 4c0-2.2-1.8-4-4-4s-4 1.8-4 4 1.8 4 4 4 4-1.8 4-4z"/></svg>
+              <h3>Acesso vitalício</h3>
+              <p>Pague uma vez e tenha acesso para sempre.</p>
+            </article>
+            <article>
+              <svg viewBox="0 0 24 24" fill="none" stroke="#facc15" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
+              <h3>Leia onde quiser</h3>
+              <p>No celular, tablet ou computador, com a mesma experiência.</p>
+            </article>
+            <article>
+              <svg viewBox="0 0 24 24" fill="none" stroke="#facc15" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 12 12 17 22 12"/><polyline points="2 17 12 22 22 17"/></svg>
+              <h3>Coleções organizadas</h3>
+              <p>Encontre sagas, editoras e fases em ordem cronológica, como tem que ser.</p>
+            </article>
+            <article>
+              <svg viewBox="0 0 24 24" fill="none" stroke="#facc15" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <h3>Continue de onde parou</h3>
+              <p>Suas leituras sempre salvas, prontas para retomar.</p>
+            </article>
+            <article>
+              <svg viewBox="0 0 24 24" fill="none" stroke="#facc15" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+              <h3>Mangás, quadrinhos e muito mais</h3>
+              <p>Dos clássicos aos títulos independentes, tudo no mesmo lugar.</p>
+            </article>
+            <article>
+              <svg viewBox="0 0 24 24" fill="none" stroke="#facc15" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              <h3>Experiência fluida</h3>
+              <p>Interface moderna, rápida e feita por quem realmente ama HQs.</p>
+            </article>
+          </div>
+        </section>
+
+        {/* GUARANTEE & FINAL CTA */}
+        <section className="sales-section">
+          <div className="sales-guarantee-v2" style={{ maxWidth: '800px', margin: '0 auto 3rem' }}>
+            <div className="sales-guarantee-seal" style={{ borderColor: '#facc15', background: 'rgba(250,204,21,0.1)', width: '5rem', height: '5rem' }}>
+              <div style={{ textAlign: 'center', color: '#facc15', lineHeight: 1 }}>
+                <span style={{ display: 'block', fontSize: '1.8rem', fontWeight: 900 }}>7</span>
+                <small style={{ fontSize: '0.6rem', fontWeight: 800 }}>DIAS</small>
+              </div>
+            </div>
+            <div>
+              <h2 style={{ fontSize: '1.4rem' }}>Garantia incondicional de 7 dias</h2>
+              <p style={{ fontSize: '0.85rem' }}>Teste a Biblioteca HQ por 7 dias. Se não gostar, é só pedir o reembolso. Sem burocracia, sem perguntas. Seu risco é zero.</p>
+            </div>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '0.5rem', fontSize: '0.75rem', color: '#cbd5e1' }}>
+              <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><svg viewBox="0 0 24 24" width="14" fill="none" stroke="#facc15" strokeWidth="2"><path d="M20 6L9 17l-5-5"/></svg> 100% de satisfação</li>
+              <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><svg viewBox="0 0 24 24" width="14" fill="none" stroke="#facc15" strokeWidth="2"><path d="M20 6L9 17l-5-5"/></svg> Reembolso garantido</li>
+              <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><svg viewBox="0 0 24 24" width="14" fill="none" stroke="#facc15" strokeWidth="2"><path d="M20 6L9 17l-5-5"/></svg> Sem burocracia</li>
+              <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><svg viewBox="0 0 24 24" width="14" fill="none" stroke="#facc15" strokeWidth="2"><path d="M20 6L9 17l-5-5"/></svg> Seu dinheiro de volta</li>
+            </ul>
+          </div>
+
+          <div className="sales-offer-v2" style={{ padding: '2rem', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '2rem', borderRadius: '1.5rem', border: '1px solid rgba(255,255,255,0.1)', background: 'linear-gradient(135deg, rgba(20,27,36,0.95), rgba(9,13,18,0.96))' }}>
+            <div style={{ flex: '1 1 300px' }}>
+              <h2 style={{ fontSize: '2rem', color: 'white', margin: 0, lineHeight: 1.1 }}>Comece hoje mesmo <br/>sua jornada no mundo dos HQs</h2>
+              <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginTop: '1rem' }}>Acesso imediato, pagamento único e todo o acervo organizado para você explorar quando e onde quiser.</p>
+            </div>
+            
+            <div style={{ flex: '1 1 300px', textAlign: 'right' }}>
+              <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                <span style={{ color: '#71717a', textDecoration: 'line-through', fontSize: '0.9rem' }}>De R$ 29,99</span>
+                <strong style={{ color: '#facc15', fontSize: '3rem', lineHeight: 1, margin: '0.2rem 0 1rem' }}><small style={{ fontSize: '1.2rem', verticalAlign: 'super' }}>R$</small> 19,99</strong>
+                <button 
+                  onClick={checkout}
+                  className="sales-stage-one__primary" 
+                  style={{ width: '100%', padding: '1rem 2rem', fontSize: '1rem', minHeight: '3.8rem' }}
+                >
+                  <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M8 5v14l11-7z"/></svg>
+                  Garantir acesso agora
+                </button>
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', fontSize: '0.65rem', color: '#94a3b8', justifyContent: 'center', width: '100%' }}>
+                   <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}><svg viewBox="0 0 24 24" width="12" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg> Pagamento único</span>
+                   <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}><svg viewBox="0 0 24 24" width="12" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg> Checkout seguro</span>
+                </div>
+              </div>
             </div>
           </div>
         </section>
