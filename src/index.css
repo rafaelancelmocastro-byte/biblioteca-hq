@@ -762,3 +762,76 @@ button, input, select { font: inherit; }
 /* Brand overrides para ficar clean igual a imagem */
 .brand-copy strong { color: #fff; font-size: 1.2rem; }
 .brand-copy strong span { color: #facc15; }
+
+
+/* Login brand sizing — scoped so other screens stay untouched */
+.login-card .login-brand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .75rem;
+  max-width: 100%;
+  margin-inline: auto;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.login-card .login-brand .brand-mark {
+  display: block;
+  width: 58px;
+  height: 58px;
+  flex: 0 0 58px;
+  object-fit: contain;
+}
+
+.login-card .login-brand .brand-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .12rem;
+  line-height: 1.1;
+}
+
+.login-card .login-brand .brand-copy strong {
+  margin: 0;
+  font-size: 1.08rem;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.login-card .login-brand .brand-copy small {
+  max-width: 18rem;
+  color: #8d98a5;
+  font-size: .64rem;
+  line-height: 1.25;
+  letter-spacing: .015em;
+  white-space: normal;
+}
+
+.login-card .login-kicker {
+  margin-top: .65rem;
+  color: #c4ccd5;
+  font-size: .78rem;
+  line-height: 1.35;
+}
+
+@media (max-width: 480px) {
+  .login-card .login-brand { gap: .62rem; }
+  .login-card .login-brand .brand-mark {
+    width: 48px;
+    height: 48px;
+    flex-basis: 48px;
+  }
+  .login-card .login-brand .brand-copy strong { font-size: .98rem; }
+  .login-card .login-brand .brand-copy small { max-width: 13rem; font-size: .58rem; }
+  .login-card .login-kicker { margin-top: .55rem; font-size: .72rem; }
+}
+
+@media (min-width: 900px) {
+  .login-card .login-brand .brand-mark {
+    width: 62px;
+    height: 62px;
+    flex-basis: 62px;
+  }
+}
