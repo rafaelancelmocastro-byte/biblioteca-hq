@@ -14,7 +14,12 @@ type LastlinkPayload = {
   };
 };
 
-const allowedEvents = new Set(["Purchase_Order_Confirmed", "Payment_Refund", "Payment_Chargeback"]);
+const allowedEvents = new Set([
+  "Purchase_Order_Confirmed",
+  "Refund_Requested",
+  "Payment_Refund",
+  "Payment_Chargeback",
+]);
 
 const normalizeEmail = (value?: string) => (value || "").trim().toLowerCase();
 const offerCodeFromUrl = (value?: string) => value?.match(/lastlink\.com\/p\/([A-Z0-9]+)/i)?.[1]?.toUpperCase() || "";
@@ -82,11 +87,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }, { onConflict: "id" });
       if (accessError) throw accessError;
     } else if (userId && profile?.role !== "master") {
-      const { error: blockError } = await admin.from("profiles").update({ access_status: "blocked", is_active: false }).eq("id", userId);
+      const { error: blockError } = await admin
+        .from("profiles")
+        .update({ access_status: "blocked", is_active: false })
+        .eq("id", userId);
       if (blockError) throw blockError;
     }
 
-    const status = eventName === "Purchase_Order_Confirmed" ? "confirmed" : eventName === "Payment_Refund" ? "refunded" : "chargeback";
+    const status =
+      eventName === "Purchase_Order_Confirmed"
+        ? "confirmed"
+        : eventName === "Refund_Requested"
+          ? "refund_requested"
+          : eventName === "Payment_Refund"
+            ? "refunded"
+            : "chargeback";
     const { error: eventError } = await admin.from("lastlink_webhook_events").insert({
       event_id: eventId,
       event_name: eventName,
