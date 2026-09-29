@@ -3648,107 +3648,314 @@ html.reduce-transparency .catalog-secondary-action {
   border-radius: 999px;
   background: #020305;
 }
-@media (max-width: 1000px) {
+@media (max-width: 1100px) {
+  .sales-stage-one__header,
+  .sales-stage-one__hero {
+    width: min(100% - 2rem, 980px);
+  }
+
   .sales-stage-one__hero {
     grid-template-columns: 1fr;
-    gap: 1.5rem;
+    gap: 1.25rem;
+    min-height: auto;
+    padding: 1.5rem 0 3rem;
   }
+
   .sales-stage-one__copy {
-    max-width: 44rem;
+    max-width: 46rem;
     margin: 0 auto;
     text-align: center;
   }
-  .sales-stage-one__copy h1,
-  .sales-stage-one__copy > p {
-    margin-left: auto;
-    margin-right: auto;
+
+  .sales-stage-one__copy h1 {
+    max-width: 12ch;
+    margin-inline: auto;
+    font-size: clamp(3.1rem, 8vw, 4.6rem);
   }
+
+  .sales-stage-one__copy > p {
+    max-width: 40rem;
+    margin-inline: auto;
+  }
+
   .sales-stage-one__price,
   .sales-stage-one__actions {
     justify-content: center;
   }
+
   .sales-stage-one__trust {
-    max-width: 36rem;
-    margin-left: auto;
-    margin-right: auto;
+    width: min(100%, 38rem);
+    margin-inline: auto;
     text-align: left;
   }
+
   .sales-stage-one__devices {
-    width: min(100%, 42rem);
+    width: min(100%, 44rem);
     min-height: 34rem;
     margin: 0 auto;
   }
-  .sales-stage-one__phone--front { left: 12%; }
-  .sales-stage-one__phone--back { right: 8%; }
+
+  .sales-stage-one__phone-shell {
+    width: clamp(14.25rem, 30vw, 17.75rem);
+  }
+
+  .sales-stage-one__phone--front {
+    left: 10%;
+    top: 2%;
+  }
+
+  .sales-stage-one__phone--back {
+    right: 7%;
+    top: 10%;
+  }
 }
-@media (max-width: 700px) {
-  .sales-stage-one__header,
-  .sales-stage-one__hero {
-    width: min(100% - 1.25rem, 1180px);
-  }
+
+@media (max-width: 820px) {
   .sales-stage-one__header {
-    min-height: 4.5rem;
-    padding-top: .75rem;
+    min-height: 4.7rem;
+    padding-top: .7rem;
   }
+
   .sales-stage-one__categories {
     display: none;
   }
-  .sales-stage-one__access {
-    min-height: 2.35rem;
-    font-size: .68rem;
-    padding: 0 .8rem;
-  }
+
   .sales-stage-one__hero {
-    min-height: auto;
-    padding-top: 1.2rem;
+    padding-top: .8rem;
   }
+
   .sales-stage-one__copy h1 {
-    font-size: clamp(2.65rem, 12vw, 4rem);
+    font-size: clamp(2.75rem, 9.5vw, 4rem);
+    line-height: 1;
   }
-  .sales-stage-one__copy > p {
-    font-size: .94rem;
+
+  .sales-stage-one__devices {
+    min-height: 31rem;
   }
-  .sales-stage-one__price {
+
+  .sales-stage-one__phone-shell {
+    width: clamp(12.75rem, 35vw, 15.6rem);
+  }
+
+  .sales-stage-one__phone--front {
+    left: 8%;
+  }
+
+  .sales-stage-one__phone--back {
+    right: 5%;
+    top: 12%;
+  }
+}
+
+@media (max-width: 620px) {
+  .sales-stage-one {
+    overflow-x: hidden;
+  }
+
+  .sales-stage-one__header,
+  .sales-stage-one__hero {
+    width: min(calc(100% - 1.25rem), 1180px);
+  }
+
+  .sales-stage-one__header {
+    min-height: 4.2rem;
     gap: .65rem;
   }
-  .sales-stage-one__old-price {
-    font-size: 1.15rem;
+
+  .sales-stage-one__brand {
+    min-width: 0;
   }
+
+  .sales-stage-one__brand .brand-logo {
+    max-width: 10.8rem;
+  }
+
+  .sales-stage-one__access {
+    flex: none;
+    min-height: 2.25rem;
+    padding: 0 .72rem;
+    font-size: .64rem;
+    white-space: nowrap;
+  }
+
+  .sales-stage-one__hero {
+    gap: .6rem;
+    padding: .65rem 0 2rem;
+  }
+
+  .sales-stage-one__copy {
+    width: 100%;
+  }
+
+  .sales-stage-one__copy h1 {
+    max-width: 11.5ch;
+    font-size: clamp(2.25rem, 11.2vw, 3.35rem);
+    letter-spacing: -.045em;
+  }
+
+  .sales-stage-one__copy > p {
+    margin-top: .9rem;
+    max-width: 34rem;
+    font-size: .91rem;
+    line-height: 1.5;
+  }
+
+  .sales-stage-one__price {
+    margin-top: 1rem;
+    gap: .55rem;
+  }
+
+  .sales-stage-one__old-price {
+    font-size: 1.05rem;
+  }
+
+  .sales-stage-one__current-price {
+    font-size: clamp(2.65rem, 13vw, 3.45rem);
+  }
+
   .sales-stage-one__actions {
+    width: min(100%, 26rem);
+    margin: .85rem auto 0;
     display: grid;
     grid-template-columns: 1fr;
+    gap: .65rem;
   }
+
   .sales-stage-one__primary,
   .sales-stage-one__secondary {
     width: 100%;
+    min-height: 3.05rem;
   }
+
   .sales-stage-one__trust {
+    width: min(100%, 25rem);
+    margin-top: .95rem;
     grid-template-columns: 1fr;
-    max-width: 24rem;
-    gap: .55rem;
+    gap: .5rem;
   }
+
+  .sales-stage-one__trust > div {
+    justify-content: center;
+    text-align: left;
+    font-size: .64rem;
+  }
+
   .sales-stage-one__devices {
-    min-height: 28rem;
+    width: 100%;
+    min-height: clamp(24rem, 112vw, 30rem);
+    margin-top: .2rem;
   }
+
+  .sales-stage-one__glow {
+    inset: 14% 0 12%;
+  }
+
   .sales-stage-one__phone-shell {
-    width: clamp(11.2rem, 43vw, 14rem);
-    border-radius: 2.15rem;
+    width: clamp(10.4rem, 42vw, 12.9rem);
+    border-radius: 2rem;
+    padding: .34rem;
   }
+
   .sales-stage-one__phone-shell img,
   .sales-stage-one__phone-shell::after {
-    border-radius: 1.8rem;
+    border-radius: 1.65rem;
   }
+
   .sales-stage-one__dynamic-island {
-    width: 4.2rem;
-    height: 1rem;
-    top: .68rem;
+    width: 3.7rem;
+    height: .88rem;
+    top: .58rem;
   }
+
   .sales-stage-one__phone--front {
-    left: 4%;
-    top: 3%;
+    left: 5%;
+    top: 1%;
+    transform: rotate(-2deg);
   }
+
+  .sales-stage-one__phone--back {
+    right: 3%;
+    top: 11%;
+    transform: rotate(4deg) scale(.92);
+  }
+}
+
+@media (max-width: 390px) {
+  .sales-stage-one__header,
+  .sales-stage-one__hero {
+    width: min(calc(100% - .9rem), 1180px);
+  }
+
+  .sales-stage-one__access {
+    font-size: .6rem;
+    padding-inline: .6rem;
+  }
+
+  .sales-stage-one__copy h1 {
+    font-size: clamp(2rem, 11.4vw, 2.7rem);
+  }
+
+  .sales-stage-one__copy > p {
+    font-size: .86rem;
+  }
+
+  .sales-stage-one__trust > div {
+    justify-content: flex-start;
+  }
+
+  .sales-stage-one__devices {
+    min-height: 23rem;
+  }
+
+  .sales-stage-one__phone-shell {
+    width: clamp(9.6rem, 43vw, 11rem);
+  }
+
+  .sales-stage-one__phone--front {
+    left: 2%;
+  }
+
   .sales-stage-one__phone--back {
     right: 1%;
-    top: 13%;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 620px) and (min-width: 700px) {
+  .sales-stage-one__hero {
+    grid-template-columns: minmax(0, .95fr) minmax(24rem, 1.05fr);
+    align-items: center;
+    gap: 1.25rem;
+    min-height: calc(100dvh - 4.7rem);
+  }
+
+  .sales-stage-one__copy {
+    text-align: left;
+  }
+
+  .sales-stage-one__copy h1,
+  .sales-stage-one__copy > p {
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .sales-stage-one__copy h1 {
+    font-size: clamp(2.2rem, 5.8vw, 3.6rem);
+  }
+
+  .sales-stage-one__price,
+  .sales-stage-one__actions {
+    justify-content: flex-start;
+  }
+
+  .sales-stage-one__trust {
+    margin-left: 0;
+  }
+
+  .sales-stage-one__devices {
+    min-height: 25rem;
+  }
+
+  .sales-stage-one__phone-shell {
+    width: clamp(10.5rem, 18vw, 13rem);
   }
 }
