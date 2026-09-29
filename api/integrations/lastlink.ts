@@ -33,22 +33,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const url = process.env.VITE_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const secret = process.env.LASTLINK_WEBHOOK_SECRET;
+  const secret = (process.env.LASTLINK_WEBHOOK_SECRET || "").trim();
   const expectedOfferCode = (process.env.LASTLINK_OFFER_CODE || "C95A90981").toUpperCase();
 
   if (!url || !serviceRoleKey || !secret) return res.status(503).json({ error: "Integração indisponível." });
 
   const requestUrl = new URL(req.url || "/api/integrations/lastlink", "https://bibliotecahq.com.br");
-  const querySecret = requestUrl.searchParams.get("secret") || "";
+  const querySecret = (requestUrl.searchParams.get("secret") || "").trim();
   const bearerSecret = String(req.headers.authorization || "").replace(/^Bearer\s+/i, "").trim();
   const headerSecret = String(req.headers["x-webhook-secret"] || "").trim();
-  const providedSecret = querySecret || bearerSecret || headerSecret;
+  const providedSecret = (querySecret || bearerSecret || headerSecret).trim();
 
   if (providedSecret !== secret) {
     console.warn("Lastlink webhook unauthorized", {
       hasQuerySecret: Boolean(querySecret),
       hasBearerSecret: Boolean(bearerSecret),
       hasHeaderSecret: Boolean(headerSecret),
+      providedLength: providedSecret.length,
+      expectedLength: secret.length,
       requestPath: requestUrl.pathname,
     });
     return res.status(401).json({ error: "Unauthorized" });
