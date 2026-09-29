@@ -835,3 +835,60 @@ button, input, select { font: inherit; }
     flex-basis: 62px;
   }
 }
+
+
+/* Login/recovery fields — scoped only to LoginPage */
+.login-card form label,
+.login-card form label > div {
+  width: 100%;
+  min-width: 0;
+}
+
+.login-card .admin-field {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  box-sizing: border-box;
+  margin-top: .35rem;
+  padding: 0 .85rem;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: .75rem;
+  outline: none;
+  background: #0b1016;
+  color: #f3f6f8;
+  font-size: .875rem;
+  line-height: 1;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: border-color .16s ease, box-shadow .16s ease, background .16s ease;
+}
+
+.login-card .admin-field:hover {
+  border-color: rgba(255,255,255,.2);
+}
+
+.login-card .admin-field:focus {
+  border-color: rgba(168,186,207,.7);
+  box-shadow: 0 0 0 3px rgba(143,162,184,.12);
+  background: #0d131a;
+}
+
+.login-card input.admin-field[type="password"] {
+  padding-right: 2.6rem;
+}
+
+.login-card .admin-field:-webkit-autofill,
+.login-card .admin-field:-webkit-autofill:hover,
+.login-card .admin-field:-webkit-autofill:focus {
+  -webkit-text-fill-color: #f3f6f8;
+  -webkit-box-shadow: 0 0 0 1000px #0b1016 inset;
+  caret-color: #f3f6f8;
+}
+
+@media (max-width: 480px) {
+  .login-card .admin-field {
+    height: 46px;
+    font-size: 16px;
+  }
+}
