@@ -19,28 +19,67 @@ async function deleteSeries(req: VercelRequest, res: VercelResponse) {
   if (!url || !key) return res.status(503).json({ error: "Banco indisponível." });
 
   const admin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
-  const { count: childCount, error: childError } = await admin
+
+  // Resolve the complete active subtree first. A parent collection can have
+  // phases, sagas or one-shots even when it has zero direct editions.
+  const { data: activeSeries, error: seriesError } = await admin
     .from("series")
-    .select("id", { count: "exact", head: true })
-    .eq("parent_series_id", id)
+    .select("id,parent_series_id")
     .is("deleted_at", null);
 
-  if (childError) return res.status(400).json({ error: childError.message });
-  if (childCount) {
-    return res.status(409).json({ error: `Esta coleção contém ${childCount} saga(s). Mova ou exclua as sagas antes de excluir a coleção.` });
+  if (seriesError) return res.status(400).json({ error: seriesError.message });
+  if (!(activeSeries ?? []).some((item) => item.id === id)) {
+    return res.status(404).json({ error: "Agrupamento não encontrado ou já excluído." });
   }
+
+  const scope = new Set<string>([id]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const item of activeSeries ?? []) {
+      if (item.parent_series_id && scope.has(item.parent_series_id) && !scope.has(item.id)) {
+        scope.add(item.id);
+        changed = true;
+      }
+    }
+  }
+  const seriesIds = [...scope];
+
+  const { count: comicCount, error: countError } = await admin
+    .from("comics")
+    .select("id", { count: "exact", head: true })
+    .in("series_id", seriesIds)
+    .is("deleted_at", null);
+
+  if (countError) return res.status(400).json({ error: countError.message });
 
   const stamp = new Date().toISOString();
   const affected = deleteContents
-    ? await admin.from("comics").update({ deleted_at: stamp }).eq("series_id", id).is("deleted_at", null)
-    : await admin.from("comics").update({ series_id: null }).eq("series_id", id).is("deleted_at", null);
+    ? await admin.from("comics").update({ deleted_at: stamp }).in("series_id", seriesIds).is("deleted_at", null)
+    : await admin.from("comics").update({ series_id: null }).in("series_id", seriesIds).is("deleted_at", null);
 
-  if (affected.error) return res.status(400).json({ error: `Não foi possível atualizar as edições: ${affected.error.message}` });
+  if (affected.error) {
+    return res.status(400).json({ error: `Não foi possível atualizar as edições: ${affected.error.message}` });
+  }
 
-  const result = await admin.from("series").update({ deleted_at: stamp }).eq("id", id).is("deleted_at", null);
-  if (result.error) return res.status(400).json({ error: `Não foi possível excluir o agrupamento: ${result.error.message}` });
+  // Archive children together with the requested parent so no orphan phase or
+  // one-shot remains visible after deleting its collection.
+  const result = await admin
+    .from("series")
+    .update({ deleted_at: stamp })
+    .in("id", seriesIds)
+    .is("deleted_at", null);
 
-  return res.status(200).json({ deleted: true });
+  if (result.error) {
+    return res.status(400).json({ error: `Não foi possível excluir o agrupamento: ${result.error.message}` });
+  }
+
+  return res.status(200).json({
+    deleted: true,
+    seriesDeleted: seriesIds.length,
+    comicsAffected: comicCount ?? 0,
+    deleteContents,
+  });
 }
 
 async function upsertSeries(req: VercelRequest, res: VercelResponse) {
