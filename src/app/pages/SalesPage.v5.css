@@ -1045,81 +1045,187 @@
 
 .sales-v5__guarantee {
   display: grid;
-  grid-template-columns: 155px minmax(0, 1fr) minmax(260px, .65fr);
-  gap: 30px;
+  grid-template-columns: 190px minmax(0, 1.2fr) minmax(250px, .8fr);
   align-items: center;
-  margin-top: 46px;
-  margin-bottom: 70px;
-  border: 1px solid rgba(251, 191, 36, .2);
+  gap: 0;
+  margin-top: 48px;
+  margin-bottom: 76px;
+  border: 1px solid rgba(251, 191, 36, .22);
   border-radius: 28px;
-  background: linear-gradient(120deg, rgba(26, 21, 11, .92), rgba(14, 17, 25, .94));
-  padding: 30px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, .28);
+  background:
+    radial-gradient(circle at 8% 30%, rgba(245, 158, 11, .18), transparent 20%),
+    linear-gradient(90deg, rgba(25, 19, 10, .82) 0%, rgba(12, 15, 22, .96) 26%, rgba(8, 10, 16, .98) 100%);
+  padding: 28px 30px;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, .28);
+}
+
+.sales-v5__guarantee-sealWrap {
+  padding-right: 28px;
+}
+
+.sales-v5__guarantee-copy {
+  padding: 0 34px;
+  border-left: 1px solid rgba(255, 255, 255, .08);
+}
+
+.sales-v5__guarantee-copy > span {
+  display: inline-flex;
+  align-items: center;
+  color: #fbbf24;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+}
+
+.sales-v5__guarantee-list {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0 0 0 34px;
+  list-style: none;
+  border-left: 1px solid rgba(255, 255, 255, .08);
 }
 
 .sales-v5__seal {
   position: relative;
-  display: grid;
-  place-content: center;
   width: 132px;
   height: 132px;
-  border: 2px solid #fbbf24;
+  margin: 0 auto;
+  display: grid;
+  place-items: center;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(251, 191, 36, .2), rgba(7, 8, 12, .94) 67%);
-  color: #fbbf24;
-  text-align: center;
-  box-shadow: 0 0 35px rgba(245, 158, 11, .14);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(251, 191, 36, .18), rgba(251, 191, 36, .04) 58%, transparent 60%),
+    linear-gradient(145deg, #fbbf24, #f59e0b);
+  box-shadow:
+    0 0 0 6px rgba(251, 191, 36, .07),
+    0 0 36px rgba(245, 158, 11, .26);
 }
 
-.sales-v5__seal svg {
+.sales-v5__seal::before {
+  content: "";
   position: absolute;
-  top: 16px;
-  left: 50%;
-  width: 18px;
-  height: 18px;
-  transform: translateX(-50%);
+  inset: 10px;
+  border-radius: 50%;
+  background: #090b10;
+  border: 1px solid rgba(251, 191, 36, .45);
 }
 
-.sales-v5__seal strong {
-  padding-top: 14px;
+.sales-v5__seal-inner {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  color: #fbbf24;
+}
+
+.sales-v5__seal-inner svg {
+  width: 16px;
+  height: 16px;
+  margin-bottom: 6px;
+}
+
+.sales-v5__seal-inner strong {
   font-family: "Syne", sans-serif;
-  font-size: 45px;
+  font-size: 46px;
   line-height: .9;
 }
 
-.sales-v5__seal span {
-  margin-top: 4px;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: .18em;
+.sales-v5__seal-inner span {
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+
+.sales-v5__seal-inner small {
+  margin-top: 6px;
+  min-height: 22px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: #fbbf24;
+  padding: 0 10px;
+  color: #09090b;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .05em;
 }
 
 .sales-v5__guarantee h2 {
-  font-size: clamp(28px, 3vw, 38px);
+  margin: 10px 0 0;
+  color: #fff;
+  font-family: "Syne", sans-serif;
+  font-size: clamp(34px, 4vw, 50px);
+  line-height: .98;
+  letter-spacing: -.05em;
 }
 
-.sales-v5__guarantee ul {
-  display: grid;
-  gap: 12px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  color: #c2c6cf;
-  font-size: 12px;
-  line-height: 1.5;
+.sales-v5__guarantee p {
+  margin: 16px 0 0;
+  color: #c0c4cd;
+  font-size: 15px;
+  line-height: 1.62;
 }
 
-.sales-v5__guarantee li {
+.sales-v5__guarantee-list li {
   display: flex;
   align-items: flex-start;
-  gap: 9px;
+  gap: 10px;
+  color: #e5e7eb;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
-.sales-v5__guarantee li svg {
+.sales-v5__guarantee-list li svg {
   width: 16px;
   height: 16px;
   flex: 0 0 auto;
-  color: #34d399;
+  margin-top: 1px;
+  color: #fbbf24;
+}
+
+@media (max-width: 1000px) {
+  .sales-v5__guarantee {
+    grid-template-columns: 1fr;
+    gap: 22px;
+  }
+
+  .sales-v5__guarantee-sealWrap {
+    padding-right: 0;
+  }
+
+  .sales-v5__guarantee-copy {
+    padding: 22px 0 0;
+    border-left: 0;
+    border-top: 1px solid rgba(255, 255, 255, .08);
+    text-align: center;
+  }
+
+  .sales-v5__guarantee-list {
+    padding: 22px 0 0;
+    border-left: 0;
+    border-top: 1px solid rgba(255, 255, 255, .08);
+  }
+}
+
+@media (max-width: 760px) {
+  .sales-v5__guarantee {
+    gap: 18px;
+    padding: 24px 20px;
+    text-align: center;
+  }
+
+  .sales-v5__guarantee-list {
+    text-align: left;
+  }
+
+  .sales-v5__seal {
+    width: 118px;
+    height: 118px;
+  }
 }
 
 .sales-v5__faq {
