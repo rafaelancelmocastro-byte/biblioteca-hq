@@ -5519,3 +5519,81 @@ html[data-app-device="tablet"] .app-touch-layout .streaming-page::before {
   .user-edit-fields label:nth-child(2) { grid-column:auto; }
   .user-edit-actions { display:grid; grid-template-columns:1fr 1fr; }
 }
+
+
+/* Mobile publication manager: keep metadata readable and actions out of the title column */
+@media (max-width: 640px) {
+  .catalog-manager .manager-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .catalog-manager-list {
+    gap: .7rem;
+    padding-right: 0;
+  }
+
+  .catalog-manager-list article {
+    grid-template-columns: 1.25rem 3.4rem minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-items: start;
+    gap: .65rem .7rem;
+    padding: .75rem;
+    min-width: 0;
+  }
+
+  .catalog-manager-list article > input[type="checkbox"] {
+    grid-column: 1;
+    grid-row: 1;
+    margin-top: .2rem;
+  }
+
+  .catalog-manager-list article > img {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    width: 3.4rem;
+    height: 5rem;
+    align-self: start;
+  }
+
+  .catalog-manager-list article > div {
+    grid-column: 3;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  .catalog-manager-list article > div > strong,
+  .catalog-manager-list article > div > span,
+  .catalog-manager-list article > div > small {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .catalog-manager-list article > div > strong {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .catalog-manager-list article > .manager-row-menu {
+    grid-column: 3;
+    grid-row: 2;
+    width: 100%;
+    min-width: 0;
+    margin-top: .1rem;
+  }
+
+  .catalog-manager-list .manager-row-menu summary {
+    display: flex;
+    min-height: 2.35rem;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    padding: .45rem .65rem;
+  }
+
+  .catalog-manager-list .manager-row-menu > div {
+    right: 0;
+    left: auto;
+    width: min(15rem, calc(100vw - 7rem));
+  }
+}
