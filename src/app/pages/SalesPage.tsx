@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   BookOpen,
   Check,
@@ -34,11 +34,14 @@ const SCREENS = [
 ];
 
 const COVERS = [
-  { id: "mask", title: "O Máskara", subtitle: "Dark Horse", image: "/sales-v5/cover_1.png" },
-  { id: "dragon", title: "Dragon Ball", subtitle: "Mangá", image: "/sales-v5/cover_2.png" },
-  { id: "100-balas", title: "100 Balas", subtitle: "Vertigo", image: "/sales-v5/cover_3.png" },
-  { id: "poe", title: "A Máscara da Morte Rubra", subtitle: "Graphic novel", image: "/sales-v5/cover_4.png" },
-  { id: "voyager", title: "Star Trek: Voyager", subtitle: "Ficção científica", image: "/sales-v5/offer_ref_5.png" },
+  { id: "batman", title: "Batman", subtitle: "DC", image: "/saga-art/batman.png" },
+  { id: "dc", title: "DC Comics", subtitle: "Editora", image: "/publisher-art/dc.png" },
+  { id: "x-men", title: "X-Men", subtitle: "Marvel", image: "/saga-art/x-men.png" },
+  { id: "superman", title: "Superman", subtitle: "DC", image: "/saga-art/superman.png" },
+  { id: "marvel", title: "Marvel", subtitle: "Editora", image: "/publisher-art/marvel.png" },
+  { id: "green-lantern", title: "Lanterna Verde", subtitle: "DC", image: "/saga-art/green-lantern.png" },
+  { id: "jbc", title: "JBC", subtitle: "Mangás", image: "/publisher-art/jbc.png" },
+  { id: "newpop", title: "NewPOP", subtitle: "Mangás", image: "/publisher-art/newpop.png" },
 ];
 
 const BENEFITS = [
@@ -83,7 +86,6 @@ export const SalesPage: React.FC<Props> = ({ hasAccess = false, onLogin, onOpenL
   }, []);
 
   const activeScreen = SCREENS[screenIndex] || SCREENS[0];
-  const activeCover = useMemo(() => COVERS[coverIndex] || COVERS[0], [coverIndex]);
 
   if (readerDemoOpen) {
     return <SalesReaderDemo onClose={() => setReaderDemoOpen(false)} />;
@@ -221,10 +223,9 @@ export const SalesPage: React.FC<Props> = ({ hasAccess = false, onLogin, onOpenL
           </section>
 
           <section className="sales-v5__section sales-v5__collections">
-            <div className="sales-v5__heading">
-              <span>EXPLORE COLEÇÕES</span>
-              <h2>Alguns títulos para sentir a experiência.</h2>
-              <p>O CoverFlow passa automaticamente entre uma pequena amostra, sem carregar todo o acervo.</p>
+            <div className="sales-v5__collections-heading">
+              <h2>Explore coleções incríveis</h2>
+              <p>Dos maiores clássicos aos títulos mais cults. Tudo organizado e pronto para você mergulhar.</p>
             </div>
 
             <div className="sales-v5__coverflow">
@@ -232,14 +233,12 @@ export const SalesPage: React.FC<Props> = ({ hasAccess = false, onLogin, onOpenL
                 items={COVERS}
                 activeIndex={coverIndex}
                 onChange={setCoverIndex}
-                label="Coleções em destaque"
+                label="Explore coleções incríveis"
                 autoPlayMs={3600}
+                visibleDistance={4}
+                spreadPercent={54}
+                rotationDeg={5}
               />
-              <div>
-                <small>EM DESTAQUE</small>
-                <strong>{activeCover.title}</strong>
-                <span>{activeCover.subtitle}</span>
-              </div>
             </div>
           </section>
 
