@@ -25,7 +25,7 @@ export type NavigationItem = {
 export const NAVIGATION_ITEMS: NavigationItem[] = [
   { label: "Biblioteca", path: "/biblioteca", icon: BookOpen, section: "Principal", description: "Todo o acervo" },
   { label: "Continuar Lendo", path: "/continuar", icon: History, description: "Retome de onde parou" },
-  { label: "Lançamentos", path: "/lancamentos", icon: CalendarDays, description: "Novidades e publicações recentes" },
+  { label: "Novidades", path: "/lancamentos", icon: CalendarDays, description: "Novos no acervo e lançamentos recentes" },
   { label: "Séries & Sagas", path: "/series", icon: Layers3, description: "Coleções, fases e sagas" },
   { label: "Mangás & Indie", path: "/multiverso", icon: BookMarked, section: "Descobrir", description: "Mangás, manhwas e independentes" },
   { label: "Guia de Leitura", path: "/guia", icon: Map, description: "Rotas e ordens de leitura" },
