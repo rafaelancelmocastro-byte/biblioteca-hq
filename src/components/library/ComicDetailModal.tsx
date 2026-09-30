@@ -30,7 +30,7 @@ interface ComicDetailModalProps {
   onToggleFavorite: (comicId: string) => void | Promise<boolean>;
   onOpenProgressModal: (comic: Comic) => void;
   onMarkCompleted: (comicId: string, totalPages: number) => void;
-  onResetProgress: (comicId: string) => void;
+  onResetProgress: (comicId: string) => void | Promise<void>;
 }
 
 export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
@@ -201,14 +201,15 @@ export const ComicDetailModal: React.FC<ComicDetailModalProps> = ({
             {/* Botão 1: Leitura */}
             <button
               type="button"
-              onClick={() => {
+              onClick={async () => {
+                if (isCompleted) await onResetProgress(comic.id);
                 onClose();
                 onOpenReader(comic.id);
               }}
               className="w-full h-11 px-4 rounded-xl bg-white text-black font-semibold text-xs sm:text-sm hover:bg-neutral-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg shadow-white/10 cursor-pointer whitespace-nowrap"
             >
               <BookOpen className="w-4 h-4 fill-current shrink-0" />
-              <span className="truncate">{percentage > 0 ? "Retomar Leitura" : "Iniciar Leitura"}</span>
+              <span className="truncate">{isCompleted ? "Reler" : percentage > 0 ? "Retomar Leitura" : "Iniciar Leitura"}</span>
             </button>
 
             {/* Botão 2: Offline - Otimizado para tablets/mobiles para nunca quebrar em duas linhas */}
