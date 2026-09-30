@@ -10,9 +10,22 @@ interface Props {
   onActivate?: (item: CoverFlowItem) => void;
   label: string;
   autoPlayMs?: number;
+  visibleDistance?: number;
+  spreadPercent?: number;
+  rotationDeg?: number;
 }
 
-export const CoverFlow: React.FC<Props> = ({ items, activeIndex, onChange, onActivate, label, autoPlayMs }) => {
+export const CoverFlow: React.FC<Props> = ({
+  items,
+  activeIndex,
+  onChange,
+  onActivate,
+  label,
+  autoPlayMs,
+  visibleDistance = 2,
+  spreadPercent = 62,
+  rotationDeg = 6,
+}) => {
   const start = useRef<{ x: number; y: number } | null>(null);
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -94,17 +107,17 @@ export const CoverFlow: React.FC<Props> = ({ items, activeIndex, onChange, onAct
           let distance = index - activeIndex;
           if (distance > count / 2) distance -= count;
           if (distance < -count / 2) distance += count;
-          const visible = Math.abs(distance) <= 2;
+          const visible = Math.abs(distance) <= visibleDistance;
           return (
             <button
               key={item.id}
               type="button"
               className={`cover-flow-card ${distance === 0 ? "active" : ""}`}
               style={{
-                "--flow-x": `${distance * 62}%`,
+                "--flow-x": `${distance * spreadPercent}%`,
                 "--flow-x-mobile": `${distance * 92}%`,
                 "--flow-z": `${Math.abs(distance) * -50}px`,
-                "--flow-rotate": `${distance * -6}deg`,
+                "--flow-rotate": `${distance * -rotationDeg}deg`,
                 "--flow-scale": 1.04 - Math.abs(distance) * 0.12,
                 "--flow-opacity": 1 - Math.min(Math.abs(distance) * 0.35, 0.75),
                 zIndex: count - Math.abs(distance),
