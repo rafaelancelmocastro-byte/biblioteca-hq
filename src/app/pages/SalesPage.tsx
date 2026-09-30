@@ -362,19 +362,31 @@ export const SalesPage: React.FC<Props> = ({ hasAccess = false, onLogin, onOpenL
           </section>
 
           <section className="sales-v5__guarantee">
-            <div className="sales-v5__seal"><ShieldCheck /><strong>7</strong><span>DIAS</span></div>
-            <div>
+            <div className="sales-v5__guarantee-sealWrap">
+              <div className="sales-v5__seal">
+                <div className="sales-v5__seal-inner">
+                  <ShieldCheck />
+                  <strong>7</strong>
+                  <span>DIAS</span>
+                  <small>GARANTIA</small>
+                </div>
+              </div>
+            </div>
+
+            <div className="sales-v5__guarantee-copy">
               <span>GARANTIA DE 7 DIAS</span>
-              <h2>Conheça a Biblioteca HQ com tranquilidade.</h2>
+              <h2>Garantia incondicional de 7 dias</h2>
               <p>
-                O pagamento é processado pela Lastlink. Se houver reembolso confirmado dentro do prazo
-                aplicável, o acesso vitalício também é revogado automaticamente.
+                Teste a Biblioteca HQ por 7 dias. Se não gostar, é só pedir o reembolso.
+                Sem burocracia, sem perguntas. Seu risco é zero.
               </p>
             </div>
-            <ul>
-              <li><Check /> Checkout oficial pela Lastlink</li>
-              <li><Check /> Liberação automática após confirmação</li>
-              <li><Check /> Revogação automática após reembolso confirmado</li>
+
+            <ul className="sales-v5__guarantee-list">
+              <li><Check /> 100% de satisfação</li>
+              <li><Check /> Reembolso garantido</li>
+              <li><Check /> Sem burocracia</li>
+              <li><Check /> Seu dinheiro de volta</li>
             </ul>
           </section>
 
