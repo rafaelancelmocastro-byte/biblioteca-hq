@@ -19,7 +19,19 @@ export async function openPublicationBook(file: File, remoteSource?: { getLength
     return makeBook(file) as Promise<PublicationBook>;
   }
 
-  if (format === "cbz") {
+  const signature = remoteSource
+    ? await remoteSource.read(0, 8)
+    : new Uint8Array(await file.slice(0, 8).arrayBuffer());
+  const isZip = signature[0] === 0x50 && signature[1] === 0x4b &&
+    ((signature[2] === 0x03 && signature[3] === 0x04) ||
+      (signature[2] === 0x05 && signature[3] === 0x06) ||
+      (signature[2] === 0x07 && signature[3] === 0x08));
+  const isRar = signature[0] === 0x52 && signature[1] === 0x61 &&
+    signature[2] === 0x72 && signature[3] === 0x21;
+
+  if (!isZip && !isRar) throw new Error("Arquivo de quadrinhos inválido ou corrompido.");
+
+  if (isZip) {
     const { BlobReader, BlobWriter, Reader, ZipReader, configure } = await import("@zip.js/zip.js");
     configure({ useWebWorkers: false });
     class RemoteZipReader extends Reader<null> {
