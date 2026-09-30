@@ -14,6 +14,7 @@ import {
   WifiOff,
   Zap,
   ZoomIn,
+  X,
 } from "lucide-react";
 import { CoverFlow } from "../../components/library/CoverFlow";
 import { SalesReaderDemo } from "./SalesReaderDemo";
@@ -307,6 +308,55 @@ export const SalesPage: React.FC<Props> = ({ hasAccess = false, onLogin, onOpenL
                   <span>Preço avulso: R$ 67,00</span>
                   <b>GRÁTIS HOJE</b>
                 </div>
+              </article>
+            </div>
+          </section>
+
+          <section className="sales-v5__section sales-v5__comparison">
+            <div className="sales-v5__comparison-heading">
+              <h2>Por que a Biblioteca HQ é a<br />escolha mais inteligente?</h2>
+              <p>Veja a diferença entre colecionar quadrinhos físicos, pagar mensalidades caras e ter seu acervo digital vitalício.</p>
+            </div>
+
+            <div className="sales-v5__comparison-grid">
+              <article className="sales-v5__comparison-card">
+                <span>COMPRAR HQS FÍSICAS</span>
+                <div className="sales-v5__comparison-price"><strong>R$ 60 a R$ 120</strong><small>/ por edição</small></div>
+                <ul>
+                  <li><X /> Muito caro para acompanhar sagas completas</li>
+                  <li><X /> Ocupa muito espaço e amarela com o tempo</li>
+                  <li><X /> Não dá para levar dezenas em viagens</li>
+                  <li><X /> Edições raras chegam a custar centenas de reais</li>
+                </ul>
+              </article>
+
+              <article className="sales-v5__comparison-card">
+                <span>ASSINATURAS MENSAIS</span>
+                <div className="sales-v5__comparison-price"><strong>R$ 39,90</strong><small>/ todo mês</small></div>
+                <ul>
+                  <li><X /> Custa mais de R$ 470,00 por ano</li>
+                  <li><X /> Se cancelar o pagamento, perde todo o acesso</li>
+                  <li><X /> Cobranças automáticas no seu cartão</li>
+                  <li><X /> Catálogos incompletos ou cheios de restrições</li>
+                </ul>
+              </article>
+
+              <article className="sales-v5__comparison-card sales-v5__comparison-card--featured">
+                <div className="sales-v5__comparison-badge">MELHOR CUSTO-BENEFÍCIO</div>
+                <span>BIBLIOTECA HQ</span>
+                <del>De R$ 29,99</del>
+                <div className="sales-v5__comparison-offer">R$ 19,99</div>
+                <b>PAGAMENTO ÚNICO</b>
+                <ul>
+                  <li><Check /> <strong>Acesso vitalício:</strong> pague uma vez e acesse para sempre</li>
+                  <li><Check /> <strong>Modo Offline:</strong> baixe e leia sem internet</li>
+                  <li><Check /> <strong>Leitura organizada:</strong> sagas, coleções e progresso em um só lugar</li>
+                  <li><Check /> Compatível com celular, tablet e computador</li>
+                  <li><Check /> Todos os 3 bônus exclusivos inclusos gratuitamente</li>
+                </ul>
+                <button type="button" className="sales-v5__comparison-cta" onClick={primaryAction}>
+                  <Play /> {hasAccess ? "Abrir minha biblioteca" : "Garantir por R$ 19,99"}
+                </button>
               </article>
             </div>
           </section>
