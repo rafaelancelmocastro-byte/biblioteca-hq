@@ -27,10 +27,13 @@ export async function inspectPublication(file: File, lightweight = false): Promi
     if (recordHeader.getUint16(12) !== 0) throw new Error("AZW3 com DRM não pode ser aberto no navegador. Use um arquivo sem proteção.");
   } else if (format === "epub" && !(header[0] === 0x50 && header[1] === 0x4b)) {
     throw new Error("EPUB inválido ou corrompido.");
-  } else if (format === "cbr" && !(header[0] === 0x52 && header[1] === 0x61 && header[2] === 0x72 && header[3] === 0x21)) {
-    throw new Error("CBR inválido ou corrompido.");
-  } else if (format === "cbz" && !(header[0] === 0x50 && header[1] === 0x4b)) {
-    throw new Error("CBZ inválido ou corrompido.");
+  } else if (format === "cbr" || format === "cbz") {
+    const isZip = header[0] === 0x50 && header[1] === 0x4b &&
+      ((header[2] === 0x03 && header[3] === 0x04) ||
+        (header[2] === 0x05 && header[3] === 0x06) ||
+        (header[2] === 0x07 && header[3] === 0x08));
+    const isRar = header[0] === 0x52 && header[1] === 0x61 && header[2] === 0x72 && header[3] === 0x21;
+    if (!isZip && !isRar) throw new Error("Arquivo de quadrinhos inválido ou corrompido.");
   }
 
   const book = await openPublicationBook(file);
