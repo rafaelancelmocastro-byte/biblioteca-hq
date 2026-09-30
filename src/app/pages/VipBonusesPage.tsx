@@ -8,8 +8,101 @@ GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 const TELEGRAM_URL = "https://t.me/magraodotrafego";
 
+const GuidePageCanvas: React.FC<{ pdf: PDFDocumentProxy; pageNumber: number }> = ({ pdf, pageNumber }) => {
+  const shellRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let disposed = false;
+    let renderTask: ReturnType<Awaited<ReturnType<typeof pdf.getPage>>["render"]> | null = null;
+    let resizeTimer = 0;
+
+    const render = async () => {
+      const shell = shellRef.current;
+      const canvas = canvasRef.current;
+      if (!shell || !canvas || disposed) return;
+
+      try {
+        setFailed(false);
+        renderTask?.cancel();
+
+        const page = await pdf.getPage(pageNumber);
+        if (disposed) return;
+
+        const base = page.getViewport({ scale: 1 });
+        const availableWidth = Math.max(260, Math.min(shell.clientWidth || 920, 920));
+        const cssScale = Math.min(1.5, availableWidth / base.width);
+        const qualityMultiplier = Math.min(2.5, Math.max(1.75, window.devicePixelRatio || 1));
+        const maxRenderScale = 2200 / base.width;
+        const renderScale = Math.min(cssScale * qualityMultiplier, maxRenderScale);
+        const viewport = page.getViewport({ scale: renderScale });
+
+        canvas.width = Math.max(1, Math.ceil(viewport.width));
+        canvas.height = Math.max(1, Math.ceil(viewport.height));
+        canvas.style.width = `${Math.floor(base.width * cssScale)}px`;
+        canvas.style.height = "auto";
+
+        const context = canvas.getContext("2d", { alpha: false });
+        if (!context) throw new Error("Canvas indisponível.");
+
+        context.save();
+        context.fillStyle = "#ffffff";
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.restore();
+
+        renderTask = page.render({
+          canvas,
+          canvasContext: context,
+          viewport,
+          background: "#ffffff",
+        });
+
+        await renderTask.promise;
+        page.cleanup();
+      } catch (error) {
+        if (!disposed && !(error instanceof Error && error.name === "RenderingCancelledException")) {
+          setFailed(true);
+        }
+      }
+    };
+
+    void render();
+
+    const onResize = () => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => void render(), 120);
+    };
+    window.addEventListener("resize", onResize);
+
+    return () => {
+      disposed = true;
+      window.clearTimeout(resizeTimer);
+      window.removeEventListener("resize", onResize);
+      renderTask?.cancel();
+    };
+  }, [pdf, pageNumber]);
+
+  return (
+    <div ref={shellRef} className="w-full">
+      {failed ? (
+        <div className="rounded-2xl border border-red-400/20 bg-red-400/[0.05] p-5 text-sm text-red-100">
+          Não foi possível renderizar a página {pageNumber}.
+        </div>
+      ) : (
+        <canvas
+          ref={canvasRef}
+          className="mx-auto block max-w-full rounded-2xl bg-white shadow-2xl shadow-black/30"
+          aria-label={`Página ${pageNumber} do guia`}
+        />
+      )}
+    </div>
+  );
+};
+
 const GuideViewer: React.FC<{ isOwner?: boolean }> = ({ isOwner = false }) => {
-  const holderRef = useRef<HTMLDivElement>(null);
+  const pdfRef = useRef<PDFDocumentProxy | null>(null);
+  const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [message, setMessage] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -19,12 +112,16 @@ const GuideViewer: React.FC<{ isOwner?: boolean }> = ({ isOwner = false }) => {
     if (loadKey === 0) return;
 
     let active = true;
-    let pdf: PDFDocumentProxy | null = null;
 
-    const renderGuide = async () => {
+    const loadGuide = async () => {
       try {
         setStatus("loading");
         setMessage("");
+        setPdf(null);
+
+        const previous = pdfRef.current;
+        pdfRef.current = null;
+        if (previous) await previous.destroy().catch(() => {});
 
         const session = await ensureActiveSession();
         if (!session?.access_token) throw new Error("Sua sessão expirou. Entre novamente.");
@@ -38,48 +135,22 @@ const GuideViewer: React.FC<{ isOwner?: boolean }> = ({ isOwner = false }) => {
 
         const fileResponse = await fetch(payload.readUrl, { cache: "no-store" });
         if (!fileResponse.ok) throw new Error("O guia ainda não foi enviado ao armazenamento VIP.");
+
         const source = new Uint8Array(await fileResponse.arrayBuffer());
+        const loadedPdf = await getDocument({
+          data: source,
+          disableAutoFetch: true,
+          disableStream: true,
+        }).promise;
 
-        pdf = await getDocument({ data: source, disableAutoFetch: true, disableStream: true }).promise;
-        if (!active || !holderRef.current) return;
-        holderRef.current.replaceChildren();
-
-        const maxWidth = Math.min(holderRef.current.parentElement?.clientWidth || 920, 920);
-        for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
-          if (!active || !holderRef.current) return;
-
-          const page = await pdf.getPage(pageNumber);
-          const base = page.getViewport({ scale: 1 });
-          const scale = Math.max(0.6, Math.min(1.7, maxWidth / base.width));
-          const viewport = page.getViewport({ scale });
-          const canvas = document.createElement("canvas");
-          canvas.width = Math.ceil(viewport.width);
-          canvas.height = Math.ceil(viewport.height);
-          canvas.className = "mx-auto block h-auto w-full max-w-[920px] rounded-2xl bg-white shadow-2xl shadow-black/30";
-          canvas.setAttribute("aria-label", `Página ${pageNumber} do guia`);
-
-          const context = canvas.getContext("2d", { alpha: true });
-          if (!context) throw new Error("Não foi possível preparar a página do guia.");
-          context.save();
-          context.fillStyle = "#ffffff";
-          context.fillRect(0, 0, canvas.width, canvas.height);
-          context.restore();
-
-          await page.render({
-            canvas,
-            canvasContext: context,
-            viewport,
-            background: "#ffffff",
-          }).promise;
-
-          if (!active || !holderRef.current) return;
-          holderRef.current.append(canvas);
-          page.cleanup();
-
-          if (pageNumber === 1) setStatus("ready");
+        if (!active) {
+          await loadedPdf.destroy().catch(() => {});
+          return;
         }
 
-        if (active) setStatus("ready");
+        pdfRef.current = loadedPdf;
+        setPdf(loadedPdf);
+        setStatus("ready");
       } catch (error) {
         if (active) {
           setMessage(error instanceof Error ? error.message : "Não foi possível abrir o guia.");
@@ -88,12 +159,23 @@ const GuideViewer: React.FC<{ isOwner?: boolean }> = ({ isOwner = false }) => {
       }
     };
 
-    void renderGuide();
+    void loadGuide();
     return () => {
       active = false;
-      void pdf?.destroy().catch(() => {});
     };
   }, [loadKey]);
+
+  useEffect(() => {
+    return () => {
+      const current = pdfRef.current;
+      pdfRef.current = null;
+      if (current) {
+        window.setTimeout(() => {
+          void current.destroy().catch(() => {});
+        }, 150);
+      }
+    };
+  }, []);
 
   const uploadGuide = async (file: File) => {
     if (file.type !== "application/pdf" && !/\.pdf$/i.test(file.name)) {
@@ -148,43 +230,60 @@ const GuideViewer: React.FC<{ isOwner?: boolean }> = ({ isOwner = false }) => {
 
   return (
     <div className="mt-6">
-      {status === "loading" && <div className="rounded-2xl border border-white/10 bg-black/20 p-6 text-sm text-neutral-300">Preparando o guia exclusivo...</div>}
+      {status === "loading" && (
+        <div className="rounded-2xl border border-white/10 bg-black/20 p-6 text-sm text-neutral-300">
+          Preparando o guia exclusivo...
+        </div>
+      )}
+
       {status === "error" && (
         <div role="alert" className="rounded-2xl border border-amber-400/20 bg-amber-400/[0.06] p-5 text-sm text-amber-100">
           <p>{message}</p>
-          <button
-            type="button"
-            onClick={() => setLoadKey((value) => value + 1)}
-            className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3 font-bold text-white transition hover:bg-white/[0.1] sm:w-auto"
-          >
-            Tentar abrir novamente
-          </button>
-          {isOwner && (
-            <label className="mt-4 inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 font-bold text-black transition hover:bg-neutral-200 sm:w-auto">
-              <UploadCloud className="h-4 w-4" />
-              {uploading ? "Enviando guia..." : "Enviar PDF ao armazenamento VIP"}
-              <input
-                type="file"
-                accept="application/pdf,.pdf"
-                className="sr-only"
-                disabled={uploading}
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  if (file) void uploadGuide(file);
-                  event.currentTarget.value = "";
-                }}
-              />
-            </label>
-          )}
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <button
+              type="button"
+              onClick={() => setLoadKey((value) => value + 1)}
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3 font-bold text-white transition hover:bg-white/[0.1] sm:w-auto"
+            >
+              Tentar abrir novamente
+            </button>
+            {isOwner && (
+              <label className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 font-bold text-black transition hover:bg-neutral-200 sm:w-auto">
+                <UploadCloud className="h-4 w-4" />
+                {uploading ? "Enviando guia..." : "Enviar PDF ao armazenamento VIP"}
+                <input
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  className="sr-only"
+                  disabled={uploading}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) void uploadGuide(file);
+                    event.currentTarget.value = "";
+                  }}
+                />
+              </label>
+            )}
+          </div>
         </div>
       )}
-      <div
-        ref={holderRef}
-        onContextMenu={(event) => event.preventDefault()}
-        className={`space-y-4 select-none ${status === "ready" ? "" : "hidden"}`}
-        aria-label="Visualizador do Guia Definitivo de Leitura Marvel e DC"
-      />
-      {status === "ready" && <p className="mt-4 text-center text-xs text-neutral-500">Visualização exclusiva dentro da Biblioteca HQ. O sistema não exibe opção de download.</p>}
+
+      {status === "ready" && pdf && (
+        <>
+          <div
+            onContextMenu={(event) => event.preventDefault()}
+            className="space-y-4 select-none"
+            aria-label="Visualizador do Guia Definitivo de Leitura Marvel e DC"
+          >
+            {Array.from({ length: pdf.numPages }, (_, index) => (
+              <GuidePageCanvas key={index + 1} pdf={pdf} pageNumber={index + 1} />
+            ))}
+          </div>
+          <p className="mt-4 text-center text-xs text-neutral-500">
+            Visualização exclusiva dentro da Biblioteca HQ. O sistema não exibe opção de download.
+          </p>
+        </>
+      )}
     </div>
   );
 };
