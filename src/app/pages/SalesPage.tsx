@@ -42,12 +42,12 @@ const COVERS = [
 ];
 
 const BENEFITS = [
-  { icon: InfinityIcon, title: "Acesso vitalício", copy: "Pagamento único nesta oferta, sem mensalidade recorrente." },
-  { icon: MonitorSmartphone, title: "Leia onde quiser", copy: "Celular, tablet e computador com a mesma conta." },
-  { icon: Layers3, title: "Coleções organizadas", copy: "Editoras, sagas, fases e edições em ordem." },
-  { icon: Zap, title: "Continue de onde parou", copy: "Seu progresso acompanha a conta entre dispositivos." },
-  { icon: WifiOff, title: "Leitura offline", copy: "Baixe títulos compatíveis para ler sem internet." },
-  { icon: ZoomIn, title: "Leitor confortável", copy: "Zoom, ajuste da página e controles próprios para HQs." },
+  { icon: InfinityIcon, title: "Acesso vitalício", copy: "Pague uma vez e tenha acesso para sempre." },
+  { icon: MonitorSmartphone, title: "Leia onde quiser", copy: "No celular, tablet ou computador, com a mesma experiência." },
+  { icon: Layers3, title: "Coleções organizadas", copy: "Encontre sagas, editoras e fases em ordem cronológica." },
+  { icon: Zap, title: "Continue de onde parou", copy: "Suas leituras ficam salvas, prontas para retomar." },
+  { icon: WifiOff, title: "Leitura offline", copy: "Baixe títulos compatíveis para continuar lendo sem internet." },
+  { icon: ZoomIn, title: "Experiência fluida", copy: "Leitor confortável, rápido e pensado para quem realmente ama HQs." },
 ];
 
 const FAQ = [
@@ -243,16 +243,17 @@ export const SalesPage: React.FC<Props> = ({ hasAccess = false, onLogin, onOpenL
             </div>
           </section>
 
-          <section className="sales-v5__section" id="beneficios">
-            <div className="sales-v5__heading">
+          <section className="sales-v5__section sales-v5__benefits-section" id="beneficios">
+            <div className="sales-v5__benefits-heading">
               <span>POR QUE BIBLIOTECA HQ?</span>
-              <h2>Feita para ler, não apenas armazenar arquivos.</h2>
+              <h2>Por que escolher a Biblioteca HQ?</h2>
+              <p>Uma plataforma pensada para leitores, do seu jeito.</p>
             </div>
 
             <div className="sales-v5__benefits">
               {BENEFITS.map(({ icon: Icon, title, copy }) => (
                 <article key={title}>
-                  <Icon />
+                  <div className="sales-v5__benefit-icon"><Icon /></div>
                   <strong>{title}</strong>
                   <p>{copy}</p>
                 </article>
