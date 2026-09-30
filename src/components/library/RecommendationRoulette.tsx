@@ -96,34 +96,34 @@ export const RecommendationRoulette: React.FC<RecommendationRouletteProps> = ({ 
 
   return (
     <section className="p-5 sm:p-7 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-md" aria-labelledby="recommendation-card-title">
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
-        <div className="flex items-start sm:items-center gap-4 flex-1 min-w-0">
+      <div className="flex min-w-0 flex-col items-start justify-between gap-5 overflow-hidden md:flex-row md:items-center">
+        <div className="flex w-full min-w-0 flex-1 items-start gap-3 overflow-hidden sm:items-center sm:gap-4">
           {coverUrl ? (
             <img
               src={coverUrl}
               alt={`Capa de ${recommendation.title}`}
-              className="w-16 sm:w-20 aspect-[2/3] object-cover rounded-xl shadow-md border border-white/10 shrink-0"
+              className="w-14 sm:w-20 aspect-[2/3] object-cover rounded-xl shadow-md border border-white/10 shrink-0"
               loading="lazy"
               onError={retryCover}
             />
           ) : (
-            <div className="w-16 sm:w-20 aspect-[2/3] rounded-xl bg-neutral-800 flex items-center justify-center text-xs font-bold text-neutral-400 shrink-0">
+            <div className="w-14 sm:w-20 aspect-[2/3] rounded-xl bg-neutral-800 flex items-center justify-center text-xs font-bold text-neutral-400 shrink-0">
               HQ
             </div>
           )}
 
-          <div className="flex flex-col min-w-0">
-            <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-1">
+          <div className="flex min-w-0 max-w-full flex-1 flex-col overflow-hidden">
+            <span className="mb-1 max-w-full text-xs font-semibold uppercase tracking-wider text-neutral-400">
               Não sabe o que ler?
             </span>
-            <h3 id="recommendation-card-title" className="text-base sm:text-lg font-bold text-white tracking-tight truncate">
+            <h3 id="recommendation-card-title" className="max-w-full break-words text-base font-bold tracking-tight text-white line-clamp-2 sm:text-lg">
               {recommendation.title}
             </h3>
-            <p className="text-xs text-neutral-400 mt-0.5 truncate">
+            <p className="mt-0.5 max-w-full break-words text-xs leading-relaxed text-neutral-400 line-clamp-2">
               {recommendation.seriesTitle} · #{recommendation.issueNumber} · {recommendation.publisher} ({recommendation.year})
             </p>
             {recommendation.synopsis && (
-              <p className="text-xs text-neutral-400 line-clamp-2 mt-1.5 max-w-xl">
+              <p className="mt-1.5 max-w-full break-words text-xs leading-relaxed text-neutral-400 line-clamp-2 sm:max-w-xl">
                 {recommendation.synopsis}
               </p>
             )}
