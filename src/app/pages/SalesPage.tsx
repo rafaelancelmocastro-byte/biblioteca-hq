@@ -260,23 +260,53 @@ export const SalesPage: React.FC<Props> = ({ hasAccess = false, onLogin, onOpenL
           </section>
 
           <section className="sales-v5__section sales-v5__bonus">
-            <div className="sales-v5__heading">
-              <span>BÔNUS VIP</span>
-              <h2>Dois extras já incluídos no acesso vitalício.</h2>
+            <div className="sales-v5__bonus-heading">
+              <span><Gift /> BÔNUS EXCLUSIVOS INCLUSOS HOJE</span>
+              <h2>Mais de R$ 150 em bônus<br />liberados gratuitamente</h2>
+              <p>
+                Ao garantir seu acesso vitalício à Biblioteca HQ, você recebe estes 3 complementos
+                indispensáveis sem pagar 1 centavo a mais.
+              </p>
             </div>
 
             <div className="sales-v5__bonus-grid">
               <article>
-                <BookOpen />
-                <small>BÔNUS #01</small>
-                <strong>Guia completo das principais leituras de Marvel & DC</strong>
-                <p>Mapa de leitura disponível para visualização dentro da área VIP da Biblioteca HQ.</p>
+                <div className="sales-v5__bonus-top">
+                  <small>BÔNUS #01</small>
+                  <del>R$ 47,00</del>
+                </div>
+                <strong>Guia Definitivo de Ordem<br />Cronológica DC & Marvel</strong>
+                <p>Mapas de leitura detalhados para nunca mais se perder em mega sagas, crossovers e fases clássicas.</p>
+                <div className="sales-v5__bonus-footer">
+                  <span>Preço avulso: R$ 47,00</span>
+                  <b>GRÁTIS HOJE</b>
+                </div>
               </article>
+
               <article>
-                <Send />
-                <small>BÔNUS #02</small>
-                <strong>Canal VIP para pedidos e sugestões</strong>
-                <p>Um espaço exclusivo para sugerir novos títulos, coleções e melhorias para o acervo.</p>
+                <div className="sales-v5__bonus-top">
+                  <small>BÔNUS #02</small>
+                  <del>R$ 37,00</del>
+                </div>
+                <strong>Canal VIP de Pedidos &<br />Sugestões de Novos Títulos</strong>
+                <p>Envie sugestões de mangás ou HQs raras para serem adicionadas ao acervo prioritariamente para você.</p>
+                <div className="sales-v5__bonus-footer">
+                  <span>Preço avulso: R$ 37,00</span>
+                  <b>GRÁTIS HOJE</b>
+                </div>
+              </article>
+
+              <article>
+                <div className="sales-v5__bonus-top">
+                  <small>BÔNUS #03</small>
+                  <del>R$ 67,00</del>
+                </div>
+                <strong>Coleções de obras raras e<br />graphic novels</strong>
+                <p>Edições históricas digitalizadas em altíssima qualidade que não são mais encontradas em livrarias físicas.</p>
+                <div className="sales-v5__bonus-footer">
+                  <span>Preço avulso: R$ 67,00</span>
+                  <b>GRÁTIS HOJE</b>
+                </div>
               </article>
             </div>
           </section>
