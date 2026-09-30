@@ -44,6 +44,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const config = getR2Config();
   if (!config) return res.status(503).json({ error: "Serviço de armazenamento indisponível." });
 
+  if (action === "vip-guide-upload") {
+    const key = "vip/guia-definitivo-marvel-dc.pdf";
+    const uploadUrl = await getSignedUrl(
+      createR2Client(config),
+      new PutObjectCommand({
+        Bucket: config.bucketName,
+        Key: key,
+        ContentType: "application/pdf",
+        Metadata: { purpose: "vip-reading-guide" },
+      }),
+      { expiresIn: 900 }
+    );
+    return res.status(200).json({ key, uploadUrl, expiresInSeconds: 900, maxBytes: 20 * 1024 * 1024 });
+  }
+
   if (action === "vip-guide") {
     const key = "vip/guia-definitivo-marvel-dc.pdf";
     const readUrl = await getSignedUrl(

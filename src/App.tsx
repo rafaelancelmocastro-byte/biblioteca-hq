@@ -168,7 +168,7 @@ export default function App() {
       {activeRoute === "/multiverso" && <IndieMangaPage onOpenReader={openReader} />}
 
       {activeRoute === "/preferencias" && <PreferencesPage userId={effectiveUserId || ""} />}
-      {activeRoute === "/bonus-vip" && <VipBonusesPage />}
+      {activeRoute === "/bonus-vip" && <VipBonusesPage isOwner={isOwner} />}
 
       {activeRoute === "/favoritos" && (
         <FavoritesPage
