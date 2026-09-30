@@ -141,6 +141,12 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
 
   const featuredComic = featuredCandidates[featuredIndex % Math.max(featuredCandidates.length, 1)];
 
+  const resetComicProgress = React.useCallback(async (comicId: string) => {
+    const comic = allComics.find((item) => item.id === comicId);
+    if (!comic) return;
+    await setStatus(comicId, "not_started", comic.totalPages);
+  }, [allComics, setStatus]);
+
   React.useEffect(() => {
     const priority = [
       ...featuredCandidates,
@@ -213,12 +219,19 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
             {/* CTAs principais */}
             <div className="flex flex-wrap items-center justify-center gap-3 mt-4">
               <button
-                onClick={() => onOpenReader(featuredComic.id)}
+                onClick={async () => {
+                  if (featuredComic.progress?.status === "completed") {
+                    await resetComicProgress(featuredComic.id);
+                  }
+                  onOpenReader(featuredComic.id);
+                }}
                 className="h-11 px-6 sm:px-7 rounded-full bg-white text-black font-semibold text-xs sm:text-sm hover:bg-neutral-200 transition-colors shadow-lg cursor-pointer flex items-center justify-center gap-2 max-w-full"
               >
                 <BookOpen className="w-4 h-4 shrink-0" />
                 <span>
-                  {((featuredComic.progress?.currentPage || 0) > 0 || (featuredComic.progress?.percentage || 0) > 0)
+                  {featuredComic.progress?.status === "completed"
+                    ? "Reler"
+                    : ((featuredComic.progress?.currentPage || 0) > 0 || (featuredComic.progress?.percentage || 0) > 0)
                     ? "Retomar"
                     : "Iniciar Leitura"}
                 </span>
@@ -252,7 +265,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
           onOpenDetails={(comic) => setSelectedComic(comic)}
           onOpenProgressModal={(comic) => setComicForProgress(comic)}
           onMarkCompleted={(id, total) => setStatus(id, "completed", total)}
-          onResetProgress={(id) => setStatus(id, "not_started", 10)}
+          onResetProgress={resetComicProgress}
         />
       )}
 
@@ -290,7 +303,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
                 onOpenDetails={setSelectedComic}
                 onOpenProgressModal={setComicForProgress}
                 onMarkCompleted={(id, total) => setStatus(id, "completed", total)}
-                onResetProgress={(id) => setStatus(id, "not_started", 10)}
+                onResetProgress={resetComicProgress}
               />
             ))}
           </div>
@@ -337,7 +350,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
           onOpenDetails={(comic) => setSelectedComic(comic)}
           onOpenProgressModal={(comic) => setComicForProgress(comic)}
           onMarkCompleted={(id, total) => setStatus(id, "completed", total)}
-          onResetProgress={(id) => setStatus(id, "not_started", 10)}
+          onResetProgress={resetComicProgress}
           density={gridDensity}
           onResetFilters={resetFilters}
         />
@@ -396,8 +409,8 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
           setStatus(id, "completed", total);
           setSelectedComic(null);
         }}
-        onResetProgress={(id) => {
-          setStatus(id, "not_started", 10);
+        onResetProgress={async (id) => {
+          await resetComicProgress(id);
           setSelectedComic(null);
         }}
       />
