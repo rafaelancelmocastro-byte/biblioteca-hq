@@ -1,0 +1,196 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="480" viewBox="0 0 480 480" fill="none">
+  <g stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" opacity="0.06">
+    <!-- Chat Speech Bubble with dots -->
+    <path d="M40 35 C40 25, 75 25, 75 35 C75 42, 68 47, 56 47 L46 54 L48 46 C42 45, 40 40, 40 35 Z" />
+    <circle cx="50" cy="35" r="1.5" fill="white" />
+    <circle cx="58" cy="35" r="1.5" fill="white" />
+    <circle cx="66" cy="35" r="1.5" fill="white" />
+
+    <!-- Coffee Cup -->
+    <path d="M125 38 L155 38 L150 62 C150 66, 130 66, 130 62 Z" />
+    <path d="M153 43 C160 43, 160 52, 151 54" />
+    <path d="M136 28 C136 32, 139 33, 139 36" />
+    <path d="M144 26 C144 30, 147 31, 147 34" />
+
+    <!-- Clock (09:28 style) -->
+    <rect x="200" y="28" width="52" height="26" rx="6" />
+    <text x="226" y="46" font-family="monospace" font-size="11" font-weight="bold" fill="white" stroke="none" text-anchor="middle">09:28</text>
+
+    <!-- Headphone -->
+    <path d="M305 50 C305 32, 335 32, 335 50" />
+    <rect x="301" y="46" width="8" height="15" rx="3" />
+    <rect x="331" y="46" width="8" height="15" rx="3" />
+
+    <!-- Comic Book / Open Book -->
+    <path d="M395 35 C405 32, 415 35, 425 38 C435 35, 445 32, 455 35 L455 60 C445 57, 435 60, 425 63 C415 60, 405 57, 395 60 Z" />
+    <line x1="425" y1="38" x2="425" y2="63" />
+
+    <!-- Star & Sparkles -->
+    <path d="M95 100 L98 107 L105 108 L100 113 L101 120 L95 116 L89 120 L90 113 L85 108 L92 107 Z" />
+    <circle cx="165" cy="105" r="2.5" />
+    <circle cx="280" cy="95" r="1.5" />
+
+    <!-- Bicycle -->
+    <circle cx="205" cy="120" r="14" />
+    <circle cx="250" cy="120" r="14" />
+    <path d="M205 120 L222 105 L238 120 L222 120 L215 105 L228 105" />
+    <path d="M238 120 L242 100 L234 100" />
+    <line x1="222" y1="105" x2="222" y2="98" />
+    <line x1="217" y1="98" x2="227" y2="98" />
+
+    <!-- Cute Smiling Octopus / Monster with sunglasses -->
+    <path d="M340 135 C340 115, 380 115, 380 135 C380 148, 375 155, 375 160 C375 165, 370 167, 365 162 C360 167, 355 165, 350 160 C345 165, 340 160, 340 135 Z" />
+    <!-- Sunglasses -->
+    <rect x="348" y="128" width="10" height="7" rx="2" />
+    <rect x="362" y="128" width="10" height="7" rx="2" />
+    <line x1="358" y1="131" x2="362" y2="131" />
+    <path d="M356 142 Q360 146 364 142" />
+
+    <!-- Camera -->
+    <rect x="415" y="115" width="36" height="26" rx="5" />
+    <path d="M427 115 L431 110 L439 110 L443 115" />
+    <circle cx="433" cy="128" r="7" />
+    <circle cx="444" cy="120" r="1.5" />
+
+    <!-- BFF Heart / Love Speech -->
+    <path d="M45 175 C45 165, 60 165, 68 175 C76 165, 91 165, 91 175 C91 190, 68 202, 68 202 C68 202, 45 190, 45 175 Z" />
+    <text x="68" y="185" font-family="sans-serif" font-size="8" font-weight="bold" fill="white" stroke="none" text-anchor="middle">BFF</text>
+
+    <!-- Speech bubble "Hi" -->
+    <rect x="125" y="170" width="34" height="24" rx="6" />
+    <path d="M135 194 L131 202 L142 194" />
+    <text x="142" y="186" font-family="sans-serif" font-size="11" font-weight="bold" fill="white" stroke="none" text-anchor="middle">Hi</text>
+
+    <!-- Glasses -->
+    <circle cx="215" cy="185" r="9" />
+    <circle cx="245" cy="185" r="9" />
+    <path d="M224 185 Q230 181 236 185" />
+    <line x1="206" y1="183" x2="198" y2="178" />
+    <line x1="254" y1="183" x2="262" y2="178" />
+
+    <!-- Game Controller -->
+    <rect x="295" y="185" width="42" height="24" rx="8" />
+    <line x1="305" y1="194" x2="305" y2="202" />
+    <line x1="301" y1="198" x2="309" y2="198" />
+    <circle cx="323" cy="195" r="1.5" fill="white" />
+    <circle cx="329" cy="201" r="1.5" fill="white" />
+
+    <!-- Lightbulb -->
+    <path d="M420 185 C412 185, 408 192, 412 200 C414 204, 416 206, 416 210 L424 210 C424 206, 426 204, 428 200 C432 192, 428 185, 420 185 Z" />
+    <line x1="416" y1="213" x2="424" y2="213" />
+    <line x1="418" y1="216" x2="422" y2="216" />
+
+    <!-- Thumbs up -->
+    <path d="M48 270 L48 290 L40 290 L40 270 Z" />
+    <path d="M48 275 L58 275 C62 275, 66 270, 64 263 C63 258, 59 252, 59 248 C59 245, 55 245, 54 249 L52 260 L48 262" />
+    <path d="M48 290 C56 290, 68 288, 68 282 C68 278, 66 276, 62 275" />
+
+    <!-- Music Note -->
+    <circle cx="120" cy="275" r="4" />
+    <circle cx="138" cy="268" r="4" />
+    <line x1="124" y1="275" x2="124" y2="250" />
+    <line x1="142" y1="268" x2="142" y2="243" />
+    <line x1="124" y1="250" x2="142" y2="243" stroke-width="2.5" />
+
+    <!-- Submarine / Spaceship -->
+    <ellipse cx="225" cy="265" rx="22" ry="12" />
+    <path d="M220 253 L220 245 L228 245" />
+    <circle cx="218" cy="265" r="3" />
+    <circle cx="230" cy="265" r="3" />
+    <path d="M203 261 L196 257 L196 273 L203 269 Z" />
+
+    <!-- Donut -->
+    <ellipse cx="315" cy="265" rx="14" ry="12" />
+    <ellipse cx="315" cy="265" rx="5" ry="4" />
+    <path d="M305 260 Q315 256 325 260" stroke-dasharray="2 3" />
+
+    <!-- Comic speech bubble with jagged edge (POW style) -->
+    <path d="M400 260 L406 252 L414 256 L422 248 L428 255 L438 250 L436 260 L446 265 L438 272 L444 280 L432 280 L430 289 L420 283 L412 288 L410 279 L400 278 L404 270 Z" />
+
+    <!-- Peace / Victory Hand Sign -->
+    <path d="M55 350 L55 375 L45 375 L45 350 Z" />
+    <path d="M55 355 L58 335 C59 330, 65 330, 66 335 L68 355" />
+    <path d="M68 355 L71 332 C72 327, 78 327, 79 332 L81 358 C84 365, 80 375, 75 375" />
+
+    <!-- Turtle / Cute Reptile -->
+    <ellipse cx="140" cy="345" rx="12" ry="9" />
+    <circle cx="156" cy="345" r="4" />
+    <circle cx="132" cy="336" r="2.5" />
+    <circle cx="148" cy="336" r="2.5" />
+    <circle cx="132" cy="354" r="2.5" />
+    <circle cx="148" cy="354" r="2.5" />
+
+    <!-- Paper Airplane -->
+    <path d="M210 345 L245 330 L228 362 L224 348 Z" />
+    <line x1="245" y1="330" x2="224" y2="348" />
+
+    <!-- Popsicle / Ice cream -->
+    <path d="M305 345 C305 330, 325 330, 325 345 L325 365 L305 365 Z" />
+    <line x1="315" y1="365" x2="315" y2="378" stroke-width="2.5" />
+    <circle cx="312" cy="342" r="1.5" fill="white" />
+    <circle cx="318" cy="342" r="1.5" fill="white" />
+    <path d="M312 350 Q315 353 318 350" />
+
+    <!-- Cat face -->
+    <circle cx="410" cy="345" r="14" />
+    <path d="M398 338 L396 325 L406 333" />
+    <path d="M422 338 L424 325 L414 333" />
+    <circle cx="405" cy="344" r="1.5" fill="white" />
+    <circle cx="415" cy="344" r="1.5" fill="white" />
+    <path d="M407 349 L410 351 L413 349" />
+    <line x1="394" y1="346" x2="400" y2="347" />
+    <line x1="420" y1="347" x2="426" y2="346" />
+
+    <!-- Little Dino -->
+    <path d="M40 435 C40 415, 60 415, 65 425 C75 420, 80 430, 75 445 L78 458 L70 458 L68 450 L58 450 L56 458 L48 458 Z" />
+    <circle cx="52" cy="425" r="1.5" fill="white" />
+
+    <!-- Monkey Face with hands over eyes (see no evil) -->
+    <circle cx="140" cy="430" r="16" />
+    <circle cx="122" cy="426" r="6" />
+    <circle cx="158" cy="426" r="6" />
+    <ellipse cx="134" cy="426" rx="6" ry="7" fill="#08090d" />
+    <ellipse cx="146" cy="426" rx="6" ry="7" fill="#08090d" />
+    <path d="M136 438 Q140 442 144 438" />
+
+    <!-- Pizza slice -->
+    <path d="M225 415 L245 448 C240 452, 230 452, 225 448 Z" />
+    <path d="M225 415 L205 448 C210 452, 220 452, 225 448 Z" />
+    <circle cx="222" cy="435" r="2" fill="white" />
+    <circle cx="228" cy="442" r="1.5" fill="white" />
+
+    <!-- Car -->
+    <path d="M305 442 L312 430 L330 430 L338 442 L345 442 L345 452 L300 452 L300 442 Z" />
+    <circle cx="310" cy="452" r="4" />
+    <circle cx="334" cy="452" r="4" />
+
+    <!-- Key & Lock -->
+    <circle cx="410" cy="425" r="6" />
+    <line x1="416" y1="425" x2="430" y2="425" />
+    <line x1="425" y1="425" x2="425" y2="430" />
+    <line x1="429" y1="425" x2="429" y2="430" />
+
+    <!-- Scattered micro-dots & plus signs across tile -->
+    <path d="M78 82 M78 78 L78 86 M74 82 L82 82" />
+    <path d="M260 50 M260 46 L260 54 M256 50 L264 50" />
+    <path d="M380 90 M380 86 L380 94 M376 90 L384 90" />
+    <path d="M175 220 M175 216 L175 224 M171 220 L179 220" />
+    <path d="M370 215 M370 211 L370 219 M366 215 L374 215" />
+    <path d="M85 310 M85 306 L85 314 M81 310 L89 310" />
+    <path d="M270 315 M270 311 L270 319 M266 315 L274 315" />
+    <path d="M180 395 M180 391 L180 399 M176 395 L184 395" />
+    <path d="M375 400 M375 396 L375 404 M371 400 L379 400" />
+    <circle cx="28" cy="140" r="1.5" />
+    <circle cx="180" cy="150" r="1.5" />
+    <circle cx="270" cy="160" r="1.5" />
+    <circle cx="395" cy="155" r="1.5" />
+    <circle cx="95" cy="225" r="1.5" />
+    <circle cx="265" cy="225" r="1.5" />
+    <circle cx="18" cy="385" r="1.5" />
+    <circle cx="185" cy="300" r="1.5" />
+    <circle cx="365" cy="295" r="1.5" />
+    <circle cx="455" cy="385" r="1.5" />
+    <circle cx="270" cy="425" r="1.5" />
+    <circle cx="365" cy="445" r="1.5" />
+  </g>
+</svg>
