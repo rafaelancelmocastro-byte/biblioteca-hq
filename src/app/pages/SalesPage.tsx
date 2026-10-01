@@ -188,7 +188,8 @@ export const SalesPage: React.FC<Props> = ({ hasAccess = false, onLogin, onOpenL
                 activeIndex={coverIndex}
                 onChange={setCoverIndex}
                 label="Explore coleções incríveis"
-                autoPlayMs={3600}
+                autoPlayMs={3200}
+                pauseAutoPlayOnInteraction={false}
                 visibleDistance={4}
                 spreadPercent={54}
                 rotationDeg={5}
