@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import {
-  BookOpen,
   Check,
   ChevronDown,
   Gift,
@@ -17,20 +16,18 @@ import {
   X,
 } from "lucide-react";
 import { CoverFlow } from "../../components/library/CoverFlow";
-import { SalesReaderDemo } from "./SalesReaderDemo";
 import "./SalesPage.v5.css";
 
 const CHECKOUT_URL =
   "https://lastlink.com/p/C95A90981/checkout-payment/?utm_source=bibliotecahq&utm_medium=site&utm_campaign=acesso_vitalicio";
 
 const SCREENS = [
-  { src: "/sales-v5/app_00.jpg", title: "Continuar lendo", copy: "Retome exatamente de onde parou." },
-  { src: "/sales-v5/app_01.jpg", title: "Mangá & Indie", copy: "Explore categorias, mangás e graphic novels." },
-  { src: "/sales-v5/app_02.jpg", title: "Leitura offline", copy: "Continue lendo mesmo sem conexão." },
-  { src: "/sales-v5/app_03.jpg", title: "Edições organizadas", copy: "Encontre títulos em ordem cronológica." },
-  { src: "/sales-v5/app_04.jpg", title: "Editoras e universos", copy: "Navegue por coleções e selos do acervo." },
-  { src: "/sales-v5/app_05.jpg", title: "Detalhes completos", copy: "Sinopse, progresso e ficha de cada edição." },
-  { src: "/sales-v5/app_06.jpg", title: "Leitor avançado", copy: "Zoom, ajuste da página e navegação fluida." },
+  { src: "/sales-v5/app_00.jpg", eyebrow: "SUA LEITURA", title: "Continuar lendo de onde parou", copy: "Sua leitura atual sempre salva na nuvem. Acompanhe páginas lidas e retome rapidamente." },
+  { src: "/sales-v5/app_01.jpg", eyebrow: "MULTIVERSO", title: "Explorar coleções, mangás e indie", copy: "Navegação por categorias completas: mangás, sagas e graphic novels." },
+  { src: "/sales-v5/app_02.jpg", eyebrow: "BIBLIOTECA OFFLINE", title: "Leitura 100% Offline no Celular e Tablet", copy: "Baixe seus títulos favoritos na memória do dispositivo e continue sem internet." },
+  { src: "/sales-v5/app_03.jpg", eyebrow: "EDIÇÕES DISPONÍVEIS", title: "Edições em ordem cronológica perfeita", copy: "Filtre por ordem de lançamento ou cronológica, pesquise por título e encontre a edição certa." },
+  { src: "/sales-v5/app_04.jpg", eyebrow: "UNIVERSOS & SAGAS", title: "Editoras e universos completos do acervo", copy: "DC Comics, Marvel, Vertigo, Dark Horse, Dynamite e editoras nacionais organizadas." },
+  { src: "/sales-v5/app_05.jpg", eyebrow: "FICHA TÉCNICA", title: "Ficha técnica e detalhes de cada edição", copy: "Sinopse editorial completa, ano de lançamento, editora, quantidade de páginas e mais." },
 ];
 
 const COVERS = [
@@ -68,8 +65,7 @@ type Props = {
 };
 
 export const SalesPage: React.FC<Props> = ({ hasAccess = false, onLogin, onOpenLibrary }) => {
-  const [readerDemoOpen, setReaderDemoOpen] = useState(false);
-  const [screenIndex, setScreenIndex] = useState(0);
+  const [screenIndex, setScreenIndex] = useState(1);
   const [coverIndex, setCoverIndex] = useState(0);
   const [faqIndex, setFaqIndex] = useState<number | null>(null);
 
@@ -86,10 +82,6 @@ export const SalesPage: React.FC<Props> = ({ hasAccess = false, onLogin, onOpenL
   }, []);
 
   const activeScreen = SCREENS[screenIndex] || SCREENS[0];
-
-  if (readerDemoOpen) {
-    return <SalesReaderDemo onClose={() => setReaderDemoOpen(false)} />;
-  }
 
   return (
     <div className="sales-v5">
@@ -152,11 +144,10 @@ export const SalesPage: React.FC<Props> = ({ hasAccess = false, onLogin, onOpenL
             </div>
           </section>
 
-          <section className="sales-v5__section" id="por-dentro">
-            <div className="sales-v5__heading">
-              <span>VEJA POR DENTRO DO APP</span>
-              <h2>A interface que você vai usar de verdade.</h2>
-              <p>Capturas reais do próprio sistema, apresentadas dentro do mesmo conceito visual que você enviou.</p>
+          <section className="sales-v5__section sales-v5__inside" id="por-dentro">
+            <div className="sales-v5__inside-heading">
+              <h2>Veja por dentro do app</h2>
+              <p>Conheça as telas e a experiência completa da Biblioteca HQ direto do sistema.</p>
             </div>
 
             <div className="sales-v5__walkthrough">
@@ -166,48 +157,30 @@ export const SalesPage: React.FC<Props> = ({ hasAccess = false, onLogin, onOpenL
                   <img src={activeScreen.src} alt={activeScreen.title} />
                 </div>
                 <strong>{activeScreen.title}</strong>
-                <small>{activeScreen.copy}</small>
+                <small>{activeScreen.eyebrow}</small>
               </div>
 
-              <div className="sales-v5__screen-grid">
-                {SCREENS.map((screen, index) => (
-                  <button
-                    key={screen.src}
-                    type="button"
-                    className={index === screenIndex ? "active" : ""}
-                    onClick={() => setScreenIndex(index)}
-                  >
-                    <img src={screen.src} alt="" loading="lazy" />
-                    <span><strong>{screen.title}</strong><small>{screen.copy}</small></span>
-                  </button>
-                ))}
+              <div className="sales-v5__screens-wrap">
+                <div className="sales-v5__screens-note">Mesma experiência das imagens reais do app! ↘</div>
+                <div className="sales-v5__screen-grid">
+                  {SCREENS.map((screen, index) => (
+                    <button
+                      key={screen.src}
+                      type="button"
+                      className={index === screenIndex ? "active" : ""}
+                      onClick={() => setScreenIndex(index)}
+                    >
+                      <img src={screen.src} alt="" loading="lazy" />
+                      <span>
+                        <small>{screen.eyebrow}</small>
+                        <strong>{screen.title}</strong>
+                        <em>{screen.copy}</em>
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-          </section>
-
-          <section className="sales-v5__reader" id="leitor">
-            <div>
-              <span>EXPERIMENTE ANTES DE ENTRAR</span>
-              <h2>Sinta o leitor da Biblioteca HQ na prática.</h2>
-              <p>
-                Abra uma demonstração pública com 5 páginas. Teste navegação, ajuste da página e zoom
-                sem login e sem alterar o progresso da sua conta.
-              </p>
-              <div className="sales-v5__reader-badges">
-                <span><ZoomIn /> Zoom 100–180%</span>
-                <span><BookOpen /> Ajuste da página</span>
-                <span><MonitorSmartphone /> Mobile e desktop</span>
-              </div>
-              <button type="button" className="sales-v5__primary" onClick={() => setReaderDemoOpen(true)}>
-                <BookOpen /> Testar o leitor agora
-              </button>
-            </div>
-
-            <button type="button" className="sales-v5__reader-preview" onClick={() => setReaderDemoOpen(true)}>
-              <img src="/sales-v5/app_06.jpg" alt="Prévia real do leitor" />
-              <span><Play /></span>
-              <strong>Abrir demonstração</strong>
-            </button>
           </section>
 
           <section className="sales-v5__section sales-v5__collections">
