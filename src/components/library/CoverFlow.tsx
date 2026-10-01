@@ -13,6 +13,7 @@ interface Props {
   visibleDistance?: number;
   spreadPercent?: number;
   rotationDeg?: number;
+  pauseAutoPlayOnInteraction?: boolean;
 }
 
 export const CoverFlow: React.FC<Props> = ({
@@ -25,6 +26,7 @@ export const CoverFlow: React.FC<Props> = ({
   visibleDistance = 2,
   spreadPercent = 62,
   rotationDeg = 6,
+  pauseAutoPlayOnInteraction = true,
 }) => {
   const start = useRef<{ x: number; y: number } | null>(null);
   const [hovered, setHovered] = useState(false);
@@ -57,10 +59,10 @@ export const CoverFlow: React.FC<Props> = ({
   }, [activeIndex, count, items]);
 
   useEffect(() => {
-    if (!autoPlayMs || autoPlayMs < 1000 || count < 2 || hovered || focused || reducedMotion || document.hidden) return;
+    if (!autoPlayMs || autoPlayMs < 1000 || count < 2 || (pauseAutoPlayOnInteraction && (hovered || focused)) || reducedMotion || document.hidden) return;
     const id = window.setTimeout(() => select(activeIndex + 1), autoPlayMs);
     return () => window.clearTimeout(id);
-  }, [activeIndex, autoPlayMs, count, hovered, focused, reducedMotion]);
+  }, [activeIndex, autoPlayMs, count, hovered, focused, reducedMotion, pauseAutoPlayOnInteraction]);
 
   return (
     <div
