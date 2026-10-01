@@ -11,6 +11,15 @@ export type PublicationBook = {
 };
 
 const imagePattern = /\.(jpe?g|png|gif|webp|bmp|avif)$/i;
+const isReadableComicImage = (name: string) => {
+  const normalized = name.replace(/\\/g, "/");
+  const parts = normalized.split("/").filter(Boolean);
+  const base = parts[parts.length - 1] || "";
+  if (!imagePattern.test(base)) return false;
+  if (parts.some((part) => part === "__MACOSX")) return false;
+  if (base.startsWith("._") || base === ".DS_Store" || base.toLowerCase() === "thumbs.db") return false;
+  return true;
+};
 
 export async function openPublicationBook(file: File, remoteSource?: { getLength: () => Promise<number>; read: (offset: number, length: number) => Promise<Uint8Array> }): Promise<PublicationBook> {
   const format = publicationFormat(file.name);
@@ -41,7 +50,7 @@ export async function openPublicationBook(file: File, remoteSource?: { getLength
     const archive = new ZipReader(remoteSource ? new RemoteZipReader(null) : new BlobReader(file));
     try {
       const entries = (await archive.getEntries())
-        .filter((entry) => !entry.directory && imagePattern.test(entry.filename))
+        .filter((entry) => !entry.directory && isReadableComicImage(entry.filename))
         .sort((a, b) => a.filename.localeCompare(b.filename, undefined, { numeric: true }));
       if (!entries.length) throw new Error("O CBZ não contém páginas de imagem legíveis.");
       if (entries.some((entry) => entry.encrypted)) throw new Error("CBZ protegido por senha não pode ser lido.");
@@ -91,7 +100,7 @@ export async function openPublicationBook(file: File, remoteSource?: { getLength
 
   const { rar, entries: archiveEntries } = await unrar(remoteSource || file);
   const entries = Object.values(archiveEntries)
-    .filter((entry) => !entry.isDirectory && imagePattern.test(entry.name))
+    .filter((entry) => !entry.isDirectory && isReadableComicImage(entry.name))
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
   if (!entries.length) { rar.dispose(); throw new Error("O CBR não contém páginas de imagem legíveis."); }
   if (entries.some((entry) => entry.encrypted)) { rar.dispose(); throw new Error("CBR protegido por senha não pode ser lido."); }
