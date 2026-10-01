@@ -74,13 +74,6 @@ export const SalesPage: React.FC<Props> = ({ hasAccess = false, onLogin, onOpenL
     else window.location.assign(CHECKOUT_URL);
   };
 
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      setScreenIndex((current) => (current + 1) % SCREENS.length);
-    }, 4800);
-    return () => window.clearInterval(id);
-  }, []);
-
   const activeScreen = SCREENS[screenIndex] || SCREENS[0];
 
   return (
