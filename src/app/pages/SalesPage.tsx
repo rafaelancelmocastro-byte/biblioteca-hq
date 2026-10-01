@@ -105,33 +105,20 @@ export const SalesPage: React.FC<Props> = ({ hasAccess = false, onLogin, onOpenL
               <small>Mangás · quadrinhos · sagas · graphic novels</small>
             </span>
           </a>
-
-          <nav aria-label="Navegação da página">
-            <a href="#por-dentro">Por dentro</a>
-            <a href="#leitor">Teste o leitor</a>
-            <a href="#beneficios">Benefícios</a>
-            <a href="#acesso">Acesso</a>
-          </nav>
-
-          <button type="button" className="sales-v5__login" onClick={hasAccess ? onOpenLibrary : onLogin}>
-            {hasAccess ? "Abrir biblioteca" : "Já tenho acesso"}
-          </button>
         </header>
 
         <main id="top">
           <section className="sales-v5__hero">
             <div className="sales-v5__hero-copy">
-              <span className="sales-v5__eyebrow"><Sparkles /> Biblioteca HQ</span>
               <h1>Seu universo de quadrinhos, organizado para você <em>realmente ler.</em></h1>
               <p>
-                Mangás, quadrinhos, sagas e graphic novels em um só lugar. Descubra, organize e continue
-                de onde parou em uma experiência feita para quem realmente gosta de HQs.
+                Mangás, quadrinhos, sagas e graphic novels em um só lugar.
+                Descubra, explore, organize e continue de onde parou, com uma experiência feita por quem ama HQs.
               </p>
 
               <div className="sales-v5__price">
-                <span>Pagamento único</span>
+                <del>R$ 29,99</del>
                 <strong><small>R$</small> 19,99</strong>
-                <b>Acesso vitalício</b>
               </div>
 
               <div className="sales-v5__actions">
@@ -146,9 +133,10 @@ export const SalesPage: React.FC<Props> = ({ hasAccess = false, onLogin, onOpenL
               </div>
 
               <div className="sales-v5__trust">
-                <span><InfinityIcon /> Pagamento único</span>
-                <span><ShieldCheck /> Checkout pela Lastlink</span>
-                <span><Check /> Liberação após confirmação</span>
+                <span><InfinityIcon /> Acesso vitalício</span>
+                <span><Sparkles /> Atualizações diárias</span>
+                <span><Send /> Conteúdo que você pedir</span>
+                <span><ShieldCheck /> Garantia de 7 dias</span>
               </div>
             </div>
 
